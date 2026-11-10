@@ -277,3 +277,35 @@ def wall_runs(level="floor", thickness=0.018):
                     p0=p0, p1=p1, normal=n, room=room, z=z, axis="y" if along_x else "x", wall=wall.name,
                     end0=end_kind(p0, -ec, n, False), end1=end_kind(p1, ec, n, False)))
     return out
+
+
+def build_envelope(coll="structure"):
+    """Close the house: a slab under the ground floor, and a deck and pitched
+    roof over the top ceiling. Without them the shell is open at both ends
+    and light gets in along the wall heads."""
+    e = plan.EXT_T
+    x0, y0, x1, y1 = -e, -e, plan.WIDTH + e, plan.DEPTH + e
+    made = []
+
+    mb = MeshBuilder()
+    mb.box((x0, y0, -0.35), (x1, y1, -0.002), "foundation")
+    made.append(mb.build("ground_slab", coll, recalc=True))
+
+    # Roof: a deck sealing the wall heads, then a gable roof with its ridge
+    # running east-west and eaves overhanging the front and back.
+    mb = MeshBuilder()
+    top = plan.ROOF_Z
+    mb.box((x0, y0, top + 0.002), (x1, y1, top + 0.16), "foundation")
+    over, rise = 0.35, 2.3
+    eave, ridge_y = top + 0.16, (y0 + y1) / 2
+    a = Vector((x0, y0 - over, eave))
+    b = Vector((x0, y1 + over, eave))
+    c = Vector((x0, ridge_y, eave + rise))
+    span = Vector((x1 - x0, 0, 0))
+    mb.face([a, a + span, c + span, c], "roof")                 # south slope
+    mb.face([b + span, b, c, c + span], "roof")                 # north slope
+    mb.face([a, c, b], "ext_brick")                             # west gable
+    mb.face([a + span, b + span, c + span], "ext_brick")        # east gable
+    mb.face([a, b, b + span, a + span], "foundation")           # underside
+    made.append(mb.build("roof", coll, recalc=True))
+    return made

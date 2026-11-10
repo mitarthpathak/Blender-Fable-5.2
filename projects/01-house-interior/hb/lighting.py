@@ -30,8 +30,8 @@ COOL_TV = (0.55, 0.70, 1.0)
 MOON = (0.42, 0.58, 1.0)
 
 # Light travels this way: from the south-west, coming down at 31 degrees.
-MOON_DIRECTION = Vector((0.52, 0.85, 0.0)).normalized() * math.cos(math.radians(31)) \
-    + Vector((0, 0, -math.sin(math.radians(31))))
+MOON_DIRECTION = Vector((0.30, 0.95, 0.0)).normalized() * math.cos(math.radians(24)) \
+    + Vector((0, 0, -math.sin(math.radians(24))))
 
 HERO = {
     "hero_hallway": dict(at=(1.86, 0.42, 1.48), to=(1.02, 5.0, 1.22), lens=18),

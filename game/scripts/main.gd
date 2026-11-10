@@ -14,7 +14,7 @@ const SETTINGS_FILE := "user://settings.cfg"
 ## ramp collider stands in for them.
 const NO_COLLISION_PREFIXES := [
 	"decals_", "electrics_", "curtain_", "coat_", "mail_", "clutter_", "fog_", "plant_",
-	"rug_", "runner_", "doormat_", "lamp_broken", "stairs_balustrade",
+	"rug_", "runner_", "doormat_", "lamp_broken", "stairs_balustrade", "shade_",
 ]
 const NO_COLLISION_NAMES := ["stairs"]
 
@@ -137,16 +137,12 @@ func _setup_collision() -> int:
 				# Every door is modelled shut at zero turn; some are left ajar.
 				mesh_node.set_meta("closed_y", 0.0)
 				_door_open[mesh_node] = absf(mesh_node.rotation.y) > 0.05
-			# Glass and decals are blended surfaces: they must not shadow the moon.
-			if String(mesh_node.name).begins_with("glass_") or String(mesh_node.name).begins_with("decals_"):
-				mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			var n := String(mesh_node.name)
-			# Lampshades would cut each lamp's light into a hard cone.
-			if n.begins_with("lamp_") or n.begins_with("pendant_"):
+			# Godot shadows a blended surface as if it were solid, so glass, decals and
+			# the translucent lampshades cast none. Everything else shadows normally:
+			# the shell is closed, and each lamp's base is separate from its shade.
+			if n.begins_with("glass_") or n.begins_with("decals_") or n.begins_with("shade_"):
 				mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			# The shell is single-sided: shadow both faces so moonlight cannot leak in at the seams.
-			if n.begins_with("wall_") or n.begins_with("ceiling_") or n.begins_with("floor_"):
-				mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_DOUBLE_SIDED
 			if _wants_collision(mesh_node.name) and mesh_node.mesh:
 				mesh_node.create_trimesh_collision()
 				made += 1
@@ -200,7 +196,7 @@ func _setup_lights() -> void:
 		if node is DirectionalLight3D:
 			moon = node
 			moon.light_color = MOONLIGHT
-			moon.light_energy = 4.5
+			moon.light_energy = 5.5
 			moon.light_angular_distance = 0.6
 			moon.shadow_enabled = true
 			moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
@@ -211,14 +207,14 @@ func _setup_lights() -> void:
 		elif node is OmniLight3D:
 			var lamp := node as OmniLight3D
 			lamp.light_color = WARM
-			lamp.omni_range = 4.5
+			lamp.omni_range = 3.8
 			lamp.omni_attenuation = 1.6
 			lamp.shadow_enabled = true
 			lamp.shadow_bias = 0.06
 			lamp.light_volumetric_fog_energy = 0.6
-			lamp.light_energy = 0.9
+			lamp.light_energy = 0.6
 			if String(lamp.name).contains("flicker"):
-				lamp.light_energy = 0.8
+				lamp.light_energy = 0.5
 				_add_flicker(lamp)
 			_lamp_lights.append(lamp)
 

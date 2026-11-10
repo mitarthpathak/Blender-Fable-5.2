@@ -72,6 +72,7 @@ def build(phase):
     shell.build_walls()
     shell.build_floors()
     shell.build_ceilings()
+    shell.build_envelope()
     stairs.build(detail=True)
     from hb import joinery
     joinery.build()

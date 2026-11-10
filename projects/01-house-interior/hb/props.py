@@ -176,8 +176,8 @@ def chest(name, face, a0, a1, floor, depth=0.46, height=0.92, open_drawer=1, col
 
 def hall():
     put("side_table_tall_01", "hall_side_table", 2.18, 2.95, GF, facing=180)
-    dr.table_lamp("hall_table", (2.18, 2.95, 0.762), kind="warm", watts=25)
-    dr.pendant("hall", 1.78, 5.30, plan.CEILING, drop=0.50, kind="flicker", watts=40)
+    dr.table_lamp("hall_table", (2.18, 2.95, 0.762), kind="warm", watts=12)
+    dr.pendant("hall", 1.78, 5.30, plan.CEILING, drop=0.50, kind="flicker", watts=18)
     dr.radiator("radiator_hall", HALL_EAST, 3.95, 4.95, GF)
     rail, hooks = dr.coat_rail("coat_rail_hall", WEST, 0.35, 1.55, 1.68)
     dr.curtain("coat_hall_dark", WEST, hooks[1] - 0.20, hooks[1] + 0.22, 1.66, 0.62, seed=11, off=0.085,
@@ -234,7 +234,7 @@ def living():
     put("painted_wooden_chair_01", "dining_chair_3", 4.30, 5.42, GF, facing=62)
     put("painted_wooden_chair_01", "dining_chair_fallen", 5.85, 5.15, 0.245, facing=205, tilt=(-90, 0))
     put("WoodenTable_03", "sideboard", 7.01, 6.30, GF, facing=180)
-    dr.table_lamp("sideboard", (7.02, 6.82, 0.832), kind="warm", watts=40)
+    dr.table_lamp("sideboard", (7.02, 6.82, 0.832), kind="warm", watts=20)
     dr.broken_floor_lamp("broken", (3.25, 4.55, GF), direction_deg=18)
     dr.pendant("living", 4.9, 2.4, plan.CEILING, drop=0.6, kind="off")
     put("mantel_clock_01", "mantel_clock", 6.84, 2.30, 1.146, facing=180)

@@ -84,7 +84,7 @@ SURFACES: dict[str, Surface] = {
     "trim_paint": Surface(PLASTER, "#d6d2c6", rough=0.5, normal=0.08),
     "door_paint": Surface(PLASTER, "#cfcaba", rough=0.5, normal=0.08),
     "front_door_paint": Surface(PLASTER, "#27333b", rough=0.45, normal=0.08),
-    "door_worn": Surface("wood_peeling_paint_weathered"),
+    "door_worn": Surface(PLASTER, "#2c3a31", rough=0.7, normal=0.35),
     "stone_sill": Surface(PLASTER, "#8d8a82"),
     "wood_stair": Surface(WALNUT, "#4b3424", rough=0.85),
     "wood_mid": Surface(WALNUT, "#5c4129"),

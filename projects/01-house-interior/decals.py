@@ -126,26 +126,53 @@ def crack(seed=4, size=(1024, 1024)):
     return _solid(size, (22, 19, 17), alpha)
 
 
+def _noise(size, rng, scale):
+    """Soft random blotches, 0-255, for breaking up clean edges."""
+    small = Image.new("L", (max(2, size[0] // scale), max(2, size[1] // scale)))
+    small.putdata([rng.randint(0, 255) for _ in range(small.size[0] * small.size[1])])
+    return small.resize(size, Image.BICUBIC)
+
+
 def plaster_damage(seed=5, size=(1024, 1024)):
-    """Plaster broken away to the brick behind, with a chipped pale edge."""
+    """Plaster broken away to the brick behind. The break is ragged: the
+    outline is roughened at two scales, the plaster round it is crumbled and
+    stained, and hairline cracks run out from it."""
     rng = random.Random(seed)
-    hole = _blob(size, rng, points=34, jitter=0.20, radius=0.31).filter(ImageFilter.GaussianBlur(2))
+    soft = _blob(size, rng, points=26, jitter=0.22, radius=0.27).filter(ImageFilter.GaussianBlur(28))
+    rough = ImageChops.add(soft, ImageChops.add(_noise(size, rng, 48), _noise(size, rng, 12), scale=2.0), scale=2.0)
+    hole = rough.point(lambda v: 255 if v > 118 else 0).filter(ImageFilter.GaussianBlur(1.0))
     hole = hole.point(lambda v: 255 if v > 128 else 0)
-    for _ in range(9):                                    # chips around the main break
-        chip = _blob((70, 70), rng, points=8, jitter=0.5, radius=0.34)
-        ang, dist = rng.uniform(0, 2 * math.pi), rng.uniform(0.30, 0.44)
-        hole.paste(255, (int(size[0] * (0.5 + math.cos(ang) * dist)) - 35,
-                         int(size[1] * (0.5 + math.sin(ang) * dist)) - 35), chip)
+    # crumbled zone: a wider, patchier area where the skim coat has gone
+    crumb = ImageChops.add(soft, _noise(size, rng, 9).point(lambda v: int(v * 0.42))).point(
+        lambda v: 255 if v > 150 else 0)
+    crumb = ImageChops.subtract(crumb, hole)
     if BRICK.exists():
         brick = Image.open(BRICK).convert("RGB").crop((300, 300, 1324, 1324)).resize(size)
-        brick = brick.point(lambda v: int(v * 0.62))
+        brick = brick.point(lambda v: int(v * 0.55))
     else:
         brick = Image.new("RGB", size, (92, 54, 42))
-    rim = ImageChops.subtract(hole.filter(ImageFilter.MaxFilter(21)), hole)        # exposed plaster edge
-    shadow = ImageChops.subtract(hole, hole.filter(ImageFilter.MinFilter(25))).filter(ImageFilter.GaussianBlur(5))
-    image = Image.composite(brick, Image.new("RGB", size, (196, 190, 176)), hole)
-    image = Image.composite(Image.new("RGB", size, (30, 22, 18)), image, shadow.point(lambda v: int(v * 0.75)))
-    alpha = ImageChops.lighter(hole, rim).filter(ImageFilter.GaussianBlur(1.2))
+    under = Image.merge("RGB", [_noise(size, rng, 6).point(lambda v, b=b: int(b + (v - 128) * 0.18))
+                                for b in (150, 142, 126)])               # bare undercoat
+    image = Image.composite(brick, under, hole)
+    depth = ImageChops.subtract(hole, hole.filter(ImageFilter.MinFilter(31))).filter(ImageFilter.GaussianBlur(7))
+    image = Image.composite(Image.new("RGB", size, (22, 16, 13)), image, depth.point(lambda v: int(v * 0.8)))
+    # hairline cracks out of the break
+    cracks = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(cracks)
+    for _ in range(7):
+        ang = rng.uniform(0, 2 * math.pi)
+        x, y = size[0] / 2 + math.cos(ang) * size[0] * 0.24, size[1] / 2 + math.sin(ang) * size[1] * 0.24
+        for k in range(rng.randint(14, 30)):
+            ang += rng.uniform(-0.4, 0.4)
+            nx, ny = x + math.cos(ang) * 9, y + math.sin(ang) * 9
+            draw.line([(x, y), (nx, ny)], fill=200, width=2 if k < 8 else 1)
+            x, y = nx, ny
+    stain = soft.filter(ImageFilter.GaussianBlur(40)).point(lambda v: int(v * 0.22))
+    alpha = ImageChops.lighter(ImageChops.lighter(hole, crumb.point(lambda v: int(v * 0.92))),
+                               ImageChops.lighter(cracks.filter(ImageFilter.GaussianBlur(0.6)), stain))
+    dark = Image.new("RGB", size, (40, 34, 28))
+    outside = ImageChops.lighter(hole, crumb)
+    image = Image.composite(image, dark, outside)
     image.putalpha(alpha)
     return image
 

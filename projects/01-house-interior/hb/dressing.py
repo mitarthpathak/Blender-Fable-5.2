@@ -90,9 +90,13 @@ def table_lamp(name, base, kind="warm", watts=40.0, coll="lamps", shade="lampsha
     mb.cylinder((x, y, z + 0.168), (0, 0, 0.09), 0.008, "metal_brass", segments=8)
     lit = kind != "off"
     _bulb(mb, (x, y, z + 0.30), 0.028, "bulb_on" if lit else "bulb_off")
-    mb.cylinder((x, y, z + 0.235), (0, 0, 0.19), 0.165, shade if lit else "lampshade", segments=20, caps="none",
-                radius_top=0.105)
     obj = mb.build("lamp_" + name, coll, smooth=True)
+    # The shade is its own object: it is translucent, so it must not shadow the bulb.
+    sh = MeshBuilder()
+    sh.cylinder((x, y, z + 0.235), (0, 0, 0.19), 0.165, shade if lit else "lampshade", segments=20, caps="none",
+                radius_top=0.105)
+    shade_obj = sh.build("shade_" + name, coll, smooth=True)
+    shade_obj.visible_shadow = False
     if lit:
         lightpoint(name, (x, y, z + 0.31), kind, watts)
     return obj
@@ -106,9 +110,12 @@ def pendant(name, x, y, ceiling, drop=0.55, kind="off", watts=40.0, coll="lamps"
     mb.cylinder((x, y, ceiling - drop), (0, 0, 0.055), 0.019, "plastic_white", segments=10)
     lit = kind != "off"
     _bulb(mb, (x, y, ceiling - drop - 0.03), 0.03, "bulb_on" if lit else "bulb_off")
-    mb.cylinder((x, y, ceiling - drop - 0.085), (0, 0, 0.12), 0.17, "metal_white", segments=18, caps="none",
-                radius_top=0.035)
     obj = mb.build("pendant_" + name, coll, smooth=True)
+    sh = MeshBuilder()
+    sh.cylinder((x, y, ceiling - drop - 0.085), (0, 0, 0.12), 0.17, "lampshade_lit" if lit else "lampshade",
+                segments=18, caps="none", radius_top=0.035)
+    shade_obj = sh.build("shade_pendant_" + name, coll, smooth=True)
+    shade_obj.visible_shadow = False
     if lit:
         lightpoint(name, (x, y, ceiling - drop - 0.04), kind, watts)
     return obj
