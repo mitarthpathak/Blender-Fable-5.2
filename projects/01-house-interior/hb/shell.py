@@ -149,7 +149,7 @@ def build_floors(coll="structure", override=None):
         mb = MeshBuilder()
         for wall in plan.WALLS:
             for o in wall.openings:
-                if o.kind == "window" or abs(o.sill - plan.FFL[storey]) > 1e-4:
+                if o.kind in ("window", "fireplace") or abs(o.sill - plan.FFL[storey]) > 1e-4:
                     continue
                 if wall.axis == "x":
                     lo, hi = (o.start, wall.y0), (o.end, wall.y1)
@@ -189,3 +189,91 @@ def build_ceilings(coll="structure", override=None):
     mb.rect((w / 2, d / 2, plan.ROOF_Z), (w / 2, 0, 0), (0, d / 2, 0), (0, 0, -1), key)
     made.append(mb.build("ceiling_ff", coll))
     return made
+
+
+def wall_runs(level="floor", thickness=0.018):
+    """Stretches of wall that meet a floor (or a ceiling), for skirting and
+    coving. Yields dicts with the two ends of the run on the wall face, the
+    normal pointing into the room, the room, the height, and what each end
+    meets: "open" (a doorway), "inside" (an inside corner) or "outside"."""
+    out = []
+    for wall in plan.WALLS:
+        along_x = wall.axis == "x"
+        a0, a1 = (wall.x0, wall.x1) if along_x else (wall.y0, wall.y1)
+        c0, c1 = (wall.y0, wall.y1) if along_x else (wall.x0, wall.x1)
+        ea = Vector((1, 0, 0)) if along_x else Vector((0, 1, 0))
+        ec = Vector((0, 1, 0)) if along_x else Vector((1, 0, 0))
+
+        def P(a, c, z):
+            return Vector((a, c, z)) if along_x else Vector((c, a, z))
+
+        values = [plan.STAIR_Y0, plan.STAIR_Y1] if not along_x else [plan.VOID_X1]
+        for o in wall.openings:
+            values += [o.start, o.end]
+        for room in plan.ROOMS:
+            for r in room.rects:
+                values += [r[0], r[2]] if along_x else [r[1], r[3]]
+        for other in plan.WALLS:
+            if other is not wall:
+                values += [other.x0, other.x1] if along_x else [other.y0, other.y1]
+        v = plan.STAIR_VOID
+        values += [v[0], v[2]] if along_x else [v[1], v[3]]
+        A = _cuts(values, a0, a1)
+
+        for storey in (0, 1):
+            z = plan.FFL[storey] if level == "floor" else plan.FFL[storey] + plan.CEILING
+            zs = z + 0.05 if level == "floor" else z - 0.05
+            if not (wall.z0 - 1e-6 <= zs <= wall.z1 + 1e-6):
+                continue
+            exists = plan.has_floor if level == "floor" else plan.has_ceiling
+
+            def opening_at(a):
+                return next((o for o in wall.openings if o.start < a < o.end and o.sill < zs < o.head), None)
+
+            def room_of(point):
+                key = face_material(point, wall)
+                if not key or not key.startswith("wall_"):
+                    return None
+                return key[5:] if exists(point.x, point.y, storey) else None
+
+            def end_kind(point, direction, n, beyond_open):
+                if beyond_open:
+                    return "open"
+                q = point + direction * 0.02 + n * (thickness / 2)
+                q.z = zs
+                return "inside" if core.wall_containing(q.x, q.y, q.z) is not None else "outside"
+
+            # the two long faces
+            for c, sign in ((c0, -1), (c1, 1)):
+                n = ec * sign
+                segments = []
+                for i in range(len(A) - 1):
+                    am = (A[i] + A[i + 1]) / 2
+                    if opening_at(am):
+                        continue
+                    room = room_of(P(am, c + sign * SAMPLE, zs))
+                    if not room:
+                        continue
+                    if segments and segments[-1][2] == room and abs(segments[-1][1] - A[i]) < 1e-6:
+                        segments[-1][1] = A[i + 1]
+                    else:
+                        segments.append([A[i], A[i + 1], room])
+                for s0, s1, room in segments:
+                    p0, p1 = P(s0, c, z), P(s1, c, z)
+                    out.append(dict(
+                        p0=p0, p1=p1, normal=n, room=room, z=z, axis=wall.axis, wall=wall.name,
+                        end0=end_kind(p0, -ea, n, bool(opening_at(s0 - 0.01)) and s0 > a0 + 1e-6),
+                        end1=end_kind(p1, ea, n, bool(opening_at(s1 + 0.01)) and s1 < a1 - 1e-6)))
+
+            # the two ends
+            cm = (c0 + c1) / 2
+            for a, sign in ((a0, -1), (a1, 1)):
+                n = ea * sign
+                room = room_of(P(a + sign * SAMPLE, cm, zs))
+                if not room:
+                    continue
+                p0, p1 = P(a, c0, z), P(a, c1, z)
+                out.append(dict(
+                    p0=p0, p1=p1, normal=n, room=room, z=z, axis="y" if along_x else "x", wall=wall.name,
+                    end0=end_kind(p0, -ec, n, False), end1=end_kind(p1, ec, n, False)))
+    return out

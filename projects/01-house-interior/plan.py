@@ -56,7 +56,7 @@ class Opening:
     coordinates; `sill` and `head` are absolute heights."""
 
     name: str
-    kind: str                 # "door", "window" or "opening" (cased, no leaf)
+    kind: str                 # "door", "window", "opening" (cased, no leaf) or "fireplace"
     start: float
     width: float
     sill: float
@@ -137,7 +137,9 @@ WALLS: tuple[Wall, ...] = (
         Opening("door_living", "door", 1.15, DOOR_W, 0.0, DOOR_H, hinge="start", swing="+"),
         Opening("opening_dining", "opening", 5.50, 1.50, 0.0, 2.20),
     )),
-    Wall("chimney_breast_gf", 6.95, 1.50, WIDTH, 3.10, 0.0, CEILING),
+    Wall("chimney_breast_gf", 6.95, 1.50, WIDTH, 3.10, 0.0, CEILING, (
+        Opening("fireplace", "fireplace", 2.02, 0.56, 0.0, 0.72, on_plan=False),
+    )),
 
     Wall("wall_ff_partition", PART_X0, 0.0, PART_X1, DEPTH, _z(1, 0.0), ROOF_Z, (
         Opening("door_bedroom", "door", 3.25, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
@@ -212,6 +214,21 @@ MOONLIGHT: tuple[tuple[int, float, float, float, float], ...] = (
     (1, 1.775, 0.0, 0.35, 1.0),
     (1, 0.0, 4.75, 1.0, 0.35),
 )
+
+
+def has_floor(x: float, y: float, storey: int) -> bool:
+    """True where someone could stand: in a room, not on the stair, not in the stairwell."""
+    if storey == 0 and STAIR_X0 <= x <= VOID_X1 and STAIR_Y0 <= y <= STAIR_Y1:
+        return False
+    return any(r.storey == storey and any(x0 <= x <= x1 and y0 <= y <= y1 for x0, y0, x1, y1 in r.rects)
+               for r in ROOMS)
+
+
+def has_ceiling(x: float, y: float, storey: int) -> bool:
+    if not (0.0 <= x <= WIDTH and 0.0 <= y <= DEPTH):
+        return False
+    vx0, vy0, vx1, vy1 = STAIR_VOID
+    return storey == 1 or not (vx0 <= x <= vx1 and vy0 <= y <= vy1)
 
 
 def solid_spans(wall: Wall, storey: int | None = None) -> list[tuple[float, float]]:

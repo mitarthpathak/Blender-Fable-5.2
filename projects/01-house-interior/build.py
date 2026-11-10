@@ -21,7 +21,7 @@ import bpy
 
 HERE = Path(__file__).resolve().parent
 PHASES = ("blockout", "structure", "materials", "props", "lighting")
-CURRENT = "blockout"          # the phase built when none is asked for
+CURRENT = "structure"          # the phase built when none is asked for
 
 
 def chosen_phase():

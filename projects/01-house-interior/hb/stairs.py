@@ -224,7 +224,7 @@ def build_balustrades(coll):
     return made
 
 
-def build_cupboard_door(coll, angle_deg=22.0):
+def build_cupboard_door(coll, angle_deg=14.0):
     """The cupboard door under the stair, hinged on its north edge and left ajar."""
     d0, d1, dh = CUPBOARD_DOOR
     width, t = d1 - d0 - 0.006, 0.028

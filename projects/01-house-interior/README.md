@@ -11,7 +11,7 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | --- | --- | --- |
 | 1. Layout | Approved | `renders/01_layout_plan.png` |
 | 2. Blockout | Done | `renders/02_blockout_*.png` |
-| 3. Structure | Not started | |
+| 3. Structure | Done | `renders/03_structure_*.png` |
 | 4. Materials | Not started | |
 | 5. Props | Not started | |
 | 6. Lighting | Not started | |
@@ -79,6 +79,7 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `hb/` | The builder: shell, stair, joinery, materials, props, lighting |
 | `render_views.py` | Headless preview renders: cutaways and eye-level views |
 | `blockout.blend` | Phase 2 result: grey massing with furniture stand-ins |
+| `house.blend` | The house scene, rebuilt by `build.py` at each later phase |
 
 Build and render headless, which has no time limit:
 
