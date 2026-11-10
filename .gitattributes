@@ -1,24 +1,28 @@
-# Scripts must keep LF endings and stay executable-friendly on every platform.
+# Scripts must keep LF endings on every platform.
 *.sh  text eol=lf
 *.py  text eol=lf
 
-# Binary formats: never diff, merge or normalise line endings.
-*.blend binary
-*.png   binary
-*.jpg   binary
-*.jpeg  binary
-*.webp  binary
-*.exr   binary
-*.hdr   binary
-*.tif   binary
-*.tiff  binary
-*.mp4   binary
-*.mov   binary
-*.webm  binary
-*.glb   binary
-*.gltf  text
+# Git LFS: Blender scenes and images. The repository itself holds a small
+# pointer; the content lives in LFS storage. Run `git lfs install` once in a
+# new clone, or these files arrive as pointers.
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.jpeg  filter=lfs diff=lfs merge=lfs -text
+*.webp  filter=lfs diff=lfs merge=lfs -text
+*.exr   filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
+*.tif   filter=lfs diff=lfs merge=lfs -text
+*.tiff  filter=lfs diff=lfs merge=lfs -text
+
+# Git LFS: exported game assets and video. Large binaries like the scenes.
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+*.mov   filter=lfs diff=lfs merge=lfs -text
+*.webm  filter=lfs diff=lfs merge=lfs -text
+
+# Other binary formats: never diff, merge or normalise line endings.
 *.fbx   binary
-*.obj   text
 *.usd   binary
 *.usdc  binary
 *.usdz  binary
@@ -28,3 +32,5 @@
 *.otf   binary
 *.wav   binary
 *.mp3   binary
+*.gltf  text
+*.obj   text
