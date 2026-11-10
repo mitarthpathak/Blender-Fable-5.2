@@ -44,6 +44,11 @@ scripts/bmcp.py --out .scratch/view.png look        # save what `look` sees
 A tool call that fails with a connection error right after session start means
 Blender is still coming up: run `scripts/blender-up.sh` and try again.
 
+When a session is restored after sitting idle, its processes are gone and
+Blender starts again **empty**. Check `get_scene_info` before continuing work,
+and reopen the project's .blend with `bpy.ops.wm.open_mainfile(filepath=...)`.
+Anything that was never saved is gone.
+
 Leave every tool's `user_prompt` argument empty. It exists only to feed the
 vendor's telemetry, which is switched off here.
 

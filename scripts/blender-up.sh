@@ -44,15 +44,37 @@ if [ ! -x "$BLENDER_BIN" ] || [ ! -f "$HOME/.config/blender/${BLENDER_VERSION%.*
 fi
 
 display_num="${BLENDER_DISPLAY#:}"
-if [ ! -S "/tmp/.X11-unix/X${display_num}" ]; then
+x_socket="/tmp/.X11-unix/X${display_num}"
+x_lock="/tmp/.X${display_num}-lock"
+
+# True when an X server really owns the display. The socket file alone proves
+# nothing: when a machine is restored after sitting idle its processes are gone
+# but /tmp is not, so the socket and lock of a dead Xvfb are still there. The
+# lock names the server's pid; check that pid is alive and is an X server.
+display_alive() {
+  local pid
+  [ -S "$x_socket" ] || return 1
+  pid="$(tr -cd '0-9' <"$x_lock" 2>/dev/null || true)"
+  [ -n "$pid" ] && [ -r "/proc/$pid/comm" ] || return 1
+  case "$(cat "/proc/$pid/comm" 2>/dev/null)" in X*) return 0 ;; esac
+  return 1
+}
+
+if ! display_alive; then
   log "starting Xvfb on ${BLENDER_DISPLAY}"
+  rm -f "$x_socket" "$x_lock"   # leftovers from a server that no longer exists
   # Detached from this shell (setsid) and from the lock (9>&-) so it outlives us.
   setsid nohup Xvfb "$BLENDER_DISPLAY" -screen 0 "$BLENDER_SCREEN" -nolisten tcp \
     >"$BLENDER_STATE_DIR/xvfb.log" 2>&1 </dev/null 9>&- &
   for _ in $(seq 1 50); do
-    [ -S "/tmp/.X11-unix/X${display_num}" ] && break
+    display_alive && break
     sleep 0.1
   done
+  if ! display_alive; then
+    log "ERROR: Xvfb did not start. Its log:"
+    tail -n 20 "$BLENDER_STATE_DIR/xvfb.log" >&2 || true
+    exit 1
+  fi
 fi
 
 geometry="${BLENDER_SCREEN%x*}"   # 1920x1080x24 -> 1920x1080
