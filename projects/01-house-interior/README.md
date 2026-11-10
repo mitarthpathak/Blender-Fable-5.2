@@ -12,7 +12,7 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | 1. Layout | Approved | `renders/01_layout_plan.png` |
 | 2. Blockout | Done | `renders/02_blockout_*.png` |
 | 3. Structure | Done | `renders/03_structure_*.png` |
-| 4. Materials | Not started | |
+| 4. Materials | Done | `renders/04_materials_*.png` |
 | 5. Props | Not started | |
 | 6. Lighting | Not started | |
 | Final | Not started | packed .blend, .glb for Godot, 3 hero shots |
@@ -80,6 +80,9 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `render_views.py` | Headless preview renders: cutaways and eye-level views |
 | `blockout.blend` | Phase 2 result: grey massing with furniture stand-ins |
 | `house.blend` | The house scene, rebuilt by `build.py` at each later phase |
+| `assets.py` | Manifest of everything taken from Poly Haven; running it downloads and tints |
+| `decals.py` | Generates the grime and damage decal textures |
+| `textures/`, `hdri/`, `models/` | The downloaded assets (CC0), in Git LFS |
 
 Build and render headless, which has no time limit:
 
@@ -88,6 +91,20 @@ cd projects/01-house-interior
 blender -b --python build.py -- --phase blockout
 blender -b blockout.blend --python render_views.py -- --views axon_0,axon_1,hall --prefix 02_blockout
 ```
+
+## Materials
+
+Surfaces use Poly Haven texture sets at 2K: a base colour, a normal map and
+one AO / roughness / metal image each. Every material is a single Principled
+BSDF fed directly by those images, which is the form glTF carries, so Godot
+receives the same materials. Texture scale is in the UVs (metres divided by
+the texture's real size), not in a mapping node.
+
+One plaster set serves all the painted walls, the ceiling and the joinery:
+`assets.py` recolours its base colour per room and makes a glossier copy of
+its roughness for paint, keeping the original stains and wear.
+
+All Poly Haven assets are CC0.
 
 ## For Godot
 

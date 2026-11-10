@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import bmesh
 import bpy
 from mathutils import Vector
 
+import assets
 import plan
 
 UP = Vector((0.0, 0.0, 1.0))
@@ -29,6 +30,7 @@ class Spec:
     tile: float = 1.0
     rot: bool = False          # turn the texture a quarter turn
     alpha: float = 1.0
+    emission: float = 0.0      # strength of a glow in the material's own colour
 
 
 SPECS: dict[str, Spec] = {
@@ -42,8 +44,8 @@ SPECS: dict[str, Spec] = {
     "ext_brick": Spec("#6b4a3c", 0.9, tile=1.5),
     # floors
     "floor_hall": Spec("#7a6a5a", 0.5, tile=1.2),
-    "floor_living": Spec("#6b4a2f", 0.45, tile=2.0, rot=True),
-    "floor_landing": Spec("#5e4630", 0.55, tile=2.0, rot=True),
+    "floor_living": Spec("#6b4a2f", 0.45, tile=2.0),
+    "floor_landing": Spec("#5e4630", 0.55, tile=2.0),
     "floor_bedroom": Spec("#5e4630", 0.55, tile=2.0),
     "floor_boxroom": Spec("#5e4630", 0.55, tile=2.0),
     "hearth_tile": Spec("#3a3f3a", 0.35, tile=0.6),
@@ -63,6 +65,31 @@ SPECS: dict[str, Spec] = {
     "plastic_white": Spec("#dcd9d0", 0.4),
     "plastic_black": Spec("#141414", 0.4),
     "soot": Spec("#0c0b0a", 0.95),
+    "door_worn": Spec("#3d3a33", 0.7),
+    "fabric_curtain": Spec("#6d685b", 0.95),
+    "fabric_plaid": Spec("#6b6a4a", 0.95),
+    "fabric_bed": Spec("#8f8a7c", 0.95),
+    "fabric_pillow": Spec("#c9c5b8", 0.95),
+    "leather": Spec("#5a3a25", 0.5),
+    "carpet": Spec("#6a6248", 1.0),
+    "carpet_runner": Spec("#5a2f2a", 1.0),
+    # lamps and small things
+    "ceramic": Spec("#c9c2b2", 0.35),
+    "lampshade": Spec("#b9ad94", 0.9),
+    "lampshade_lit": Spec("#ffc98a", 0.9, emission=2.2),
+    "bulb_on": Spec("#ffd9a0", 0.3, emission=45.0),
+    "bulb_off": Spec("#d8d4c8", 0.2),
+    "screen_on": Spec("#9fb6d8", 0.3, emission=3.0),
+    "paper": Spec("#cfcabb", 0.85),
+    "paper_brown": Spec("#9a8463", 0.85),
+    "coffee": Spec("#1d130c", 0.3),
+    "book_red": Spec("#5e211c", 0.6),
+    "book_green": Spec("#26392c", 0.6),
+    "book_blue": Spec("#232f47", 0.6),
+    "book_cream": Spec("#b3a98d", 0.7),
+    "book_brown": Spec("#4a3423", 0.6),
+    "book_black": Spec("#191817", 0.5),
+    "rubber": Spec("#1b1a18", 0.95),
     # helpers
     "blockout": Spec("#9a9a9a", 0.9),
     "blockout_prop": Spec("#c98a4b", 0.9),
@@ -81,7 +108,11 @@ def hex_rgb(value: str) -> tuple[float, float, float]:
 
 
 def spec(key: str) -> Spec:
-    return SPECS.get(key) or SPECS["blockout"]
+    """The spec for a material. Where the material has a texture set, the
+    tile size is that set's real-world size, so the texture lands at scale."""
+    base = SPECS.get(key) or SPECS["blockout"]
+    tile = assets.tile_of(key)
+    return replace(base, tile=tile) if tile else base
 
 
 def material(key: str) -> bpy.types.Material:
@@ -100,6 +131,9 @@ def material(key: str) -> bpy.types.Material:
     bsdf.inputs["Roughness"].default_value = s.roughness
     bsdf.inputs["Metallic"].default_value = s.metallic
     mat.diffuse_color = (*rgb, s.alpha)
+    if s.emission:
+        bsdf.inputs["Emission Color"].default_value = (*rgb, 1.0)
+        bsdf.inputs["Emission Strength"].default_value = s.emission
     if s.alpha < 1.0:
         bsdf.inputs["Alpha"].default_value = s.alpha
         mat.surface_render_method = "BLENDED"

@@ -21,7 +21,7 @@ import bpy
 
 HERE = Path(__file__).resolve().parent
 PHASES = ("blockout", "structure", "materials", "props", "lighting")
-CURRENT = "structure"          # the phase built when none is asked for
+CURRENT = "materials"          # the phase built when none is asked for
 
 
 def chosen_phase():
@@ -36,7 +36,7 @@ def load_modules():
     """Import the builder fresh: Blender keeps modules alive between runs."""
     if str(HERE) not in sys.path:
         sys.path.insert(0, str(HERE))
-    for name in [m for m in sys.modules if m == "plan" or m == "hb" or m.startswith("hb.")]:
+    for name in [m for m in sys.modules if m in ("plan", "assets", "hb") or m.startswith("hb.")]:
         del sys.modules[name]
     import plan
     import hb.core

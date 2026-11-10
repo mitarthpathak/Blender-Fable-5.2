@@ -17,7 +17,7 @@ from .core import MeshBuilder
 DOOR_ANGLE = {"door_front": 0.0, "door_back": 0.0, "door_living": 64.0,
               "door_bedroom": 22.0, "door_boxroom": 0.0}
 DOOR_STYLE = {"door_front": "front", "door_back": "half_glazed"}
-DOOR_PAINT = {"door_front": "front_door_paint"}
+DOOR_PAINT = {"door_front": "front_door_paint", "door_back": "door_worn"}
 
 LINING = 0.03           # door lining thickness
 LEAF_T = 0.04
