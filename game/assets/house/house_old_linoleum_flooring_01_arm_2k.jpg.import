@@ -2,20 +2,24 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cctww4ryr4sdm"
-path="res://.godot/imported/night_street.hdr-5d3796d5ab5767e0b5c7ecdf634ed720.ctex"
+uid="uid://ul4x8qigs3jj"
+path.s3tc="res://.godot/imported/house_old_linoleum_flooring_01_arm_2k.jpg-46b1128d112ed07672cd73b049f28fd7.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "436c2f21d633c53746ba083a7393387d"
 }
 
 [deps]
 
-source_file="res://assets/house/night_street.hdr"
-dest_files=["res://.godot/imported/night_street.hdr-5d3796d5ab5767e0b5c7ecdf634ed720.ctex"]
+source_file="res://assets/house/house_old_linoleum_flooring_01_arm_2k.jpg"
+dest_files=["res://.godot/imported/house_old_linoleum_flooring_01_arm_2k.jpg-46b1128d112ed07672cd73b049f28fd7.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -23,7 +27,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

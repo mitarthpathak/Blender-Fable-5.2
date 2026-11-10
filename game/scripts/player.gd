@@ -14,6 +14,7 @@ var _pivot: Node3D
 var _arm: SpringArm3D
 var _body_mesh: MeshInstance3D
 var camera: Camera3D
+var flashlight: SpotLight3D
 
 
 func _ready() -> void:
@@ -63,6 +64,19 @@ func _ready() -> void:
 	_arm.add_child(camera)
 	camera.make_current()
 
+	# Flashlight: off for now. It will be the player's main light later.
+	flashlight = SpotLight3D.new()
+	flashlight.name = "Flashlight"
+	flashlight.light_color = Color(1.0, 0.96, 0.88)
+	flashlight.light_energy = 6.0
+	flashlight.spot_range = 18.0
+	flashlight.spot_angle = 24.0
+	flashlight.spot_angle_attenuation = 0.7
+	flashlight.shadow_enabled = true
+	flashlight.light_volumetric_fog_energy = 1.5
+	flashlight.visible = false
+	camera.add_child(flashlight)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -70,6 +84,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pivot.rotation.x = clampf(_pivot.rotation.x - event.relative.y * MOUSE_SENSITIVITY, -1.2, 0.9)
 	elif event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	elif event.is_action_pressed("flashlight"):
+		flashlight.visible = not flashlight.visible
 	elif event.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 

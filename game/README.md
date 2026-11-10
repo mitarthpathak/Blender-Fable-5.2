@@ -15,7 +15,9 @@ Open `game/` in Godot 4.7.2, or run the Windows build in `build/`
 | Shift / Space | Run / jump |
 | Mouse | Look (Esc frees the pointer, click recaptures) |
 | E | Open or close the nearest door |
+| F | Flashlight |
 | F1 | Graphics quality: High or Low (remembered) |
+| F3 | FPS counter |
 
 ## How it is put together
 
@@ -37,13 +39,31 @@ up in code, so a fresh export from Blender needs no hand edits:
 | | High | Low |
 | --- | --- | --- |
 | Volumetric fog | on | off (cheap distance fog) |
-| SDFGI, SSR, SSAO, SSIL, glow | on | off |
-| Render scale | 100% | 60% |
+| SDFGI, SSR, SSIL | on | off |
+| SSAO, glow, normal maps, decals, mipmaps, probes | on | on |
+| Render scale | 100% | 77% with FSR upscaling |
 | MSAA | 2x | off |
-| Shadows | 4096 atlas, all lamps | 1024 atlas, moon and one lamp |
+| Shadows | 4096 atlas, all lamps | 2048 atlas, moon and one lamp |
 
 Low is aimed at Intel UHD 620 class graphics. If it is still too slow there,
 start the game with `--rendering-method gl_compatibility`.
+
+## Baked lighting
+
+`world.tscn` holds the house, a `LightmapGI` node and a reflection probe for
+each room. The model imports with lightmap UVs (`light_baking` set to static
+lightmaps), and `scripts/world.gd` is a tool script that configures the
+lights in the editor exactly as the game does.
+
+**The lightmaps are not baked yet.** Godot only bakes from the editor: there
+is no script or command-line bake, and this project was built without one.
+To bake: open `world.tscn`, select `LightmapGI`, press **Bake Lightmaps**,
+and commit the `.lmbake` and texture files it writes. Until then, indirect
+light indoors comes from the per-room reflection probes (both presets) and
+SDFGI (High only).
+
+The flashlight is a `SpotLight3D` on the player camera, off by default;
+`F` toggles it.
 
 ## Checks
 

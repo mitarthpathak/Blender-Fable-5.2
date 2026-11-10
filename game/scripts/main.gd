@@ -5,8 +5,8 @@ extends Node3D
 ## Everything is set up in code from the imported scene, so re-exporting
 ## house.glb from Blender needs no hand edits here.
 
-const HOUSE_SCENE := "res://assets/house/house.glb"
-const SKY_HDR := "res://assets/house/night_street.hdr"
+## The house model plus its LightmapGI node and reflection probes.
+const WORLD_SCENE := "res://world.tscn"
 const SETTINGS_FILE := "user://settings.cfg"
 
 ## Meshes that should not block the player: flat decals, soft furnishings,
@@ -22,8 +22,6 @@ const NO_COLLISION_NAMES := ["stairs"]
 ## not say. Blender's Z rotation is Godot's Y.
 const DOOR_SWING_DEFAULT := {"door_front": -95.0}
 
-const WARM := Color(1.0, 0.62, 0.34)
-const MOONLIGHT := Color(0.50, 0.66, 1.0)
 const TV_COLOR := Color(0.55, 0.70, 1.0)
 ## Night fog: a dark, slightly blue grey. Used for the sky, the distance fog and the haze.
 const FOG_COLOR := Color(0.035, 0.045, 0.060)
@@ -52,8 +50,9 @@ var _prompt: Label
 func _ready() -> void:
 	_setup_input()
 	var started := Time.get_ticks_msec()
-	house = (load(HOUSE_SCENE) as PackedScene).instantiate()
-	add_child(house)
+	var world: Node3D = (load(WORLD_SCENE) as PackedScene).instantiate()
+	add_child(world)
+	house = world.get_node("House")
 	var stats := _setup_collision()
 	_setup_lights()
 	_setup_environment()
@@ -78,7 +77,7 @@ func _setup_input() -> void:
 	var keys := {
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
-		"jump": [KEY_SPACE], "run": [KEY_SHIFT], "interact": [KEY_E], "toggle_quality": [KEY_F1], "toggle_fps": [KEY_F3],
+		"jump": [KEY_SPACE], "run": [KEY_SHIFT], "interact": [KEY_E], "toggle_quality": [KEY_F1], "toggle_fps": [KEY_F3], "flashlight": [KEY_F],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -194,41 +193,13 @@ func toggle_door(door: Node3D) -> void:
 # --- Lighting ----------------------------------------------------------------
 
 func _setup_lights() -> void:
-	for node in _all_nodes(house):
-		if node is DirectionalLight3D:
-			moon = node
-			moon.light_color = MOONLIGHT
-			moon.light_energy = 1.6
-			moon.light_angular_distance = 0.6
-			moon.shadow_enabled = true
-			moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-			moon.directional_shadow_max_distance = 26.0
-			moon.shadow_bias = 0.04
-			moon.shadow_normal_bias = 1.2
-			moon.light_volumetric_fog_energy = 2.2
-		elif node is OmniLight3D:
-			var lamp := node as OmniLight3D
-			lamp.light_color = WARM
-			lamp.omni_range = 3.8
-			lamp.omni_attenuation = 1.6
-			lamp.shadow_enabled = true
-			lamp.shadow_bias = 0.06
-			lamp.light_volumetric_fog_energy = 0.6
-			lamp.light_energy = 0.6
-			if String(lamp.name).contains("sodium"):
-				# The streetlight: dull orange, wide, and the main thing lighting the fog outside.
-				lamp.light_color = Color(1.0, 0.55, 0.20)
-				lamp.light_energy = 3.0
-				lamp.omni_range = 26.0
-				lamp.omni_attenuation = 1.2
-				lamp.light_volumetric_fog_energy = 3.0
-			elif String(lamp.name).contains("porch"):
-				lamp.light_energy = 0.8
-				lamp.omni_range = 5.0
-			if String(lamp.name).contains("flicker"):
-				lamp.light_energy = 0.5
-				_add_flicker(lamp)
-			_lamp_lights.append(lamp)
+	# The world scene has already configured its lights (scripts/house_lights.gd).
+	var found := HouseLights.apply(house)
+	moon = found["moon"]
+	for lamp in found["lamps"]:
+		_lamp_lights.append(lamp)
+		if String(lamp.name).contains("flicker"):
+			_add_flicker(lamp)
 
 	var tv := OmniLight3D.new()
 	tv.name = "light_tv_flicker"
@@ -318,21 +289,25 @@ func set_quality(level: String) -> void:
 	env.sdfgi_min_cell_size = 0.1
 	env.sdfgi_energy = 1.0
 	env.ssr_enabled = high
-	env.ssao_enabled = high
+	env.ssao_enabled = true            # kept on Low: it is what seats objects on surfaces
+	env.ssao_radius = 1.2
+	env.ssao_intensity = 1.6
 	env.ssil_enabled = high
-	env.glow_enabled = high
+	env.glow_enabled = true
 	# Low keeps a little distance fog so the rooms do not go flat.
 	env.fog_enabled = not high
-	env.fog_light_color = FOG_COLOR * 2.2
+	env.fog_light_color = FOG_COLOR * 3.2
 	env.fog_sky_affect = 1.0
 	env.fog_density = 0.055
-	env.ambient_light_energy = 0.35 if high else 0.55
+	env.ambient_light_energy = 0.55
+	env.tonemap_exposure = 1.5 if high else 1.25      # the haze eats light, so High is exposed up
 
 	var viewport := get_viewport()
-	viewport.scaling_3d_scale = 1.0 if high else 0.6
+	viewport.scaling_3d_scale = 1.0 if high else 0.77
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if high else Viewport.SCALING_3D_MODE_FSR
 	viewport.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
-	viewport.positional_shadow_atlas_size = 4096 if high else 1024
-	RenderingServer.directional_shadow_atlas_set_size(4096 if high else 1024, true)
+	viewport.positional_shadow_atlas_size = 4096 if high else 2048
+	RenderingServer.directional_shadow_atlas_set_size(4096 if high else 2048, true)
 	if moon:
 		moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if high \
 			else DirectionalLight3D.SHADOW_ORTHOGONAL
@@ -340,7 +315,7 @@ func set_quality(level: String) -> void:
 		# On Low only the lamps the player walks past keep shadows.
 		lamp.shadow_enabled = high or String(lamp.name).contains("hall_table")
 	if _hud:
-		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F1 quality: %s   F3 FPS   Esc free mouse" \
+		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F flashlight   F1 quality: %s   F3 FPS   Esc free mouse" \
 			% level.capitalize()
 
 
