@@ -1,0 +1,30 @@
+# Scripts must keep LF endings and stay executable-friendly on every platform.
+*.sh  text eol=lf
+*.py  text eol=lf
+
+# Binary formats: never diff, merge or normalise line endings.
+*.blend binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.exr   binary
+*.hdr   binary
+*.tif   binary
+*.tiff  binary
+*.mp4   binary
+*.mov   binary
+*.webm  binary
+*.glb   binary
+*.gltf  text
+*.fbx   binary
+*.obj   text
+*.usd   binary
+*.usdc  binary
+*.usdz  binary
+*.abc   binary
+*.vdb   binary
+*.ttf   binary
+*.otf   binary
+*.wav   binary
+*.mp3   binary

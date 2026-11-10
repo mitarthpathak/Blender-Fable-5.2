@@ -1,0 +1,22 @@
+# Blender's automatic backups (scene.blend1, scene.blend2, ...) and crash dumps
+*.blend[0-9]*
+*.crash.txt
+
+# Throwaway output: viewport captures from scripts/bmcp.py, test renders
+.scratch/
+
+# Downloaded source assets that can be fetched again. Anything a scene needs
+# is packed into its .blend, so these never have to be committed.
+assets/cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Machine-local Claude Code settings
+.claude/settings.local.json
+
+# OS noise
+.DS_Store
+Thumbs.db

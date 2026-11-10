@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "${CLAUDE_PROJECT_DIR:-.}/scripts/mcp-server.sh",
+      "args": [],
+      "env": {
+        "DISABLE_TELEMETRY": "1"
+      }
+    }
+  }
+}
