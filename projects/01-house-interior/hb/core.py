@@ -76,8 +76,8 @@ SPECS: dict[str, Spec] = {
     # lamps and small things
     "ceramic": Spec("#c9c2b2", 0.35),
     "lampshade": Spec("#b9ad94", 0.9),
-    "lampshade_lit": Spec("#ffc98a", 0.9, emission=2.2),
-    "bulb_on": Spec("#ffd9a0", 0.3, emission=45.0),
+    "lampshade_lit": Spec("#ffc98a", 0.9, emission=0.9),
+    "bulb_on": Spec("#ffd9a0", 0.3, emission=14.0),
     "bulb_off": Spec("#d8d4c8", 0.2),
     "screen_on": Spec("#9fb6d8", 0.3, emission=3.0),
     "paper": Spec("#cfcabb", 0.85),

@@ -3,6 +3,8 @@
 A two-storey house interior for a third-person shooter. Night. The target is
 AAA tactical-shooter realism: grounded, lived-in, tense.
 
+![Hallway at night](renders/06_lighting_hero_hallway.png)
+
 ![Floor plan](renders/01_layout_plan.png)
 
 ## Status
@@ -14,8 +16,8 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | 3. Structure | Done | `renders/03_structure_*.png` |
 | 4. Materials | Done | `renders/04_materials_*.png` |
 | 5. Props | Done | `renders/05_props_*.png` |
-| 6. Lighting | Not started | |
-| Final | Not started | packed .blend, .glb for Godot, 3 hero shots |
+| 6. Lighting | Done | `renders/06_lighting_hero_*.png` |
+| Final | Done | `house_packed.blend`, `house.glb`, three hero shots |
 
 The layout was approved as drawn: real-world scale, a box room upstairs
 and the through living / dining room.
@@ -106,6 +108,44 @@ its roughness for paint, keeping the original stains and wear.
 
 All Poly Haven assets are CC0.
 
+## Lighting
+
+- **Moon**: `light_moon`, a cool directional light from the south-west. It
+  comes through the front windows and the tall stair window.
+- **Street**: a night HDRI of a lamp-lit street, kept dim; it is what you see
+  through the glass.
+- **Practicals**: warm lamps on the hall table, the sideboard and the bedside.
+- **Flicker-ready**: `light_hall_flicker` (the hall pendant) and
+  `light_tv_flicker` carry a `flicker` custom property. In Blender the pendant
+  has a noise modifier on its power; in an engine, drive the energy yourself.
+- **Haze**: `fog_volume` is a render-only box of thin fog that turns the
+  moonlight into beams. It is not exported; use the engine's volumetric fog.
+
+Three cameras are saved in the scene: `cam_hero_hallway`, `cam_hero_stairs`
+and `cam_hero_bedroom`.
+
+## Deliverables
+
+| File | What it is |
+| --- | --- |
+| `house_packed.blend` | The finished scene with every texture and the HDRI packed inside |
+| `house.glb` | For Godot: meshes, materials with textures, point and directional lights, cameras |
+| `renders/06_lighting_hero_*.png` | The three hero shots, 1920x1080 |
+
+Rebuild everything from the scripts:
+
+```bash
+cd projects/01-house-interior
+python3 assets.py && python3 decals.py
+blender -b --python build.py -- --phase lighting
+blender -b house.blend --python render_views.py -- --rig scene --samples 160 --res 1920x1080 \
+    --views hero_hallway,hero_stairs,hero_bedroom --prefix 06_lighting
+blender -b house.blend --python export_final.py
+```
+
+About 170,000 triangles in 174 mesh objects. Repeated furniture shares one
+mesh per model.
+
 ## For Godot
 
 - Every object is named for what it is (`wall_ext_south`, `floor_living`,
@@ -114,4 +154,10 @@ All Poly Haven assets are CC0.
   steps. Godot's importer reads the `-convcolonly` suffix, makes a convex
   collision shape from it and drops the visible mesh.
 - Doors have their origin on the hinge line at floor level, so rotating a
-  door about its own Z axis opens it.
+  door about its own Z axis opens it (Y in Godot, which is Y-up). Each door
+  carries `opens_degrees`, the turn that swings it fully open. `door_front`
+  is shut; the wardrobe and cupboard doors are separate objects too.
+- Glass and the decals use alpha blending. The television's glow is an area
+  light, which glTF cannot carry: add it in the engine.
+- The house has no exterior beyond its walls yet, and no collision apart
+  from the stair ramp; let Godot generate trimesh collision for the shell.

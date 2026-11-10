@@ -27,7 +27,7 @@ from .core import MeshBuilder
 
 WARM = (1.0, 0.63, 0.32)         # an old tungsten bulb
 COOL_TV = (0.55, 0.70, 1.0)
-MOON = (0.55, 0.68, 1.0)
+MOON = (0.42, 0.58, 1.0)
 
 # Light travels this way: from the south-west, coming down at 31 degrees.
 MOON_DIRECTION = Vector((0.52, 0.85, 0.0)).normalized() * math.cos(math.radians(31)) \
@@ -40,7 +40,7 @@ HERO = {
 }
 
 
-def world(strength=1.6, rotation_deg=205.0):
+def world(strength=0.22, rotation_deg=205.0):
     w = bpy.data.worlds.new("night_street")
     w.use_nodes = True
     tree = w.node_tree
@@ -63,7 +63,7 @@ def world(strength=1.6, rotation_deg=205.0):
     return w
 
 
-def moon(strength=2.4):
+def moon(strength=9.0):
     data = bpy.data.lights.new("moon", "SUN")
     data.energy = strength
     data.color = MOON
@@ -95,7 +95,7 @@ def practicals():
             data.color = WARM
             data.shadow_soft_size = 0.035
             # Blender's watts are radiant power: roughly a quarter of a tungsten bulb's rating.
-            data.energy = watts * 0.27
+            data.energy = watts * (0.07 if kind == "flicker" else 0.11)
             flicker = kind == "flicker"
             obj = bpy.data.objects.new(f"light_{name}_flicker" if flicker else f"light_{name}", data)
             obj.location = marker.location
@@ -168,7 +168,7 @@ def cameras():
     return made
 
 
-def render_settings(samples=220, resolution=(1920, 1080), exposure=2.6):
+def render_settings(samples=220, resolution=(1920, 1080), exposure=3.3):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     c = scene.cycles
