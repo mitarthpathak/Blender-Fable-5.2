@@ -1,0 +1,326 @@
+"""Mesh, material and scene helpers shared by every part of the house builder."""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+
+import bmesh
+import bpy
+from mathutils import Vector
+
+import plan
+
+UP = Vector((0.0, 0.0, 1.0))
+
+
+# --- Materials --------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Spec:
+    """A material before it has textures: a flat colour, and how big one
+    repeat of its texture is in the world. UVs are written in metres divided
+    by `tile`, so textures land at real scale with no mapping node, which is
+    what a game engine wants."""
+
+    color: str
+    roughness: float = 0.7
+    metallic: float = 0.0
+    tile: float = 1.0
+    rot: bool = False          # turn the texture a quarter turn
+    alpha: float = 1.0
+
+
+SPECS: dict[str, Spec] = {
+    # walls, one per room so each can be painted separately
+    "wall_hall": Spec("#b3ad9c", 0.85, tile=2.4),
+    "wall_living": Spec("#8f9a8a", 0.85, tile=2.4),
+    "wall_landing": Spec("#b3ad9c", 0.85, tile=2.4),
+    "wall_bedroom": Spec("#8892a0", 0.85, tile=2.4),
+    "wall_boxroom": Spec("#b5a68c", 0.85, tile=2.4),
+    "ceiling": Spec("#c9c6bd", 0.9, tile=2.4),
+    "ext_brick": Spec("#6b4a3c", 0.9, tile=1.5),
+    # floors
+    "floor_hall": Spec("#7a6a5a", 0.5, tile=1.2),
+    "floor_living": Spec("#6b4a2f", 0.45, tile=2.0, rot=True),
+    "floor_landing": Spec("#5e4630", 0.55, tile=2.0, rot=True),
+    "floor_bedroom": Spec("#5e4630", 0.55, tile=2.0),
+    "floor_boxroom": Spec("#5e4630", 0.55, tile=2.0),
+    "hearth_tile": Spec("#3a3f3a", 0.35, tile=0.6),
+    # joinery
+    "trim_paint": Spec("#d8d4c8", 0.45, tile=1.2),
+    "door_paint": Spec("#cfcabb", 0.45, tile=1.2),
+    "front_door_paint": Spec("#27323a", 0.4, tile=1.2),
+    "wood_stair": Spec("#4a3423", 0.5, tile=1.5),
+    "wood_dark": Spec("#33231a", 0.4, tile=1.5),
+    "wood_mid": Spec("#6a4a30", 0.5, tile=1.5),
+    "glass": Spec("#9db4c0", 0.03, alpha=0.12),
+    "metal_brass": Spec("#a8843c", 0.35, metallic=1.0),
+    "metal_dark": Spec("#1e1f21", 0.45, metallic=1.0),
+    "metal_white": Spec("#d6d4cc", 0.4, metallic=0.0),
+    "plastic_white": Spec("#dcd9d0", 0.4),
+    "plastic_black": Spec("#141414", 0.4),
+    "soot": Spec("#0c0b0a", 0.95),
+    # helpers
+    "blockout": Spec("#9a9a9a", 0.9),
+    "blockout_prop": Spec("#c98a4b", 0.9),
+    "collider": Spec("#ff5d47", 0.9, alpha=0.5),
+    "section_cap": Spec("#2a2d33", 0.9),
+}
+
+
+def srgb_to_linear(c: float) -> float:
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def hex_rgb(value: str) -> tuple[float, float, float]:
+    h = value.lstrip("#")
+    return tuple(srgb_to_linear(int(h[i:i + 2], 16) / 255) for i in (0, 2, 4))
+
+
+def spec(key: str) -> Spec:
+    return SPECS.get(key) or SPECS["blockout"]
+
+
+def material(key: str) -> bpy.types.Material:
+    """The material for a key. Created flat-coloured; the materials phase
+    swaps textures into the same material so every mesh picks them up."""
+    name = "m_" + key
+    mat = bpy.data.materials.get(name)
+    if mat is not None:
+        return mat
+    s = spec(key)
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    rgb = hex_rgb(s.color)
+    bsdf.inputs["Base Color"].default_value = (*rgb, 1.0)
+    bsdf.inputs["Roughness"].default_value = s.roughness
+    bsdf.inputs["Metallic"].default_value = s.metallic
+    mat.diffuse_color = (*rgb, s.alpha)
+    if s.alpha < 1.0:
+        bsdf.inputs["Alpha"].default_value = s.alpha
+        mat.surface_render_method = "BLENDED"
+    return mat
+
+
+# --- Scene organisation -----------------------------------------------------
+
+def collection(name: str) -> bpy.types.Collection:
+    coll = bpy.data.collections.get(name)
+    if coll is None:
+        coll = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(coll)
+    return coll
+
+
+def link(obj: bpy.types.Object, coll: str) -> bpy.types.Object:
+    collection(coll).objects.link(obj)
+    return obj
+
+
+def empty(name: str, coll: str, location=(0, 0, 0)) -> bpy.types.Object:
+    obj = bpy.data.objects.new(name, None)
+    obj.location = location
+    obj.empty_display_size = 0.2
+    return link(obj, coll)
+
+
+# --- Mesh building ----------------------------------------------------------
+
+class MeshBuilder:
+    """Collects faces, then makes one mesh object. Faces get world-scale UVs
+    and a material each; vertices are welded."""
+
+    def __init__(self):
+        self.bm = bmesh.new()
+        self.uv = self.bm.loops.layers.uv.new("UVMap")
+        self.keys: list[str] = []
+        self._verts: dict[tuple[int, int, int], bmesh.types.BMVert] = {}
+        self.smooth = False
+
+    def _slot(self, key: str) -> int:
+        if key not in self.keys:
+            self.keys.append(key)
+        return self.keys.index(key)
+
+    def _vert(self, p) -> bmesh.types.BMVert:
+        k = (round(p[0] * 20000), round(p[1] * 20000), round(p[2] * 20000))
+        v = self._verts.get(k)
+        if v is None:
+            v = self._verts[k] = self.bm.verts.new(p)
+        return v
+
+    def face(self, pts, key: str, uvs=None, rot: bool | None = None):
+        """Add a polygon. `pts` wind counter-clockwise seen from outside."""
+        pts = [Vector(p) for p in pts]
+        verts = [self._vert(p) for p in pts]
+        if len(set(verts)) < 3:
+            return None
+        try:
+            f = self.bm.faces.new(verts)
+        except ValueError:          # the same face twice
+            return None
+        f.material_index = self._slot(key)
+        s = spec(key)
+        if uvs is None:
+            n = (pts[1] - pts[0]).cross(pts[2] - pts[0])
+            if n.length < 1e-12 and len(pts) > 3:
+                n = (pts[2] - pts[0]).cross(pts[3] - pts[0])
+            n.normalize()
+            turn = s.rot if rot is None else rot
+            uvs = [world_uv(p, n, s.tile, turn) for p in pts]
+        for loop, uv in zip(f.loops, uvs):
+            loop[self.uv].uv = uv
+        return f
+
+    def rect(self, center, half_u, half_v, normal, key: str, rot: bool | None = None):
+        """A rectangle from its centre and two half-edge vectors, wound to
+        face along `normal`."""
+        c, hu, hv = Vector(center), Vector(half_u), Vector(half_v)
+        if hu.cross(hv).dot(Vector(normal)) < 0:
+            hu = -hu
+        return self.face([c - hu - hv, c + hu - hv, c + hu + hv, c - hu + hv], key, rot=rot)
+
+    def box(self, lo, hi, key, skip: str = "", rot: bool | None = None):
+        """An axis-aligned box. `key` is one material or a dict by side
+        ("-x", "+x", "-y", "+y", "-z", "+z"). `skip` lists sides to leave open."""
+        x0, y0, z0 = lo
+        x1, y1, z1 = hi
+        cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
+        hx, hy, hz = (x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2
+        sides = {
+            "-x": ((x0, cy, cz), (0, hy, 0), (0, 0, hz), (-1, 0, 0)),
+            "+x": ((x1, cy, cz), (0, hy, 0), (0, 0, hz), (1, 0, 0)),
+            "-y": ((cx, y0, cz), (hx, 0, 0), (0, 0, hz), (0, -1, 0)),
+            "+y": ((cx, y1, cz), (hx, 0, 0), (0, 0, hz), (0, 1, 0)),
+            "-z": ((cx, cy, z0), (hx, 0, 0), (0, hy, 0), (0, 0, -1)),
+            "+z": ((cx, cy, z1), (hx, 0, 0), (0, hy, 0), (0, 0, 1)),
+        }
+        for side, (c, hu, hv, n) in sides.items():
+            if side in skip:
+                continue
+            k = key[side] if isinstance(key, dict) else key
+            if k:
+                self.rect(c, hu, hv, n, k, rot=rot)
+
+    def prism(self, profile, axis_origin, u, v, w, length, key, caps=True, rot=None):
+        """Extrude a 2D profile (list of (a, b), counter-clockwise) along w.
+        A point is origin + a*u + b*v; the extrusion runs `length` along w."""
+        o, u, v, w = Vector(axis_origin), Vector(u), Vector(v), Vector(w)
+        near = [o + u * a + v * b for a, b in profile]
+        far = [p + w * length for p in near]
+        flip = u.cross(v).dot(w) < 0
+        n = len(profile)
+        for i in range(n):
+            j = (i + 1) % n
+            quad = [near[i], near[j], far[j], far[i]]
+            self.face(quad[::-1] if flip else quad, key, rot=rot)
+        if caps:
+            self.face(near if flip else near[::-1], key, rot=rot)
+            self.face(far[::-1] if flip else far, key, rot=rot)
+
+    def cylinder(self, base, axis, radius, key, segments=12, caps="both", radius_top=None):
+        """A cylinder or cone frustum from `base` along the vector `axis`."""
+        base, axis = Vector(base), Vector(axis)
+        w = axis.normalized()
+        ref = Vector((1, 0, 0)) if abs(w.x) < 0.9 else Vector((0, 1, 0))
+        u = w.cross(ref).normalized()
+        v = w.cross(u)
+        r1 = radius if radius_top is None else radius_top
+        ring0 = [base + (u * math.cos(t) + v * math.sin(t)) * radius
+                 for t in (2 * math.pi * i / segments for i in range(segments))]
+        ring1 = [base + axis + (u * math.cos(t) + v * math.sin(t)) * r1
+                 for t in (2 * math.pi * i / segments for i in range(segments))]
+        for i in range(segments):
+            j = (i + 1) % segments
+            self.face([ring0[i], ring0[j], ring1[j], ring1[i]], key)
+        if caps in ("both", "base"):
+            self.face(ring0[::-1], key)
+        if caps in ("both", "top"):
+            self.face(ring1, key)
+
+    def build(self, name: str, coll: str, origin=None, smooth: bool | None = None,
+              recalc: bool = False):
+        """Finish the mesh. With `origin`, vertices are stored relative to it
+        and the object sits there, so it becomes the pivot. `recalc` makes
+        the normals of a closed mesh point outwards."""
+        bm = self.bm
+        if recalc:
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        if origin is not None:
+            bmesh.ops.translate(bm, verts=bm.verts, vec=-Vector(origin))
+        bm.normal_update()
+        mesh = bpy.data.meshes.new(name)
+        bm.to_mesh(mesh)
+        bm.free()
+        for key in self.keys:
+            mesh.materials.append(material(key))
+        if smooth if smooth is not None else self.smooth:
+            mesh.shade_smooth()
+        obj = bpy.data.objects.new(name, mesh)
+        if origin is not None:
+            obj.location = origin
+        return link(obj, coll)
+
+    @property
+    def empty(self) -> bool:
+        return len(self.bm.faces) == 0
+
+
+def world_uv(p: Vector, n: Vector, tile: float, turn: bool = False):
+    """Project a point onto its face plane in metres, then scale by the tile
+    size. On walls V is always up; on floors and ceilings U is east."""
+    if abs(n.z) > 0.999:
+        u, v = p.x, p.y
+    else:
+        t = UP.cross(n)
+        t.normalize()
+        b = n.cross(t)
+        u, v = p.dot(t), p.dot(b)
+    if turn:
+        u, v = v, -u
+    return (u / tile, v / tile)
+
+
+# --- Plan queries -----------------------------------------------------------
+
+EPS = 1e-4
+
+
+def in_rect(x, y, rect, pad=EPS) -> bool:
+    return rect[0] - pad <= x <= rect[2] + pad and rect[1] - pad <= y <= rect[3] + pad
+
+
+def room_at(x: float, y: float, z: float) -> str | None:
+    """Which room a point is in, or None for inside a wall, the floor
+    structure, or outside the house."""
+    if in_rect(x, y, plan.STAIR_VOID) and 0.0 <= z <= plan.ROOF_Z:
+        return "hall" if z < plan.FFL[1] else "landing"
+    for room in plan.ROOMS:
+        z0 = plan.FFL[room.storey]
+        if z0 - EPS <= z <= z0 + plan.CEILING + EPS and any(in_rect(x, y, r) for r in room.rects):
+            return room.key
+    return None
+
+
+def inside_house(x: float, y: float, z: float) -> bool:
+    return (-EPS <= x <= plan.WIDTH + EPS and -EPS <= y <= plan.DEPTH + EPS
+            and -EPS <= z <= plan.ROOF_Z + EPS)
+
+
+def wall_containing(x, y, z, ignore=None):
+    for w in plan.WALLS:
+        if w is ignore:
+            continue
+        if w.x0 + EPS < x < w.x1 - EPS and w.y0 + EPS < y < w.y1 - EPS and w.z0 - EPS < z < w.z1 + EPS:
+            return w
+    return None
+
+
+def tri_count(objects=None) -> int:
+    total = 0
+    for obj in objects or bpy.data.objects:
+        if obj.type == "MESH":
+            total += sum(len(p.vertices) - 2 for p in obj.data.polygons)
+    return total

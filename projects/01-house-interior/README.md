@@ -9,15 +9,16 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 
 | Phase | State | Preview |
 | --- | --- | --- |
-| 1. Layout | **Waiting for sign-off** | `renders/01_layout_plan.png` |
-| 2. Blockout | Not started | |
+| 1. Layout | Approved | `renders/01_layout_plan.png` |
+| 2. Blockout | Done | `renders/02_blockout_*.png` |
 | 3. Structure | Not started | |
 | 4. Materials | Not started | |
 | 5. Props | Not started | |
 | 6. Lighting | Not started | |
 | Final | Not started | packed .blend, .glb for Godot, 3 hero shots |
 
-No detail modelling starts until the layout is approved.
+The layout was approved as drawn: real-world scale, a box room upstairs
+and the through living / dining room.
 
 ## Brief
 
@@ -74,9 +75,25 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `plan.py` | The floor plan as data, plus sanity checks. No bpy |
 | `layout.py` | Phase 1: draws and renders the plan from `plan.py` |
 | `layout.blend` | The plan drawing. Not the house scene |
+| `build.py` | Builds the scene from nothing, up to a chosen phase |
+| `hb/` | The builder: shell, stair, joinery, materials, props, lighting |
+| `render_views.py` | Headless preview renders: cutaways and eye-level views |
+| `blockout.blend` | Phase 2 result: grey massing with furniture stand-ins |
 
-Run a phase script inside the live Blender:
+Build and render headless, which has no time limit:
 
 ```bash
-scripts/bmcp.py code projects/01-house-interior/layout.py
+cd projects/01-house-interior
+blender -b --python build.py -- --phase blockout
+blender -b blockout.blend --python render_views.py -- --views axon_0,axon_1,hall --prefix 02_blockout
 ```
+
+## For Godot
+
+- Every object is named for what it is (`wall_ext_south`, `floor_living`,
+  `stairs`, `door_front`), one object per wall, floor and door.
+- `stairs_ramp-convcolonly` is the stair collider: a convex wedge over the
+  steps. Godot's importer reads the `-convcolonly` suffix, makes a convex
+  collision shape from it and drops the visible mesh.
+- Doors have their origin on the hinge line at floor level, so rotating a
+  door about its own Z axis opens it.
