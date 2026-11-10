@@ -14,7 +14,7 @@ const SETTINGS_FILE := "user://settings.cfg"
 ## ramp collider stands in for them.
 const NO_COLLISION_PREFIXES := [
 	"decals_", "electrics_", "curtain_", "coat_", "mail_", "clutter_", "fog_", "plant_",
-	"rug_", "runner_", "doormat_", "lamp_broken", "stairs_balustrade", "shade_",
+	"rug_", "runner_", "doormat_", "lamp_broken", "stairs_balustrade", "shade_", "gutters",
 ]
 const NO_COLLISION_NAMES := ["stairs"]
 
@@ -25,6 +25,8 @@ const DOOR_SWING_DEFAULT := {"door_front": -95.0}
 const WARM := Color(1.0, 0.62, 0.34)
 const MOONLIGHT := Color(0.50, 0.66, 1.0)
 const TV_COLOR := Color(0.55, 0.70, 1.0)
+## Night fog: a dark, slightly blue grey. Used for the sky, the distance fog and the haze.
+const FOG_COLOR := Color(0.035, 0.045, 0.060)
 ## The television's glow, where the Blender scene had an area light.
 const TV_POSITION := Vector3(6.75, 0.78, -0.92)
 
@@ -196,7 +198,7 @@ func _setup_lights() -> void:
 		if node is DirectionalLight3D:
 			moon = node
 			moon.light_color = MOONLIGHT
-			moon.light_energy = 5.5
+			moon.light_energy = 1.6
 			moon.light_angular_distance = 0.6
 			moon.shadow_enabled = true
 			moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
@@ -213,6 +215,16 @@ func _setup_lights() -> void:
 			lamp.shadow_bias = 0.06
 			lamp.light_volumetric_fog_energy = 0.6
 			lamp.light_energy = 0.6
+			if String(lamp.name).contains("sodium"):
+				# The streetlight: dull orange, wide, and the main thing lighting the fog outside.
+				lamp.light_color = Color(1.0, 0.55, 0.20)
+				lamp.light_energy = 3.0
+				lamp.omni_range = 26.0
+				lamp.omni_attenuation = 1.2
+				lamp.light_volumetric_fog_energy = 3.0
+			elif String(lamp.name).contains("porch"):
+				lamp.light_energy = 0.8
+				lamp.omni_range = 5.0
 			if String(lamp.name).contains("flicker"):
 				lamp.light_energy = 0.5
 				_add_flicker(lamp)
@@ -265,21 +277,15 @@ func _process(delta: float) -> void:
 
 func _setup_environment() -> void:
 	var env := Environment.new()
-	var sky := Sky.new()
-	var panorama := PanoramaSkyMaterial.new()
-	panorama.panorama = load(SKY_HDR)
-	panorama.energy_multiplier = 0.25
-	sky.sky_material = panorama
-	env.sky = sky
-	env.sky_rotation = Vector3(0.0, deg_to_rad(205.0), 0.0)
-	env.background_mode = Environment.BG_SKY
-	# Cool ambient light rather than the street's sodium orange.
+	# No sky image: in thick fog at night the sky is just the fog's own colour.
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = FOG_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.16, 0.23, 0.40)
-	env.ambient_light_energy = 1.0
-	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.ambient_light_color = Color(0.20, 0.25, 0.34)
+	env.ambient_light_energy = 0.35
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_BG
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
-	env.tonemap_exposure = 1.7
+	env.tonemap_exposure = 1.25
 	env.tonemap_white = 6.0
 	env.glow_enabled = true
 	env.glow_intensity = 0.5
@@ -300,11 +306,11 @@ func set_quality(level: String) -> void:
 	var env := world_env.environment
 	var high := level == "high"
 	env.volumetric_fog_enabled = high
-	env.volumetric_fog_density = 0.022
-	env.volumetric_fog_albedo = Color(0.72, 0.80, 1.0)
-	env.volumetric_fog_emission = Color(0.010, 0.016, 0.030)
+	env.volumetric_fog_density = 0.045
+	env.volumetric_fog_albedo = Color(0.80, 0.84, 0.90)
+	env.volumetric_fog_emission = FOG_COLOR * 0.6
 	env.volumetric_fog_anisotropy = 0.45
-	env.volumetric_fog_length = 22.0
+	env.volumetric_fog_length = 48.0
 	env.volumetric_fog_gi_inject = 0.6
 	env.sdfgi_enabled = high
 	env.sdfgi_use_occlusion = true
@@ -317,9 +323,10 @@ func set_quality(level: String) -> void:
 	env.glow_enabled = high
 	# Low keeps a little distance fog so the rooms do not go flat.
 	env.fog_enabled = not high
-	env.fog_light_color = Color(0.05, 0.08, 0.14)
-	env.fog_density = 0.018
-	env.ambient_light_energy = 1.0 if high else 1.6
+	env.fog_light_color = FOG_COLOR * 2.2
+	env.fog_sky_affect = 1.0
+	env.fog_density = 0.055
+	env.ambient_light_energy = 0.35 if high else 0.55
 
 	var viewport := get_viewport()
 	viewport.scaling_3d_scale = 1.0 if high else 0.6

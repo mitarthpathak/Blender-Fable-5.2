@@ -189,7 +189,23 @@ def smudge(seed=6, size=(512, 512)):
     return _solid(size, (44, 38, 32), alpha.filter(ImageFilter.GaussianBlur(16)))
 
 
+def moss(seed=8, size=(1024, 512)):
+    """Green-brown growth where a wall stays wet: dense at the bottom, breaking up as it climbs."""
+    rng = random.Random(seed)
+    base = ImageChops.add(_noise(size, rng, 40), _noise(size, rng, 10), scale=2.0)
+    rise = Image.linear_gradient("L").resize(size)                       # 0 at top, 255 at bottom
+    alpha = ImageChops.multiply(base.point(lambda v: 255 if v > 118 else int(v * 0.5)), rise.point(
+        lambda v: min(255, int(v * 1.4))))
+    alpha = alpha.filter(ImageFilter.GaussianBlur(3)).point(lambda v: int(v * 0.85))
+    tone = _noise(size, rng, 16)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b, k=k: int(b + (v - 128) * k))
+                                for b, k in ((52, 0.12), (62, 0.16), (38, 0.08))])
+    image.putalpha(alpha)
+    return image
+
+
 DECALS = {
+    "moss": moss,
     "grime_streaks": grime_streaks,
     "floor_grime": floor_grime,
     "water_stain": water_stain,

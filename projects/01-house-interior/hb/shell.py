@@ -30,7 +30,7 @@ def face_material(point, wall, override=None) -> str | None:
     if room:
         return override or f"wall_{room}"
     if not core.inside_house(x, y, z):
-        return override or "ext_brick"
+        return override or "ext_siding"
     return None                       # inside the floor build-up
 
 
@@ -90,7 +90,7 @@ def build_wall(wall: plan.Wall, coll="structure", name=None, zclip=None, overrid
             room = core.room_at(*p)
             if room:
                 return override or f"wall_{room}"
-        return override or "ext_brick"
+        return override or "ext_siding"
 
     for i in range(na):
         for j in range(nz):
@@ -288,7 +288,7 @@ def build_envelope(coll="structure"):
     made = []
 
     mb = MeshBuilder()
-    mb.box((x0, y0, -0.35), (x1, y1, -0.002), "foundation")
+    mb.box((x0 - 0.03, y0 - 0.03, -0.55), (x1 + 0.03, y1 + 0.03, -0.002), "foundation")
     made.append(mb.build("ground_slab", coll, recalc=True))
 
     # Roof: a deck sealing the wall heads, then a gable roof with its ridge
@@ -304,8 +304,8 @@ def build_envelope(coll="structure"):
     span = Vector((x1 - x0, 0, 0))
     mb.face([a, a + span, c + span, c], "roof")                 # south slope
     mb.face([b + span, b, c, c + span], "roof")                 # north slope
-    mb.face([a, c, b], "ext_brick")                             # west gable
-    mb.face([a + span, b + span, c + span], "ext_brick")        # east gable
+    mb.face([a, c, b], "ext_siding")                             # west gable
+    mb.face([a + span, b + span, c + span], "ext_siding")        # east gable
     mb.face([a, b, b + span, a + span], "foundation")           # underside
     made.append(mb.build("roof", coll, recalc=True))
     return made

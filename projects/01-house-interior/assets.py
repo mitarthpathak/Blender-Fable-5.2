@@ -46,6 +46,17 @@ SETS: dict[str, float] = {
     "fabric_pattern_05": 0.5,
     "fabric_leather_02": 0.5,
     "dirty_carpet": 0.6,
+    # Halden Ridge pass (docs/ART_BIBLE.md)
+    "white_planks_clean": 1.8,
+    "roof_slates_02": 3.0,
+    "leafy_grass": 2.0,
+    "asphalt_02": 3.0,
+    "concrete_floor_worn_02": 2.0,
+    "dark_paneled_wood": 1.4,
+    "old_linoleum_flooring_01": 1.99,
+    "ceiling_interior": 2.0,
+    "peeling_painted_wall": 1.8,
+    "moss_wood": 1.0,
 }
 
 HDRI = "cobblestone_street_night"
@@ -74,7 +85,14 @@ SURFACES: dict[str, Surface] = {
     "wall_bedroom": Surface(PLASTER, "#8690a0"),
     "wall_boxroom": Surface("decrepit_wallpaper"),
     "ceiling": Surface(PLASTER, "#cfccc3", normal=0.6),
-    "ext_brick": Surface("red_brick"),
+    "ext_siding": Surface("white_planks_clean", "#6c7167"),
+    "ext_trim": Surface("white_planks_clean", "#8f8d82", normal=0.4),
+    "roof": Surface("roof_slates_02"),
+    "foundation": Surface("concrete_floor_worn_02"),
+    "ground_grass": Surface("leafy_grass"),
+    "ground_path": Surface("concrete_floor_worn_02"),
+    "ground_road": Surface("asphalt_02"),
+    "porch_boards": Surface("wood_floor_worn", "#6b665b"),
     "floor_hall": Surface("floor_tiles_06"),
     "floor_living": Surface("old_wooden_floor_02"),
     "floor_landing": Surface("wood_floor_worn"),

@@ -34,6 +34,7 @@ MOON_DIRECTION = Vector((0.30, 0.95, 0.0)).normalized() * math.cos(math.radians(
     + Vector((0, 0, -math.sin(math.radians(24))))
 
 HERO = {
+    "hero_porch": dict(at=(6.4, -7.6, 1.25), to=(1.7, -0.6, 1.75), lens=24),
     "hero_hallway": dict(at=(1.86, 0.42, 1.48), to=(1.02, 5.0, 1.22), lens=18),
     "hero_stairs": dict(at=(1.72, 1.02, 1.30), to=(0.42, 4.75, 2.55), lens=19),
     "hero_bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.50), to=(5.55, 3.85, plan.FFL[1] + 0.72), lens=18),
@@ -96,6 +97,10 @@ def practicals():
             data.shadow_soft_size = 0.035
             # Blender's watts are radiant power: roughly a quarter of a tungsten bulb's rating.
             data.energy = watts * (0.07 if kind == "flicker" else 0.11)
+            if kind == "sodium":                 # a streetlight: orange, broad and strong
+                data.color = (1.0, 0.52, 0.16)
+                data.energy = watts * 0.22
+                data.shadow_soft_size = 0.15
             flicker = kind == "flicker"
             obj = bpy.data.objects.new(f"light_{name}_flicker" if flicker else f"light_{name}", data)
             obj.location = marker.location
@@ -136,7 +141,7 @@ def haze(density=0.012):
     """Dust in the air: one box of thin, even fog filling the house."""
     mb = MeshBuilder()
     m = 0.05
-    mb.box((m, m, m), (plan.WIDTH - m, plan.DEPTH - m, plan.ROOF_Z - m), "haze")
+    mb.box((-15.0, -17.0, -0.44), (22.0, 16.0, 11.0), "haze")
     obj = mb.build("fog_volume", "atmosphere", recalc=True)
     mat = core.material("haze")
     tree = mat.node_tree

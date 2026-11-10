@@ -41,7 +41,14 @@ SPECS: dict[str, Spec] = {
     "wall_bedroom": Spec("#8892a0", 0.85, tile=2.4),
     "wall_boxroom": Spec("#b5a68c", 0.85, tile=2.4),
     "ceiling": Spec("#c9c6bd", 0.9, tile=2.4),
-    "ext_brick": Spec("#6b4a3c", 0.9, tile=1.5),
+    "ext_siding": Spec("#8d9186", 0.8, rot=True),      # boards run along the wall
+    "ext_trim": Spec("#a9a79b", 0.7),
+    "ground_grass": Spec("#3a4030", 0.95),
+    "ground_path": Spec("#6f6d66", 0.9),
+    "ground_road": Spec("#2b2c2e", 0.85),
+    "porch_boards": Spec("#6b665b", 0.8, rot=True),
+    "screen_mesh": Spec("#1a1c1b", 0.6, alpha=0.45),
+    "sodium_on": Spec("#ffa040", 0.3, emission=30.0),
     # floors
     "floor_hall": Spec("#7a6a5a", 0.5, tile=1.2),
     "floor_living": Spec("#6b4a2f", 0.45, tile=2.0),

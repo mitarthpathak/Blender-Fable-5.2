@@ -76,6 +76,8 @@ def build(phase):
     stairs.build(detail=True)
     from hb import joinery
     joinery.build()
+    from hb import exterior
+    exterior.build()
 
     if upto >= PHASES.index("materials"):
         from hb import materials
