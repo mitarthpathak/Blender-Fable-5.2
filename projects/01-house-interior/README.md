@@ -13,7 +13,7 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | 2. Blockout | Done | `renders/02_blockout_*.png` |
 | 3. Structure | Done | `renders/03_structure_*.png` |
 | 4. Materials | Done | `renders/04_materials_*.png` |
-| 5. Props | Not started | |
+| 5. Props | Done | `renders/05_props_*.png` |
 | 6. Lighting | Not started | |
 | Final | Not started | packed .blend, .glb for Godot, 3 hero shots |
 

@@ -22,7 +22,7 @@ INTERIOR = {
     "stairs": dict(at=(2.05, 7.25, 1.50), to=(0.55, 3.2, 1.45), lens=17),
     "living": dict(at=(2.95, 0.55, 1.55), to=(6.3, 5.6, 1.0), lens=17),
     "landing": dict(at=(1.95, 7.55, plan.FFL[1] + 1.55), to=(1.35, 1.0, plan.FFL[1] + 1.15), lens=17),
-    "bedroom": dict(at=(2.95, 0.45, plan.FFL[1] + 1.55), to=(6.2, 3.9, plan.FFL[1] + 0.8), lens=17),
+    "bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.55), to=(5.6, 3.9, plan.FFL[1] + 0.75), lens=17),
     "boxroom": dict(at=(2.95, 7.6, plan.FFL[1] + 1.55), to=(6.6, 5.0, plan.FFL[1] + 0.8), lens=17),
 }
 
@@ -133,29 +133,40 @@ def setup_cycles(samples=48, resolution=(1600, 900)):
     scene.render.film_transparent = False
 
 
-def render(view, path, rig="work", samples=48, resolution=(1600, 900), exposure=0.0):
+def render(view, path, rig="work", samples=48, resolution=(1600, 900), exposure=None):
     """Render one named view to `path`. `rig` is "work" for neutral preview
     lighting or "scene" to use whatever lighting the scene has."""
     scene = bpy.context.scene
-    setup_cycles(samples, resolution)
+    if rig == "work":
+        setup_cycles(samples, resolution)
+    else:                                      # keep the scene's own render settings
+        scene.cycles.samples = samples
+        scene.render.resolution_x, scene.render.resolution_y = resolution
     saved_world, saved_cam = scene.world, scene.camera
     undo = None
     temp = []
-    if view.startswith("axon_"):
+    own = bpy.data.objects.get("cam_" + view)
+    if own is not None and own.type == "CAMERA":          # a camera saved in the scene
+        cam = own
+    elif view.startswith("axon_"):
         storey = int(view[-1])
         cam = axon_camera(storey)
         undo = section(storey)
     else:
         spec = INTERIOR[view]
         cam = camera("cam_" + view, spec["at"], spec["to"], lens=spec["lens"])
-    temp.append(cam)
+    if cam is not own:
+        temp.append(cam)
     if rig == "work":
         scene.world = work_world(1.0 if view.startswith("axon_") else 0.25)
-        temp += work_lights()
+        lights = work_lights()
+        temp += lights
         if not view.startswith("axon_"):
-            temp[1].data.energy = 1.0                # sun only matters outside the windows
+            lights[0].data.energy = 1.0              # sun only matters outside the windows
+        scene.view_settings.exposure = 0.0
     scene.camera = cam
-    scene.view_settings.exposure = exposure
+    if exposure is not None:
+        scene.view_settings.exposure = exposure
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
 

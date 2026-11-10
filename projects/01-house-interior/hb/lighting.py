@@ -1,0 +1,205 @@
+"""Phase 6: night lighting.
+
+Three kinds of light, in order of strength:
+
+1. Moonlight: a cool sun from the south-west, through the front windows and
+   the stair window. This is the key light and the source of the shafts.
+2. The street: a night HDRI of a lamp-lit street, seen through the windows
+   and adding a dim sodium glow near them.
+3. Practicals: a warm lamp wherever the props phase left a `lightpoint_*`
+   marker, the hall pendant set up to flicker, and a cold flicker from the
+   television.
+
+A thin, even haze fills the house so the moonlight reads as beams.
+"""
+
+from __future__ import annotations
+
+import math
+
+import bpy
+from mathutils import Vector
+
+import assets
+import plan
+from . import core
+from .core import MeshBuilder
+
+WARM = (1.0, 0.63, 0.32)         # an old tungsten bulb
+COOL_TV = (0.55, 0.70, 1.0)
+MOON = (0.55, 0.68, 1.0)
+
+# Light travels this way: from the south-west, coming down at 31 degrees.
+MOON_DIRECTION = Vector((0.52, 0.85, 0.0)).normalized() * math.cos(math.radians(31)) \
+    + Vector((0, 0, -math.sin(math.radians(31))))
+
+HERO = {
+    "hero_hallway": dict(at=(1.86, 0.42, 1.48), to=(1.02, 5.0, 1.22), lens=18),
+    "hero_stairs": dict(at=(1.72, 1.02, 1.30), to=(0.42, 4.75, 2.55), lens=19),
+    "hero_bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.50), to=(5.55, 3.85, plan.FFL[1] + 0.72), lens=18),
+}
+
+
+def world(strength=1.6, rotation_deg=205.0):
+    w = bpy.data.worlds.new("night_street")
+    w.use_nodes = True
+    tree = w.node_tree
+    tree.nodes.clear()
+    out = tree.nodes.new("ShaderNodeOutputWorld")
+    bg = tree.nodes.new("ShaderNodeBackground")
+    env = tree.nodes.new("ShaderNodeTexEnvironment")
+    mapping = tree.nodes.new("ShaderNodeMapping")
+    coords = tree.nodes.new("ShaderNodeTexCoord")
+    path = assets.hdri_file()
+    if path.exists():
+        env.image = bpy.data.images.load(str(path), check_existing=True)
+    mapping.inputs["Rotation"].default_value = (0, 0, math.radians(rotation_deg))
+    bg.inputs["Strength"].default_value = strength
+    tree.links.new(coords.outputs["Generated"], mapping.inputs["Vector"])
+    tree.links.new(mapping.outputs["Vector"], env.inputs["Vector"])
+    tree.links.new(env.outputs["Color"], bg.inputs["Color"])
+    tree.links.new(bg.outputs["Background"], out.inputs["Surface"])
+    bpy.context.scene.world = w
+    return w
+
+
+def moon(strength=2.4):
+    data = bpy.data.lights.new("moon", "SUN")
+    data.energy = strength
+    data.color = MOON
+    data.angle = math.radians(1.2)
+    obj = bpy.data.objects.new("light_moon", data)
+    obj.rotation_euler = MOON_DIRECTION.to_track_quat("-Z", "Y").to_euler()
+    obj.location = (-3.0, -5.0, 9.0)
+    obj["note"] = "moonlight; a directional light in the engine"
+    return core.link(obj, "lights")
+
+
+def practicals():
+    """A light for every lamp marker the props phase left."""
+    made = []
+    for marker in [o for o in bpy.data.objects if o.name.startswith("lightpoint_")]:
+        kind, watts = marker.get("kind", "warm"), float(marker.get("watts", 40.0))
+        name = marker.name[len("lightpoint_"):]
+        if kind == "tv":
+            data = bpy.data.lights.new("tv_glow", "AREA")
+            data.shape, data.size, data.size_y = "RECTANGLE", 0.30, 0.22
+            data.energy, data.color = watts, COOL_TV
+            obj = bpy.data.objects.new("light_tv_flicker", data)
+            obj.location = marker.location
+            aim = Vector((4.3, 2.3, 0.6)) - Vector(marker.location)          # towards the sofa
+            obj.rotation_euler = aim.to_track_quat("-Z", "Y").to_euler()
+            obj["flicker"] = True
+        else:
+            data = bpy.data.lights.new("lamp_" + name, "POINT")
+            data.color = WARM
+            data.shadow_soft_size = 0.035
+            # Blender's watts are radiant power: roughly a quarter of a tungsten bulb's rating.
+            data.energy = watts * 0.27
+            flicker = kind == "flicker"
+            obj = bpy.data.objects.new(f"light_{name}_flicker" if flicker else f"light_{name}", data)
+            obj.location = marker.location
+            if flicker:
+                obj["flicker"] = True
+                _flicker(data, data.energy)
+        obj["kind"] = kind
+        made.append(core.link(obj, "lights"))
+    return made
+
+
+def _flicker(light_data, base):
+    """Make a light gutter: a noise modifier on its power. The still frames
+    are rendered at a dim moment. A game engine drives this itself; the
+    `flicker` custom property marks which lights should."""
+    light_data.energy = base
+    light_data.keyframe_insert("energy", frame=1)
+    action = light_data.animation_data.action if light_data.animation_data else None
+    if not action:
+        return
+    curves = []
+    try:
+        curves = list(action.fcurves)
+    except AttributeError:                       # layered actions
+        for layer in action.layers:
+            for strip in layer.strips:
+                for bag in strip.channelbags:
+                    curves += list(bag.fcurves)
+    for curve in curves:
+        noise = curve.modifiers.new("NOISE")
+        noise.strength = base * 1.1
+        noise.scale = 2.2
+        noise.phase = 3.0
+        noise.offset = 0.0
+
+
+def haze(density=0.012):
+    """Dust in the air: one box of thin, even fog filling the house."""
+    mb = MeshBuilder()
+    m = 0.05
+    mb.box((m, m, m), (plan.WIDTH - m, plan.DEPTH - m, plan.ROOF_Z - m), "haze")
+    obj = mb.build("fog_volume", "atmosphere", recalc=True)
+    mat = core.material("haze")
+    tree = mat.node_tree
+    tree.nodes.clear()
+    out = tree.nodes.new("ShaderNodeOutputMaterial")
+    vol = tree.nodes.new("ShaderNodeVolumePrincipled")
+    vol.inputs["Density"].default_value = density
+    vol.inputs["Anisotropy"].default_value = 0.35
+    vol.inputs["Color"].default_value = (0.86, 0.88, 0.92, 1.0)
+    tree.links.new(vol.outputs["Volume"], out.inputs["Volume"])
+    obj.display_type = "WIRE"
+    obj.visible_shadow = False
+    obj["export"] = False
+    obj["note"] = "render-only haze; use the engine's volumetric fog instead"
+    return obj
+
+
+def cameras():
+    made = []
+    for name, spec in HERO.items():
+        data = bpy.data.cameras.new(name)
+        data.lens, data.sensor_width = spec["lens"], 36
+        data.clip_start, data.clip_end = 0.05, 100
+        obj = bpy.data.objects.new("cam_" + name, data)
+        obj.location = spec["at"]
+        obj.rotation_euler = (Vector(spec["to"]) - Vector(spec["at"])).to_track_quat("-Z", "Y").to_euler()
+        made.append(core.link(obj, "cameras"))
+    bpy.context.scene.camera = made[0]
+    return made
+
+
+def render_settings(samples=220, resolution=(1920, 1080), exposure=2.6):
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    c = scene.cycles
+    c.device = "CPU"
+    c.samples = samples
+    c.use_adaptive_sampling = True
+    c.adaptive_threshold = 0.025
+    c.use_denoising = True
+    c.max_bounces, c.diffuse_bounces, c.glossy_bounces = 7, 4, 3
+    c.transmission_bounces, c.volume_bounces, c.transparent_max_bounces = 4, 0, 12
+    c.sample_clamp_indirect = 6.0
+    c.caustics_reflective = c.caustics_refractive = False
+    c.volume_step_rate = 1.0
+    scene.render.resolution_x, scene.render.resolution_y = resolution
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    view = scene.view_settings
+    view.view_transform = "AgX"
+    for look in ("AgX - Medium High Contrast", "Medium High Contrast"):
+        try:
+            view.look = look
+            break
+        except TypeError:                        # the name differs between versions
+            continue
+    view.exposure = exposure
+
+
+def build():
+    world()
+    moon()
+    practicals()
+    haze()
+    cameras()
+    render_settings()

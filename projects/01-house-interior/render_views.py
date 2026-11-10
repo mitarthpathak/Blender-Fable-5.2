@@ -4,8 +4,11 @@
         --views axon_0,axon_1,hall --prefix 03_structure [--rig work|scene] \
         [--samples 48] [--res 1600x900] [--exposure 0]
 
-Views: axon_0 and axon_1 are cutaways of the ground and first floor; the
-rest are the eye-level views named in hb/preview.py. Output goes to renders/.
+Views: axon_0 and axon_1 are cutaways of the ground and first floor; any
+camera saved in the scene can be named without its "cam_" prefix (the hero
+shots are hero_hallway, hero_stairs and hero_bedroom); the rest are the
+eye-level views named in hb/preview.py. `--rig scene` keeps the scene's own
+lighting and render settings. Output goes to renders/.
 """
 
 import sys
@@ -30,7 +33,8 @@ def main():
     rig = option(args, "--rig", "work")
     samples = int(option(args, "--samples", "48"))
     width, height = (int(v) for v in option(args, "--res", "1600x900").split("x"))
-    exposure = float(option(args, "--exposure", "0"))
+    exposure = option(args, "--exposure", None)
+    exposure = float(exposure) if exposure is not None else None
     out = HERE / "renders"
     out.mkdir(exist_ok=True)
     for view in views:

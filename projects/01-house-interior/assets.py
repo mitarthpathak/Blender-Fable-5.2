@@ -48,7 +48,7 @@ SETS: dict[str, float] = {
     "dirty_carpet": 0.6,
 }
 
-HDRI = "courtyard_night"
+HDRI = "cobblestone_street_night"
 HDRI_RES = "4k"
 
 
