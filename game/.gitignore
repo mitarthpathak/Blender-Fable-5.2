@@ -1,0 +1,3 @@
+# Godot's import cache: rebuilt from the source assets on first open.
+.godot/
+*.translation
