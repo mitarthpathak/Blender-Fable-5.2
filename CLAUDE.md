@@ -109,8 +109,14 @@ assets/cache/           re-downloadable source files (not committed)
 - Save with `bpy.ops.wm.save_as_mainfile(filepath=..., compress=True, relative_remap=True)`.
 - A .blend must stand on its own: `import_asset` packs what it downloads;
   for anything else run `bpy.ops.file.pack_all()` before saving.
-- GitHub rejects files over 100 MB. Keep HDRIs at 2k (4k at most), and check
-  the size of a .blend before committing it.
+- **.blend, image, .glb and video files are stored in Git LFS**
+  (`.gitattributes`). A new clone needs `git lfs install --local` once, and
+  `git lfs ls-files` shows what is tracked. Every changed version of an LFS
+  file is stored in full, so a .blend with packed textures costs its whole
+  size on each commit: while a project is in progress keep textures as files
+  beside the .blend (stored once) and pack them only for the final save.
+- Keep HDRIs at 2k (4k at most), and check the size of a .blend before
+  committing it.
 - **Save, commit and push before finishing a piece of work.** Whatever is only
   in the running Blender is lost with the container.
 
