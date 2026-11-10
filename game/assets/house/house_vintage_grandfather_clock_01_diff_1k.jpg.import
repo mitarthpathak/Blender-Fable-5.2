@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1bjux2q3fovj"
-path="res://.godot/imported/house_vintage_grandfather_clock_01_diff_1k.jpg-61a34aad3650062f58b8f578529e1b17.ctex"
+path.s3tc="res://.godot/imported/house_vintage_grandfather_clock_01_diff_1k.jpg-61a34aad3650062f58b8f578529e1b17.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5deda0fab5773b8a4d2bf24f4e29f21e"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_vintage_grandfather_clock_01_diff_1k.jpg"
-dest_files=["res://.godot/imported/house_vintage_grandfather_clock_01_diff_1k.jpg-61a34aad3650062f58b8f578529e1b17.ctex"]
+dest_files=["res://.godot/imported/house_vintage_grandfather_clock_01_diff_1k.jpg-61a34aad3650062f58b8f578529e1b17.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

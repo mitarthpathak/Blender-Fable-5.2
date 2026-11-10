@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ch8llkhaei75v"
-path="res://.godot/imported/house_potted_plant_02_leaves_rough_1k.jpg-0c53eaa405d671d2d2c74ec8394899f7.ctex"
+path.s3tc="res://.godot/imported/house_potted_plant_02_leaves_rough_1k.jpg-0c53eaa405d671d2d2c74ec8394899f7.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "02956fe69365d78c9f546700a060ad67"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_potted_plant_02_leaves_rough_1k.jpg"
-dest_files=["res://.godot/imported/house_potted_plant_02_leaves_rough_1k.jpg-0c53eaa405d671d2d2c74ec8394899f7.ctex"]
+dest_files=["res://.godot/imported/house_potted_plant_02_leaves_rough_1k.jpg-0c53eaa405d671d2d2c74ec8394899f7.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

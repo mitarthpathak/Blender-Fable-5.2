@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://btregrbrfqggx"
-path="res://.godot/imported/house_sofa_02_nor_gl_1k.jpg-d7c688433d52634b633584e6030d5ffa.ctex"
+path.s3tc="res://.godot/imported/house_sofa_02_nor_gl_1k.jpg-d7c688433d52634b633584e6030d5ffa.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1b1b6920f740b6f71723153c5235840a"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_sofa_02_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/house_sofa_02_nor_gl_1k.jpg-d7c688433d52634b633584e6030d5ffa.ctex"]
+dest_files=["res://.godot/imported/house_sofa_02_nor_gl_1k.jpg-d7c688433d52634b633584e6030d5ffa.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

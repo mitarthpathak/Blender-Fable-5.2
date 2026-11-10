@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://vsro2rx85rxy"
-path="res://.godot/imported/house_crack.png-a38553ce0f804e18adf613c36854c0c5.ctex"
+path.s3tc="res://.godot/imported/house_crack.png-a38553ce0f804e18adf613c36854c0c5.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8439d82c914b0ff3daa60e897f20f02b"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_crack.png"
-dest_files=["res://.godot/imported/house_crack.png-a38553ce0f804e18adf613c36854c0c5.ctex"]
+dest_files=["res://.godot/imported/house_crack.png-a38553ce0f804e18adf613c36854c0c5.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

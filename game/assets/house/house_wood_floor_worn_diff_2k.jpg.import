@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://btmhr6as1os5r"
-path="res://.godot/imported/house_wood_floor_worn_diff_2k.jpg-6a9dcccedc3ae5446ee424804c69d338.ctex"
+path.s3tc="res://.godot/imported/house_wood_floor_worn_diff_2k.jpg-6a9dcccedc3ae5446ee424804c69d338.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7672ab72f3da92a3dde873927c265e81"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wood_floor_worn_diff_2k.jpg"
-dest_files=["res://.godot/imported/house_wood_floor_worn_diff_2k.jpg-6a9dcccedc3ae5446ee424804c69d338.ctex"]
+dest_files=["res://.godot/imported/house_wood_floor_worn_diff_2k.jpg-6a9dcccedc3ae5446ee424804c69d338.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

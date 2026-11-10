@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmvw0vo5rsief"
-path="res://.godot/imported/house_stone_sill_diff.jpg-7ce106aaab78417060eaf1f7db0920bd.ctex"
+path.s3tc="res://.godot/imported/house_stone_sill_diff.jpg-7ce106aaab78417060eaf1f7db0920bd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0783427c95f54c6839a58dd246e91af5"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_stone_sill_diff.jpg"
-dest_files=["res://.godot/imported/house_stone_sill_diff.jpg-7ce106aaab78417060eaf1f7db0920bd.ctex"]
+dest_files=["res://.godot/imported/house_stone_sill_diff.jpg-7ce106aaab78417060eaf1f7db0920bd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

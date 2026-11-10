@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bf3oi1nmuae8h"
-path="res://.godot/imported/house_hanging_picture_frame_02_artwork_roughness_1k.jpg-c658e3bb1f9faca59ffce9b577052ba4.ctex"
+path.s3tc="res://.godot/imported/house_hanging_picture_frame_02_artwork_roughness_1k.jpg-c658e3bb1f9faca59ffce9b577052ba4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0536292b871efa729d94b8e3ea4b8f9b"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_hanging_picture_frame_02_artwork_roughness_1k.jpg"
-dest_files=["res://.godot/imported/house_hanging_picture_frame_02_artwork_roughness_1k.jpg-c658e3bb1f9faca59ffce9b577052ba4.ctex"]
+dest_files=["res://.godot/imported/house_hanging_picture_frame_02_artwork_roughness_1k.jpg-c658e3bb1f9faca59ffce9b577052ba4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

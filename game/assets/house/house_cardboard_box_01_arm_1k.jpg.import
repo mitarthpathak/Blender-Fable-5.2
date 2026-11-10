@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://but6tjkdaqgmq"
-path="res://.godot/imported/house_cardboard_box_01_arm_1k.jpg-bb2ed71d1ad88f4395135c9331acb559.ctex"
+path.s3tc="res://.godot/imported/house_cardboard_box_01_arm_1k.jpg-bb2ed71d1ad88f4395135c9331acb559.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8a996f69efe32605cf6f4c50bd004d68"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_cardboard_box_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_cardboard_box_01_arm_1k.jpg-bb2ed71d1ad88f4395135c9331acb559.ctex"]
+dest_files=["res://.godot/imported/house_cardboard_box_01_arm_1k.jpg-bb2ed71d1ad88f4395135c9331acb559.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

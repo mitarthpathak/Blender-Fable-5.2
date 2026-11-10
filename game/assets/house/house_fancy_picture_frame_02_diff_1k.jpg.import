@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://s0863ph7duie"
-path="res://.godot/imported/house_fancy_picture_frame_02_diff_1k.jpg-0db028613e0e4ea5fa1b93e0c103cc6b.ctex"
+path.s3tc="res://.godot/imported/house_fancy_picture_frame_02_diff_1k.jpg-0db028613e0e4ea5fa1b93e0c103cc6b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ffec6b4079afdf7cd7f2201dd1fa7562"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_fancy_picture_frame_02_diff_1k.jpg"
-dest_files=["res://.godot/imported/house_fancy_picture_frame_02_diff_1k.jpg-0db028613e0e4ea5fa1b93e0c103cc6b.ctex"]
+dest_files=["res://.godot/imported/house_fancy_picture_frame_02_diff_1k.jpg-0db028613e0e4ea5fa1b93e0c103cc6b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dl1iqq8bf52pp"
-path="res://.godot/imported/house_wooden_table_02_nor_gl_1k.jpg-633a30c98d021460a0c4a3a19935d57b.ctex"
+path.s3tc="res://.godot/imported/house_wooden_table_02_nor_gl_1k.jpg-633a30c98d021460a0c4a3a19935d57b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "59cfc801b4924233f8390bc702cced68"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wooden_table_02_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/house_wooden_table_02_nor_gl_1k.jpg-633a30c98d021460a0c4a3a19935d57b.ctex"]
+dest_files=["res://.godot/imported/house_wooden_table_02_nor_gl_1k.jpg-633a30c98d021460a0c4a3a19935d57b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

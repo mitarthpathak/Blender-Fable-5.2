@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://djo46tu60u6jj"
-path="res://.godot/imported/house_wood_peeling_paint_weathered_nor_gl_2k.jpg-601d7e41ddc5514ecab7b5db93cb5f7a.ctex"
+path.s3tc="res://.godot/imported/house_wood_peeling_paint_weathered_nor_gl_2k.jpg-601d7e41ddc5514ecab7b5db93cb5f7a.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "04eb04acb20e3cf8a4e6dbac196b05d2"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wood_peeling_paint_weathered_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/house_wood_peeling_paint_weathered_nor_gl_2k.jpg-601d7e41ddc5514ecab7b5db93cb5f7a.ctex"]
+dest_files=["res://.godot/imported/house_wood_peeling_paint_weathered_nor_gl_2k.jpg-601d7e41ddc5514ecab7b5db93cb5f7a.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

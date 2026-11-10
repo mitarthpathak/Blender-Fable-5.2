@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://t57vmgxguvk5"
-path="res://.godot/imported/house_decrepit_wallpaper_arm_2k.jpg-d75b977e8d00cf9f621188c96b2a17dc.ctex"
+path.s3tc="res://.godot/imported/house_decrepit_wallpaper_arm_2k.jpg-d75b977e8d00cf9f621188c96b2a17dc.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e3b0e1874ff11fc026c75b3795e0f025"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_decrepit_wallpaper_arm_2k.jpg"
-dest_files=["res://.godot/imported/house_decrepit_wallpaper_arm_2k.jpg-d75b977e8d00cf9f621188c96b2a17dc.ctex"]
+dest_files=["res://.godot/imported/house_decrepit_wallpaper_arm_2k.jpg-d75b977e8d00cf9f621188c96b2a17dc.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

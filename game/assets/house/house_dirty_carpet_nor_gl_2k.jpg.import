@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chi70hgke48m6"
-path="res://.godot/imported/house_dirty_carpet_nor_gl_2k.jpg-1cd9c19c6dcb7b8f400f286c4f1a93d2.ctex"
+path.s3tc="res://.godot/imported/house_dirty_carpet_nor_gl_2k.jpg-1cd9c19c6dcb7b8f400f286c4f1a93d2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "42c17c929bdec7a66e162827b14337a3"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_dirty_carpet_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/house_dirty_carpet_nor_gl_2k.jpg-1cd9c19c6dcb7b8f400f286c4f1a93d2.ctex"]
+dest_files=["res://.godot/imported/house_dirty_carpet_nor_gl_2k.jpg-1cd9c19c6dcb7b8f400f286c4f1a93d2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

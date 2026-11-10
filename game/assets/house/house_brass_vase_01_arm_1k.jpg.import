@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bq31q35p0xvjy"
-path="res://.godot/imported/house_brass_vase_01_arm_1k.jpg-a1caf5e45dc1d241737cdc82cd959f26.ctex"
+path.s3tc="res://.godot/imported/house_brass_vase_01_arm_1k.jpg-a1caf5e45dc1d241737cdc82cd959f26.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7cff51418bce86697a9319348d7e6726"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_brass_vase_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_brass_vase_01_arm_1k.jpg-a1caf5e45dc1d241737cdc82cd959f26.ctex"]
+dest_files=["res://.godot/imported/house_brass_vase_01_arm_1k.jpg-a1caf5e45dc1d241737cdc82cd959f26.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

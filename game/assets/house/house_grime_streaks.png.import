@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct8bb2bbqvbfy"
-path="res://.godot/imported/house_grime_streaks.png-5a99690267e7e0092ab23b71c36dba31.ctex"
+path.s3tc="res://.godot/imported/house_grime_streaks.png-5a99690267e7e0092ab23b71c36dba31.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9f44610f2228391e8240820d7564c2c7"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_grime_streaks.png"
-dest_files=["res://.godot/imported/house_grime_streaks.png-5a99690267e7e0092ab23b71c36dba31.ctex"]
+dest_files=["res://.godot/imported/house_grime_streaks.png-5a99690267e7e0092ab23b71c36dba31.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

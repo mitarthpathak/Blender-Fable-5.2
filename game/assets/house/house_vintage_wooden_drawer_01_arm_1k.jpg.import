@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bf70puemkwpe6"
-path="res://.godot/imported/house_vintage_wooden_drawer_01_arm_1k.jpg-96e7415cd3c3b1d7b5c573f0b073d360.ctex"
+path.s3tc="res://.godot/imported/house_vintage_wooden_drawer_01_arm_1k.jpg-96e7415cd3c3b1d7b5c573f0b073d360.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "10ea56a700a5b3d6cffa1204bc6eea0a"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_vintage_wooden_drawer_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_vintage_wooden_drawer_01_arm_1k.jpg-96e7415cd3c3b1d7b5c573f0b073d360.ctex"]
+dest_files=["res://.godot/imported/house_vintage_wooden_drawer_01_arm_1k.jpg-96e7415cd3c3b1d7b5c573f0b073d360.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c2al7kdhmsr3j"
-path="res://.godot/imported/house_Ottoman_01_arm_1k.jpg-de4dafc74193e9babcee6da0783402b2.ctex"
+path.s3tc="res://.godot/imported/house_Ottoman_01_arm_1k.jpg-de4dafc74193e9babcee6da0783402b2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f8d2bae6c0a8f57100bb1cbc0f055501"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_Ottoman_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_Ottoman_01_arm_1k.jpg-de4dafc74193e9babcee6da0783402b2.ctex"]
+dest_files=["res://.godot/imported/house_Ottoman_01_arm_1k.jpg-de4dafc74193e9babcee6da0783402b2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

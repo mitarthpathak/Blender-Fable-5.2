@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chq1jujakiu5o"
-path="res://.godot/imported/house_water_stain.png-a876582b012fc444f03886bb0772b0e1.ctex"
+path.s3tc="res://.godot/imported/house_water_stain.png-a876582b012fc444f03886bb0772b0e1.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2aa6d9f797fbbf1aeaba5eaab1d3c5a3"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_water_stain.png"
-dest_files=["res://.godot/imported/house_water_stain.png-a876582b012fc444f03886bb0772b0e1.ctex"]
+dest_files=["res://.godot/imported/house_water_stain.png-a876582b012fc444f03886bb0772b0e1.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

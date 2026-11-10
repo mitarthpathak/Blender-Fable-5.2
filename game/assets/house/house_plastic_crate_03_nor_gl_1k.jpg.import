@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b10038wa8xf1j"
-path="res://.godot/imported/house_plastic_crate_03_nor_gl_1k.jpg-22b440f519dd10d65bd3029dec389b80.ctex"
+path.s3tc="res://.godot/imported/house_plastic_crate_03_nor_gl_1k.jpg-22b440f519dd10d65bd3029dec389b80.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "49b34fd426410e7ea3f21434196add15"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_plastic_crate_03_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/house_plastic_crate_03_nor_gl_1k.jpg-22b440f519dd10d65bd3029dec389b80.ctex"]
+dest_files=["res://.godot/imported/house_plastic_crate_03_nor_gl_1k.jpg-22b440f519dd10d65bd3029dec389b80.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

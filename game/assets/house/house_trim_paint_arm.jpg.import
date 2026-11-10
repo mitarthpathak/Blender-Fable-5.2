@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blot64dj7640f"
-path="res://.godot/imported/house_trim_paint_arm.jpg-536729344a051cf90c29816f8dd1e4d8.ctex"
+path.s3tc="res://.godot/imported/house_trim_paint_arm.jpg-536729344a051cf90c29816f8dd1e4d8.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2d4d644cca6348df31c8688b602d7dbb"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_trim_paint_arm.jpg"
-dest_files=["res://.godot/imported/house_trim_paint_arm.jpg-536729344a051cf90c29816f8dd1e4d8.ctex"]
+dest_files=["res://.godot/imported/house_trim_paint_arm.jpg-536729344a051cf90c29816f8dd1e4d8.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

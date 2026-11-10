@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d4heh8hhhotmj"
-path="res://.godot/imported/house_wall_landing_diff.jpg-df0bb772065b99dfb8de75af3cb31fc8.ctex"
+path.s3tc="res://.godot/imported/house_wall_landing_diff.jpg-df0bb772065b99dfb8de75af3cb31fc8.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bdbb1f14400ffcb965b82e6d212c61ce"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wall_landing_diff.jpg"
-dest_files=["res://.godot/imported/house_wall_landing_diff.jpg-df0bb772065b99dfb8de75af3cb31fc8.ctex"]
+dest_files=["res://.godot/imported/house_wall_landing_diff.jpg-df0bb772065b99dfb8de75af3cb31fc8.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dmsy6ou67m4ph"
-path="res://.godot/imported/house_Armchair_01_nor_gl_1k.jpg-e35cb3118c62f58cb62e4c381b3c2ae4.ctex"
+path.s3tc="res://.godot/imported/house_Armchair_01_nor_gl_1k.jpg-e35cb3118c62f58cb62e4c381b3c2ae4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1aaf86df60bc69640ebb91e7cd864b7f"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_Armchair_01_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/house_Armchair_01_nor_gl_1k.jpg-e35cb3118c62f58cb62e4c381b3c2ae4.ctex"]
+dest_files=["res://.godot/imported/house_Armchair_01_nor_gl_1k.jpg-e35cb3118c62f58cb62e4c381b3c2ae4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

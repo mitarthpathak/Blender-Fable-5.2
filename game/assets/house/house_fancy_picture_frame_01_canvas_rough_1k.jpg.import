@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2vwbc7g1u6x7"
-path="res://.godot/imported/house_fancy_picture_frame_01_canvas_rough_1k.jpg-e1b0a3781ecc659045d0413ca7841fba.ctex"
+path.s3tc="res://.godot/imported/house_fancy_picture_frame_01_canvas_rough_1k.jpg-e1b0a3781ecc659045d0413ca7841fba.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f87203f819cad6b06b63ff0896f84eba"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_fancy_picture_frame_01_canvas_rough_1k.jpg"
-dest_files=["res://.godot/imported/house_fancy_picture_frame_01_canvas_rough_1k.jpg-e1b0a3781ecc659045d0413ca7841fba.ctex"]
+dest_files=["res://.godot/imported/house_fancy_picture_frame_01_canvas_rough_1k.jpg-e1b0a3781ecc659045d0413ca7841fba.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

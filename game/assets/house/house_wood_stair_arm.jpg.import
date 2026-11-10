@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://di8uvvfywhord"
-path="res://.godot/imported/house_wood_stair_arm.jpg-1d8e112a56e31bcf8aa0abd8cee59324.ctex"
+path.s3tc="res://.godot/imported/house_wood_stair_arm.jpg-1d8e112a56e31bcf8aa0abd8cee59324.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d1525fc9b39c0d6451dbad4ed7edfd49"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wood_stair_arm.jpg"
-dest_files=["res://.godot/imported/house_wood_stair_arm.jpg-1d8e112a56e31bcf8aa0abd8cee59324.ctex"]
+dest_files=["res://.godot/imported/house_wood_stair_arm.jpg-1d8e112a56e31bcf8aa0abd8cee59324.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

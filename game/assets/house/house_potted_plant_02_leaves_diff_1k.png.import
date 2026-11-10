@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfkfcw08jkmlc"
-path="res://.godot/imported/house_potted_plant_02_leaves_diff_1k.png-3c51cae3236579969a16b233ba1d1b13.ctex"
+path.s3tc="res://.godot/imported/house_potted_plant_02_leaves_diff_1k.png-3c51cae3236579969a16b233ba1d1b13.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6f711d5b7a009b3ec2330cafe4e822e9"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_potted_plant_02_leaves_diff_1k.png"
-dest_files=["res://.godot/imported/house_potted_plant_02_leaves_diff_1k.png-3c51cae3236579969a16b233ba1d1b13.ctex"]
+dest_files=["res://.godot/imported/house_potted_plant_02_leaves_diff_1k.png-3c51cae3236579969a16b233ba1d1b13.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

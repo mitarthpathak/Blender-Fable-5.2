@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qdotnbujevn8"
-path="res://.godot/imported/house_smoked_walnut_veneer_arm_2k.jpg-10c2f34559fa0d357432d05fc4200cbd.ctex"
+path.s3tc="res://.godot/imported/house_smoked_walnut_veneer_arm_2k.jpg-10c2f34559fa0d357432d05fc4200cbd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "78880fefd431edc93ac20eff9b050677"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_smoked_walnut_veneer_arm_2k.jpg"
-dest_files=["res://.godot/imported/house_smoked_walnut_veneer_arm_2k.jpg-10c2f34559fa0d357432d05fc4200cbd.ctex"]
+dest_files=["res://.godot/imported/house_smoked_walnut_veneer_arm_2k.jpg-10c2f34559fa0d357432d05fc4200cbd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

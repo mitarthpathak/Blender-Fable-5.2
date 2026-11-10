@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dw8psdoatqa0e"
-path="res://.godot/imported/house_painted_plaster_wall_nor_gl_2k.jpg-dfa15bf2288bad5ab280bb0f936fdf77.ctex"
+path.s3tc="res://.godot/imported/house_painted_plaster_wall_nor_gl_2k.jpg-dfa15bf2288bad5ab280bb0f936fdf77.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "421d69e37e3877f7f728ebab68031588"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_painted_plaster_wall_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/house_painted_plaster_wall_nor_gl_2k.jpg-dfa15bf2288bad5ab280bb0f936fdf77.ctex"]
+dest_files=["res://.godot/imported/house_painted_plaster_wall_nor_gl_2k.jpg-dfa15bf2288bad5ab280bb0f936fdf77.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

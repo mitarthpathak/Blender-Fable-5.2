@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckx4eqebtnxie"
-path="res://.godot/imported/house_wine_bottles_01_label_ftero_vinea_02_arm_1k.jpg-3fcab942a0a3ce8a788a1b7a9261f635.ctex"
+path.s3tc="res://.godot/imported/house_wine_bottles_01_label_ftero_vinea_02_arm_1k.jpg-3fcab942a0a3ce8a788a1b7a9261f635.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2bb30644f800aae30653cec5ddb4addd"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_wine_bottles_01_label_ftero_vinea_02_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_wine_bottles_01_label_ftero_vinea_02_arm_1k.jpg-3fcab942a0a3ce8a788a1b7a9261f635.ctex"]
+dest_files=["res://.godot/imported/house_wine_bottles_01_label_ftero_vinea_02_arm_1k.jpg-3fcab942a0a3ce8a788a1b7a9261f635.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

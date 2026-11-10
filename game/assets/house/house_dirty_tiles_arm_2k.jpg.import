@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://gq5n83s7jixd"
-path="res://.godot/imported/house_dirty_tiles_arm_2k.jpg-97fad94e2a547415e0a077378bea299f.ctex"
+path.s3tc="res://.godot/imported/house_dirty_tiles_arm_2k.jpg-97fad94e2a547415e0a077378bea299f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9ca6582649f608a2eea3e49e83eed506"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_dirty_tiles_arm_2k.jpg"
-dest_files=["res://.godot/imported/house_dirty_tiles_arm_2k.jpg-97fad94e2a547415e0a077378bea299f.ctex"]
+dest_files=["res://.godot/imported/house_dirty_tiles_arm_2k.jpg-97fad94e2a547415e0a077378bea299f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

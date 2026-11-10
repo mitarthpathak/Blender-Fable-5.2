@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4r7ji761obm5"
-path="res://.godot/imported/house_old_wooden_floor_02_arm_2k.jpg-8d347c15eb924121967bbb0f039f03d2.ctex"
+path.s3tc="res://.godot/imported/house_old_wooden_floor_02_arm_2k.jpg-8d347c15eb924121967bbb0f039f03d2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "03f3fa68a7ea619690f3f19b2e72ebea"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_old_wooden_floor_02_arm_2k.jpg"
-dest_files=["res://.godot/imported/house_old_wooden_floor_02_arm_2k.jpg-8d347c15eb924121967bbb0f039f03d2.ctex"]
+dest_files=["res://.godot/imported/house_old_wooden_floor_02_arm_2k.jpg-8d347c15eb924121967bbb0f039f03d2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

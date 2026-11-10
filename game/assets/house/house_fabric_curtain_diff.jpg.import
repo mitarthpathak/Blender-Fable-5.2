@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qtol206k4104"
-path="res://.godot/imported/house_fabric_curtain_diff.jpg-a1808cabea9ee6b536b806f0819d0fe3.ctex"
+path.s3tc="res://.godot/imported/house_fabric_curtain_diff.jpg-a1808cabea9ee6b536b806f0819d0fe3.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "451a923b94f23383d0359d21f88ea705"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_fabric_curtain_diff.jpg"
-dest_files=["res://.godot/imported/house_fabric_curtain_diff.jpg-a1808cabea9ee6b536b806f0819d0fe3.ctex"]
+dest_files=["res://.godot/imported/house_fabric_curtain_diff.jpg-a1808cabea9ee6b536b806f0819d0fe3.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

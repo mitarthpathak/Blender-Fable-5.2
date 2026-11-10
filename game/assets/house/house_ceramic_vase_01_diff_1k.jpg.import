@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cwjhueydptnni"
-path="res://.godot/imported/house_ceramic_vase_01_diff_1k.jpg-d49791a38cbc952f4d4941223c87db92.ctex"
+path.s3tc="res://.godot/imported/house_ceramic_vase_01_diff_1k.jpg-d49791a38cbc952f4d4941223c87db92.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7f3e242f61868a456eac8a859ad9079a"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_ceramic_vase_01_diff_1k.jpg"
-dest_files=["res://.godot/imported/house_ceramic_vase_01_diff_1k.jpg-d49791a38cbc952f4d4941223c87db92.ctex"]
+dest_files=["res://.godot/imported/house_ceramic_vase_01_diff_1k.jpg-d49791a38cbc952f4d4941223c87db92.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bhyma0qb5jj6s"
-path="res://.godot/imported/house_red_brick_arm_2k.jpg-3eefed338c7c63db0d6b804bed67a717.ctex"
+path.s3tc="res://.godot/imported/house_red_brick_arm_2k.jpg-3eefed338c7c63db0d6b804bed67a717.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4998e6c517ed9a02425e7b04b1315cd9"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_red_brick_arm_2k.jpg"
-dest_files=["res://.godot/imported/house_red_brick_arm_2k.jpg-3eefed338c7c63db0d6b804bed67a717.ctex"]
+dest_files=["res://.godot/imported/house_red_brick_arm_2k.jpg-3eefed338c7c63db0d6b804bed67a717.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

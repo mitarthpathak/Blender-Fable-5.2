@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cspj77k1jc8vm"
-path="res://.godot/imported/house_floor_tiles_06_diff_2k.jpg-f65fb4c5f0c58187b67d1086782f66fb.ctex"
+path.s3tc="res://.godot/imported/house_floor_tiles_06_diff_2k.jpg-f65fb4c5f0c58187b67d1086782f66fb.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "95d35df5d6e8175f76eb1f830841d096"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_floor_tiles_06_diff_2k.jpg"
-dest_files=["res://.godot/imported/house_floor_tiles_06_diff_2k.jpg-f65fb4c5f0c58187b67d1086782f66fb.ctex"]
+dest_files=["res://.godot/imported/house_floor_tiles_06_diff_2k.jpg-f65fb4c5f0c58187b67d1086782f66fb.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

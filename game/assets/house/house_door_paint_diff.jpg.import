@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dw2kmoccj8j5s"
-path="res://.godot/imported/house_door_paint_diff.jpg-b6d76b65fe52320c79da15fe2f6656f4.ctex"
+path.s3tc="res://.godot/imported/house_door_paint_diff.jpg-b6d76b65fe52320c79da15fe2f6656f4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "03fcbca4e21538bc4647f7f3b82ade0f"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_door_paint_diff.jpg"
-dest_files=["res://.godot/imported/house_door_paint_diff.jpg-b6d76b65fe52320c79da15fe2f6656f4.ctex"]
+dest_files=["res://.godot/imported/house_door_paint_diff.jpg-b6d76b65fe52320c79da15fe2f6656f4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

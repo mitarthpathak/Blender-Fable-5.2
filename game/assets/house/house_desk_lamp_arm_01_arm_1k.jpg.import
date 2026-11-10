@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cdo4p0shdrbdm"
-path="res://.godot/imported/house_desk_lamp_arm_01_arm_1k.jpg-b9fde0630671756b90f46de105d8c1f6.ctex"
+path.s3tc="res://.godot/imported/house_desk_lamp_arm_01_arm_1k.jpg-b9fde0630671756b90f46de105d8c1f6.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5ad9022dd4e215a49886421bff24b02b"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/house/house_desk_lamp_arm_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/house_desk_lamp_arm_01_arm_1k.jpg-b9fde0630671756b90f46de105d8c1f6.ctex"]
+dest_files=["res://.godot/imported/house_desk_lamp_arm_01_arm_1k.jpg-b9fde0630671756b90f46de105d8c1f6.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

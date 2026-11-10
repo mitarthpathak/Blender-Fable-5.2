@@ -36,6 +36,8 @@ var quality := "high"
 
 var _doors: Array[Node3D] = []
 var _door_open := {}
+var _door_tweens := {}
+var _fps: Label
 var _flicker_lights: Array[Light3D] = []
 var _flicker_base := {}
 var _lamp_lights: Array[OmniLight3D] = []
@@ -74,7 +76,7 @@ func _setup_input() -> void:
 	var keys := {
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
-		"jump": [KEY_SPACE], "run": [KEY_SHIFT], "interact": [KEY_E], "toggle_quality": [KEY_F1],
+		"jump": [KEY_SPACE], "run": [KEY_SHIFT], "interact": [KEY_E], "toggle_quality": [KEY_F1], "toggle_fps": [KEY_F3],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -90,6 +92,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var door := _nearest_door()
 		if door:
 			toggle_door(door)
+	elif event.is_action_pressed("toggle_fps"):
+		_fps.visible = not _fps.visible
 	elif event.is_action_pressed("toggle_quality"):
 		set_quality("low" if quality == "high" else "high")
 		_save_quality()
@@ -130,8 +134,9 @@ func _setup_collision() -> int:
 			var mesh_node := node as MeshInstance3D
 			if _is_door(mesh_node.name):
 				_doors.append(mesh_node)
-				_door_open[mesh_node] = false
-				mesh_node.set_meta("closed_y", mesh_node.rotation.y)
+				# Every door is modelled shut at zero turn; some are left ajar.
+				mesh_node.set_meta("closed_y", 0.0)
+				_door_open[mesh_node] = absf(mesh_node.rotation.y) > 0.05
 			# Glass and decals are blended surfaces: they must not shadow the moon.
 			if String(mesh_node.name).begins_with("glass_") or String(mesh_node.name).begins_with("decals_"):
 				mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -175,17 +180,17 @@ func _nearest_door() -> Node3D:
 
 
 func toggle_door(door: Node3D) -> void:
-	var opening: bool = not _door_open[door]
-	_door_open[door] = opening
+	# One press always changes the state the player can see. A door counts as
+	# open if it stands away from its frame at all, so an ajar door closes.
 	var closed: float = door.get_meta("closed_y")
-	var target := closed + deg_to_rad(_door_swing(door)) if opening else closed
-	# A door standing ajar closes fully first time, then opens.
-	if opening and absf(door.rotation.y - closed) > 0.05 and String(door.name) != "door_front":
-		target = closed
-		_door_open[door] = false
-		door.set_meta("closed_y", closed)
+	var is_open := absf(angle_difference(door.rotation.y, closed)) > 0.05
+	var target := closed if is_open else closed + deg_to_rad(_door_swing(door))
+	_door_open[door] = not is_open
+	if _door_tweens.has(door) and is_instance_valid(_door_tweens[door]):
+		(_door_tweens[door] as Tween).kill()
 	var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(door, "rotation:y", target, 0.9)
+	_door_tweens[door] = tween
 
 
 # --- Lighting ----------------------------------------------------------------
@@ -256,6 +261,8 @@ func _process(delta: float) -> void:
 				level = 0.04
 			light.light_energy = base * level
 	_update_prompt()
+	if _fps and _fps.visible:
+		_fps.text = "%d FPS  %.1f ms" % [Engine.get_frames_per_second(), 1000.0 / maxf(Engine.get_frames_per_second(), 1.0)]
 
 
 # --- Environment ---------------------------------------------------------------
@@ -330,7 +337,7 @@ func set_quality(level: String) -> void:
 		# On Low only the lamps the player walks past keep shadows.
 		lamp.shadow_enabled = high or String(lamp.name).contains("hall_table")
 	if _hud:
-		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F1 quality: %s   Esc free mouse" \
+		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F1 quality: %s   F3 FPS   Esc free mouse" \
 			% level.capitalize()
 
 
@@ -371,6 +378,12 @@ func _setup_hud() -> void:
 	_hud.add_theme_font_size_override("font_size", 14)
 	_hud.modulate = Color(1, 1, 1, 0.55)
 	layer.add_child(_hud)
+	_fps = Label.new()
+	_fps.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_fps.position = Vector2(-150, 12)
+	_fps.add_theme_font_size_override("font_size", 16)
+	_fps.visible = false
+	layer.add_child(_fps)
 	_prompt = Label.new()
 	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt.position = Vector2(-90, -90)
@@ -433,6 +446,15 @@ func _self_test() -> void:
 		await get_tree().create_timer(1.2).timeout
 		print("TEST front door turned %.1f degrees" % rad_to_deg(front.rotation.y - before))
 
+	for door in _doors:
+		if String(door.name) == "door_living":
+			var was := rad_to_deg(door.rotation.y)
+			toggle_door(door)
+			await get_tree().create_timer(1.2).timeout
+			print("TEST ajar door: %.1f -> %.1f degrees in one press" % [was, rad_to_deg(door.rotation.y)])
+			toggle_door(door)
+			await get_tree().create_timer(1.2).timeout
+			print("TEST then opens to %.1f" % rad_to_deg(door.rotation.y))
 	# Settle on the hall floor, then walk to the foot of the stairs and up.
 	for i in 30:
 		await get_tree().physics_frame
