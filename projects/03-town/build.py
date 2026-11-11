@@ -31,10 +31,12 @@ import plan  # noqa: E402
 import tk.core  # noqa: E402
 import tk.house_kit  # noqa: E402
 import tk.street_kit  # noqa: E402
+import tk.cars  # noqa: E402
+import tk.detail  # noqa: E402
 
-for mod in (plan, assets, tk.core, tk.house_kit, tk.street_kit):
+for mod in (plan, assets, tk.core, tk.house_kit, tk.street_kit, tk.cars, tk.detail):
     importlib.reload(mod)
-from tk import core, house_kit, street_kit  # noqa: E402
+from tk import core, detail, house_kit, street_kit  # noqa: E402
 
 BLEND = HERE / "town.blend"
 KIT_BLEND = HERE / "kit.blend"
@@ -151,6 +153,7 @@ def build_town():
     street_kit.trees("trees")
     street_kit.cars("cars")
     street_kit.blockers("blockers")
+    detail.build(houses)                 # street detail, lot stories, the fog ends
     street_kit.collision(curbs, houses, "collision")
     house_kit.kit_reference("kit")
     # the glowing window in L3 and its porch light

@@ -461,7 +461,7 @@ def poles(coll="poles"):
         rot = math.atan2(d.y, d.x) + math.pi / 2          # arm along local X, wires along local Y
         base = Vector((p.x, p.y, SW))
         instance(pm, f"pole_{p.key}", coll, base, rot)
-        if p.key in ("P2", "P5"):
+        if p.key in ("P2", "P3", "P5"):
             instance(tm, f"pole_{p.key}_transformer", coll, base, rot)
         tops[p.key] = (base, rot)
         if p.lamp:

@@ -358,7 +358,7 @@ DECAL_RULES = {
     "grime_streaks": ("flat", 0.0, 0.88, 0.0, 0.0),
     "moss": ("luma", 5.0, 0.95, 0.0, 0.0),
     "moss_strip": ("alpha_soft", 5.0, 0.95, 0.0, 0.0),
-    "tyre_marks": ("flat", 0.0, 0.5, 0.0, 0.0),
+    "tyre_marks": ("flat", 0.0, 0.92, 0.0, 0.0),
     "litter": ("alpha_soft", 3.0, 0.7, 0.0, 0.0),
     "glass_shards": ("alpha", 6.0, 0.08, 0.0, 0.0),
     "sign_road_closed": ("luma", 1.5, 0.55, 0.0, 0.0),
