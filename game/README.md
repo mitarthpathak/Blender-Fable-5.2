@@ -142,3 +142,121 @@ baked in the editor. The presets are built to work with that bake:
   lightmap per preset would fix it fully, at the cost of three times the
   lightmap memory and a swap on every preset change; it is not done here.
 - Lamps that flicker are `BAKE_DISABLED` and stay fully live, as before.
+
+### The town world
+
+![Junction on High, Night](screenshots/town/junction_night_high.png)
+
+`world_town.tscn` is the house in its town (see `docs/TOWN.md`): Ashgrove
+Street, the T-junction with Mill Road, five closed neighbouring houses and a
+vacant lot. `main.tscn` and `world.tscn` are unchanged and still the default.
+
+```bash
+godot --path game -- --world=town                     # play the town from the editor build
+build_town/HaldenRidge.exe                            # the town export (needs HaldenRidge.pck beside it)
+```
+
+The player starts in the hall as before; **E** opens the front door and the
+screen door, and the path leads down to the street. Neighbours' porches can be
+walked on; their doors are locked.
+
+`scripts/town.gd` (on the root of `world_town.tscn`) sets the scene up in
+code, like `main.gd` does for the house:
+
+- **House pieces replaced, not edited.** The house's own `yard_ground`,
+  `yard_paths`, `street_road`, `fence_picket`, `mailbox`, `telephone_pole`
+  and `light_street_sodium` are removed by name when the town loads; the
+  town model has its own at the same heights.
+- **Collision.** Trimesh for ground, houses, fences, cars and barriers;
+  cylinders for trees, poles, trash cans and the hydrant; none for mailboxes,
+  leaf piles, grass, signs, wires or decals. The town model carries
+  collision-only wedges (`-convcolonly` in Blender) for every curb, every
+  flight of porch steps and the house's front-door sill, because the player
+  capsule cannot climb a 13 cm step by itself, and four invisible walls on
+  the edge of the playable area.
+- **Instancing.** 199 repeated props (grass clumps, leaf piles, trees, poles,
+  lamp heads, mailboxes, cans, manholes) are folded into 15 `MultiMesh`
+  nodes at load. The five houses are one mesh each and share their materials.
+- **Lights.** Six sodium street lights (`street_sodium_P*`), one of them
+  flickering, one more broken and dark; a dim warm light behind one window
+  of 16 Ashgrove Street. All follow the lighting presets (street lights go
+  off in Foggy Overcast Day).
+- **Distance.** Street lights fade out past 55 m; small props fade between
+  45 and 80 m. Fog hides them sooner.
+
+The export preset **Halden Ridge Town** sets the feature tag `town`, which
+makes the town the default world in that build only. `build_town/` holds a
+`.gdignore`, so neither preset packs the other's build.
+
+#### Presets outdoors
+
+Every preset has an **Outdoors (town world only)** group: key light energy,
+how much the key light and the street lights light the fog, fog density,
+ambient and exposure. `world_town.tscn` is in the group `outdoor_world`, and
+`LightingPresets` then reads those values instead of the indoor ones and
+stops SDFGI from reading sky light. The house world never reads them, so
+Night there is still exactly the original. Night's indoor fog values light
+the whole street's fog at once (the moon alone turned it white), which is
+why the town needs its own.
+
+#### Baking lightmaps for the town
+
+`world_town.tscn` has its own `LightmapGI` node, not baked yet (Godot bakes
+only from the editor). `assets/town/town.gltf` imports with lightmap UVs
+(`meshes/light_baking=2`, texel size 0.25 m). To bake:
+
+1. Open `world_town.tscn`. `town.gd` is a tool script: in the editor it
+   hides the replaced house pieces and gives the lights their game settings.
+2. Select `LightmapGI` and press **Bake Lightmaps**. It is set to medium
+   quality, 3 bounces, an 8192 atlas limit and a custom environment colour
+   equal to the night fog colour, so the bake does not need a
+   `WorldEnvironment` in the scene.
+3. Commit the `.lmbake` file and the textures it writes.
+
+The moon and the street lights are `BAKE_DYNAMIC`: direct light and shadows
+stay live (so the presets can change them) and only their bounce is baked.
+The flickering lamp is `BAKE_DISABLED`. The `MultiMesh` props are dynamic
+and take their light from the lightmap's probes. `world.tscn`'s bake is
+separate: bake both scenes if you use both.
+
+#### Performance
+
+Measured on the Low target itself, an Intel HD Graphics 620 (i5-7300U),
+1600x900, with `-- --world=town --town-perf`:
+
+| View | Low (58 % scale) | Low at `main.gd`'s 77 % | High | Draw calls (Low) | Triangles drawn (Low) |
+| --- | --- | --- | --- | --- | --- |
+| Front door, looking out | 32 FPS | 26 FPS | 2 FPS | 304 | 167 k |
+| Junction | 45 FPS | 32 FPS | 4 FPS | 204 | 157 k |
+| Mill Road | 52 FPS | 40 FPS | 6 FPS | 198 | 156 k |
+
+Draw calls and triangles include the shadow passes. The town model is about
+116,000 triangles in 232 objects (44 unique meshes); with the house hidden
+the main pass is 117 draw calls and 83,000 triangles.
+
+That GPU is limited by pixels, not triangles: an empty scene runs at 70 FPS
+and the house alone, from its own front door, at 23. So on Low the town:
+
+- gives the street lights no shadows and a 16 m reach (the moon keeps its shadow),
+- uses the cheapest soft-shadow filter,
+- renders at 58 % scale with FSR instead of `main.gd`'s 77 % (`LOW_SCALE` in
+  `town.gd`; `--scale=0.77` overrides it for a run),
+- keeps the town's textures VRAM-compressed (texture memory 1.1 GB, down
+  from 2.1 GB uncompressed; most of what is left is the house).
+
+Dynamic resolution was tried first and dropped: changing the render scale
+every half second hung the Intel driver after a few dozen changes.
+
+High is not meant for that machine (2 to 6 FPS there); it needs a discrete GPU.
+
+![Low: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_low.jpg)
+![High: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_high.jpg)
+
+#### Town checks
+
+```bash
+godot --headless --path game -- --world=town --town-selftest     # front door to the road, curbs, a porch, both ends
+godot --path game -- --world=town --town-perf --quality=low      # FPS, draw calls, triangles
+godot --path game -- --world=town --preset-shots --views=front_door,junction,side_street --out=res://screenshots/town
+godot --headless --path game --export-release "Halden Ridge Town" build_town/HaldenRidge.exe
+```

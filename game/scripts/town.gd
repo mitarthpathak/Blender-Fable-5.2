@@ -177,8 +177,6 @@ func _process(delta: float) -> void:
 		if _shadow_timer <= 0.0:
 			_shadow_timer = 0.5
 			_update_shadows(main)
-		if _quality == "low" and not fixed_scale:
-			_adapt_scale(delta)
 
 
 ## Low is aimed at Intel UHD 620 class graphics, where the street costs per
@@ -186,15 +184,12 @@ func _process(delta: float) -> void:
 ## house alone at 23 from its own front door). So in the town, Low also:
 ## - gives the street lights a shorter reach and no shadows (the moon keeps its shadow),
 ## - uses the cheapest soft-shadow filter,
-## - lets the render scale float between LOW_SCALE_MIN and main.gd's 0.77 to hold
-##   LOW_TARGET_FPS (see _adapt_scale).
-const LOW_SCALE_MIN := 0.5
-const LOW_SCALE_MAX := 0.77
-const LOW_TARGET_FPS := 32.0
+## - renders at LOW_SCALE instead of main.gd's 0.77.
+## The scale is set once per quality change. Changing it every few frames
+## (dynamic resolution) was tried and hung the Intel driver after a few dozen
+## changes, so it is fixed.
+const LOW_SCALE := 0.58
 
-var _scale := LOW_SCALE_MAX
-var _frames := 0
-var _frame_time := 0.0
 var fixed_scale := false           # set by --scale=
 
 
@@ -204,26 +199,8 @@ func _apply_quality(high: bool) -> void:
 	var filter := RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW
 	RenderingServer.directional_soft_shadow_filter_set_quality(filter)
 	RenderingServer.positional_soft_shadow_filter_set_quality(filter)
-	_scale = LOW_SCALE_MAX
-	_frames = 0
-	_frame_time = 0.0
-
-
-## Dynamic resolution on Low: every half second, step the 3D render scale down
-## if the frame rate is under the target and back up when there is headroom.
-func _adapt_scale(delta: float) -> void:
-	_frames += 1
-	_frame_time += delta
-	if _frame_time < 0.5:
-		return
-	var fps := _frames / _frame_time
-	_frames = 0
-	_frame_time = 0.0
-	if fps < LOW_TARGET_FPS:
-		_scale = maxf(LOW_SCALE_MIN, _scale - (0.06 if fps < LOW_TARGET_FPS - 6.0 else 0.03))
-	elif fps > LOW_TARGET_FPS + 7.0:
-		_scale = minf(LOW_SCALE_MAX, _scale + 0.02)
-	get_viewport().scaling_3d_scale = _scale
+	if not high and not fixed_scale:
+		get_viewport().scaling_3d_scale = LOW_SCALE
 
 
 func _update_shadows(main: Node) -> void:
@@ -440,7 +417,7 @@ func _perf() -> void:
 	for view in VIEWS:
 		var cam := get_node("cam_preset_" + view) as Camera3D
 		cam.make_current()
-		for i in 240:               # let the dynamic render scale settle
+		for i in 90:
 			await get_tree().process_frame
 		var started := Time.get_ticks_usec()
 		var frames := 150

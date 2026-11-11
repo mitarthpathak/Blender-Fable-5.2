@@ -99,14 +99,28 @@ def world_night(scene, strength=1.0, fog=True):
     world.use_nodes = True
     nt = world.node_tree
     bg = nt.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.040, 0.060, 0.100, 1)
+    bg.inputs["Color"].default_value = (0.016, 0.024, 0.042, 1)
     bg.inputs["Strength"].default_value = strength
     if fog:
-        vol = nt.nodes.new("ShaderNodeVolumePrincipled")
-        vol.inputs["Density"].default_value = 0.035
-        vol.inputs["Color"].default_value = (0.75, 0.8, 0.88, 1)
+        # A bounded slab of fog over the town. A world volume is infinitely deep,
+        # so no moonlight or sky light would ever get through it.
+        x0, y0, x1, y1 = plan.BUILD
+        mesh = bpy.data.meshes.new("fog_volume")
+        v = [(x, y, z) for z in (-1.0, 20.0) for (x, y) in ((x0 - 30, y0 - 30), (x1 + 30, y0 - 30), (x1 + 30, y1 + 30), (x0 - 30, y1 + 30))]
+        mesh.from_pydata(v, [], [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
+        mat = bpy.data.materials.new("fog_volume")
+        mat.use_nodes = True
+        mt = mat.node_tree
+        mt.nodes.clear()
+        out = mt.nodes.new("ShaderNodeOutputMaterial")
+        vol = mt.nodes.new("ShaderNodeVolumePrincipled")
+        vol.inputs["Density"].default_value = 0.03
+        vol.inputs["Color"].default_value = (0.78, 0.82, 0.88, 1)
         vol.inputs["Anisotropy"].default_value = 0.4
-        nt.links.new(vol.outputs["Volume"], nt.nodes["World Output"].inputs["Volume"])
+        mt.links.new(vol.outputs["Volume"], out.inputs["Volume"])
+        mesh.materials.append(mat)
+        obj = bpy.data.objects.new("fog_volume", mesh)
+        core.collection("render_only").objects.link(obj)
     scene.cycles.volume_step_rate = 4.0
     scene.cycles.volume_max_steps = 256
 
@@ -295,11 +309,11 @@ def stage_stills(opts):
             o.rotation_euler = (0.0, 0.0, math.radians(-95 if base == "door_front" else -105))
     render_setup(scene, opts["samples"], opts["res"])
     world_night(scene)
-    scene.view_settings.exposure = 0.9
-    moon(0.9)
+    scene.view_settings.exposure = 1.0
+    moon(0.28)
     for o in bpy.data.objects:
         if o.type == "LIGHT" and o.name.startswith("street_sodium"):
-            o.data.energy = 380.0
+            o.data.energy = 650.0
             o.data.shadow_soft_size = 0.2
     RENDERS.mkdir(exist_ok=True)
     for name, (loc, tgt, lens) in STILLS.items():
