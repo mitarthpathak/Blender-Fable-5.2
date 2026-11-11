@@ -72,3 +72,73 @@ godot --headless --path game -- --selftest            # floor, stairs, front doo
 godot --path game -- --shots --quality=high           # screenshots from the hero cameras
 godot --headless --path game --export-release "Windows Desktop" build/HouseInterior.exe
 ```
+
+## Halden Ridge town and lighting presets (town-v1)
+
+Added on the `town-v1` branch. Everything above still works as before.
+
+### Lighting presets
+
+![Presets: Night, Foggy Overcast Day, Dusk (rows: hallway and porch, High then Low)](screenshots/presets/contact_sheet.jpg)
+
+Three looks, each a `LightingPreset` resource in `presets/`:
+
+| File | Look |
+| --- | --- |
+| `presets/night.tres` | **Night** (default). Exactly the values `main.gd` and `house_lights.gd` used before presets existed. |
+| `presets/foggy_day.tres` | **Foggy Overcast Day**: grey sky, heavy fog, soft shadowless light, street lights off. |
+| `presets/dusk.tres` | **Dusk**: low warm sun from the west, violet fog, street lights just on. |
+
+Open a `.tres` in the Godot inspector to tweak it: key light (moon or sun)
+colour, energy, softness and angle; sky and ambient colour; room-probe
+ambient; volumetric fog (High) and distance fog (Low); exposure for High and
+Low; glow and grade; and multipliers for the lamps, street lights and lit
+windows. `scripts/lighting_preset.gd` documents every field.
+
+`scripts/lighting_presets.gd` applies the preset on top of what `main.gd`
+sets up. `main.gd` only gained three hooks: it attaches the node after
+loading the quality setting, re-applies the preset at the end of
+`set_quality()`, and `_save_quality()` now loads `settings.cfg` before
+writing so it keeps other sections.
+
+| Key | Action |
+| --- | --- |
+| F2 | Cycle Night, Foggy Overcast Day, Dusk |
+| F4 | Settings panel: preset dropdown and brightness slider (50 to 200 %) |
+
+Both are saved in `user://settings.cfg` under a new `[lighting]` section
+(`preset`, `brightness`); the `[graphics] quality` key is unchanged.
+Brightness multiplies the preset's exposure, so 100 % is the preset as
+authored.
+
+Command line: `--preset=night|foggy_day|dusk`, `--brightness=1.2`,
+`--preset-check` (applies Night over the original setup and lists any value
+that changed; it reports 45 values, all identical, on High and Low), and
+`--preset-shots [--quality=low] [--views=hallway,porch]`, which wrote the
+screenshots above. `--env=prop:value,...` overrides Environment properties
+for experiments.
+
+**SDFGI sky light.** On High, SDFGI adds the background colour as light
+wherever it sees the sky. Indoors that is right; outdoors it floods the
+yard (the porch row of the Night column shows it: that is the original
+game's look, kept on purpose). Foggy Day and Dusk turn
+`sdfgi_read_sky_light` off; Night keeps it on to stay identical. The town
+world turns it off for every preset, because there the player is outdoors.
+
+### Presets and baked lightmaps
+
+`world.tscn` keeps its `LightmapGI` node; the lightmaps are still to be
+baked in the editor. The presets are built to work with that bake:
+
+- The moon/sun stays **dynamic** (`BAKE_DYNAMIC`): its direct light and
+  shadows are computed live, and only its bounce goes into the lightmap.
+  That is why a preset can change its colour, energy and angle at run time.
+- The **trade-off**: the baked bounce light is fixed at whatever preset was
+  active in the editor when you baked (Night, with the tool script in
+  `world.gd`). Under Foggy Day or Dusk the direct light is right, but the
+  bounce in the lightmap is still Night's cool, dim bounce. Ambient, probe
+  ambient, fog and exposure come from the preset and cover most of the
+  difference, and on High SDFGI adds live bounce on top. Baking one
+  lightmap per preset would fix it fully, at the cost of three times the
+  lightmap memory and a swap on every preset change; it is not done here.
+- Lamps that flicker are `BAKE_DISABLED` and stay fully live, as before.

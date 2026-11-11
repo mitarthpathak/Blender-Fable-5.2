@@ -59,6 +59,7 @@ func _ready() -> void:
 	_setup_hud()
 	_spawn_player()
 	_load_quality()
+	LightingPresets.attach(self)    # time-of-day presets and brightness (F2, F4)
 	print("house ready in %d ms: %d collision bodies, %d doors, %d lights" % [
 		Time.get_ticks_msec() - started, stats, _doors.size(), _lamp_lights.size() + 2])
 
@@ -317,6 +318,8 @@ func set_quality(level: String) -> void:
 	if _hud:
 		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F flashlight   F1 quality: %s   F3 FPS   Esc free mouse" \
 			% level.capitalize()
+	if has_node("LightingPresets"):
+		(get_node("LightingPresets") as LightingPresets).apply()
 
 
 func _load_quality() -> void:
@@ -332,6 +335,7 @@ func _load_quality() -> void:
 
 func _save_quality() -> void:
 	var config := ConfigFile.new()
+	config.load(SETTINGS_FILE)      # keep the other sections (lighting presets)
 	config.set_value("graphics", "quality", quality)
 	config.save(SETTINGS_FILE)
 

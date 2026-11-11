@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="LightingPreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/lighting_preset.gd" id="1_preset"]
+
+[resource]
+script = ExtResource("1_preset")
+display_name = "Foggy Overcast Day"
+key_color = Color(0.86, 0.88, 0.9, 1)
+key_energy = 0.55
+key_angular_distance = 12.0
+key_shadows = false
+key_volumetric_fog_energy = 1.0
+use_model_angle = false
+key_elevation_deg = 55.0
+key_azimuth_deg = 190.0
+background_color = Color(0.5, 0.53, 0.55, 1)
+ambient_color = Color(0.6, 0.63, 0.66, 1)
+ambient_energy = 0.9
+probe_ambient_color = Color(0.32, 0.34, 0.36, 1)
+probe_ambient_energy = 1.0
+volumetric_fog_density = 0.07
+volumetric_fog_albedo = Color(0.88, 0.89, 0.9, 1)
+volumetric_fog_emission = Color(0.1, 0.105, 0.11, 1)
+volumetric_fog_anisotropy = 0.2
+volumetric_fog_length = 64.0
+volumetric_fog_gi_inject = 0.3
+distance_fog_color = Color(0.5, 0.53, 0.55, 1)
+distance_fog_density = 0.075
+distance_fog_sky_affect = 1.0
+exposure_high = 0.85
+exposure_low = 0.85
+tonemap_white = 6.0
+glow_intensity = 0.2
+glow_bloom = 0.0
+saturation = 0.85
+contrast = 1.0
+sdfgi_energy = 1.0
+sdfgi_read_sky_light = false
+lamp_energy_scale = 0.6
+street_lights_on = false
+street_energy_scale = 1.0
+window_glow_scale = 0.2
