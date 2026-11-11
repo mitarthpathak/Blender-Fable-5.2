@@ -128,8 +128,8 @@ def puddle():
     r = np.sqrt(x ** 2 + y ** 2)
     n = noise(s, 4)
     edge = 0.62 + 0.28 * (n - 0.5) * 2
-    alpha = np.clip((edge - r) / 0.12, 0, 1) * 0.92
-    col = np.ones((s, s, 3), np.float32) * np.array([0.05, 0.055, 0.06])
+    alpha = np.clip((edge - r) / 0.22, 0, 1) * 0.72
+    col = np.ones((s, s, 3), np.float32) * np.array([0.085, 0.09, 0.10])
     save_rgba(np.dstack([col, alpha]), "puddle")
 
 
@@ -180,6 +180,28 @@ def lawn_rough():
     print("derived lawn_rough")
 
 
+def leaf_litter():
+    """Scattered fallen leaves on transparent ground, for roads and sidewalks."""
+    s = 512
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rng = np.random.default_rng(23)
+    for _ in range(260):
+        x, y = rng.uniform(0, s, 2)
+        r = rng.uniform(5, 13)
+        a = rng.uniform(0, np.pi)
+        tone = rng.uniform(0.0, 1.0)
+        col = (int(78 + 52 * tone), int(60 + 38 * tone), int(38 + 20 * tone), 255)       # damp browns, not red
+        pts = [(x + np.cos(a + t) * r * (1.0 if k % 2 == 0 else 0.45), y + np.sin(a + t) * r * (1.0 if k % 2 == 0 else 0.45))
+               for k, t in enumerate(np.linspace(0, 2 * np.pi, 9)[:-1])]
+        d.polygon(pts, fill=col)
+    a = np.asarray(img.filter(ImageFilter.SMOOTH), np.float32) / 255.0
+    # fade towards the edges so cards do not show their square
+    yy, xx = np.mgrid[0:s, 0:s] / (s - 1) * 2 - 1
+    a[..., 3] *= np.clip((1.0 - np.sqrt(xx ** 2 + yy ** 2)) / 0.35, 0, 1)
+    save_rgba(a, "leaf_litter")
+
+
 def main():
     neutral(TEX / "weathered_plank_siding/weathered_plank_siding_diff_2k.jpg", DERIVED / "siding_neutral_diff.jpg",
             contrast=0.8)
@@ -197,6 +219,7 @@ def main():
     chainlink()
     grass_tuft()
     puddle()
+    leaf_litter()
     oil_stain()
     sign("sign_road_closed", ["ROAD", "CLOSED"], (176, 70, 30), (232, 226, 210))
     sign("sign_for_sale", ["FOR SALE", "HALDEN REALTY"], (210, 205, 190), (120, 30, 25))

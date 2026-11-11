@@ -284,7 +284,8 @@ def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list):
         z = deck_z - rise * k
         mb.box((sx0, yf - 0.28 * k, GROUND), (sx1, yf - 0.28 * (k - 1), z), "porch_deck", color=deck_col, rot=True,
                skip="-z", mats={"-y": "trim"})
-    ramps.append(((sx0, yf - 0.56 - 0.02, GROUND), (sx1, yf, deck_z)))
+    # the collision ramp runs through the step noses, so it starts one tread out from the bottom step
+    ramps.append(((sx0, yf - 0.86, GROUND), (sx1, yf, deck_z)))
     # posts, beam, railings
     top = 2.62
     if h.porch == "entry":
@@ -335,7 +336,50 @@ def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list):
                               Vector((wall_x, 0, hi)), Vector((wall_x, y1 + ov, hi)))
         mb.face([a2 + t, b2 + t, c2 + t, d2 + t], roof_mat, color=(0.9, 0.9, 0.9))
         mb.face([d2, c2, b2, a2], "trim", color=mul(trim, 0.75))
+    porch_clutter(mb, x0, x1, yf, deck_z, sx0, sx1, rng, h.wear)
     return (sx0, sx1, yf - 0.56)
+
+
+def porch_clutter(mb, x0, x1, yf, z, sx0, sx1, rng, wear):
+    """A chair or a bench, a dead plant in a pot, boxes or a newspaper bundle."""
+    spots = [x for x in (x0 + 0.7, x1 - 0.8) if not (sx0 - 0.4 < x < sx1 + 0.4)]
+    for i, x in enumerate(spots):
+        y = -0.55
+        kind = rng.choice(("chair", "bench", "boxes")) if i == 0 else rng.choice(("pot", "boxes", "chair"))
+        wood = jitter_color(rng, (0.62, 0.58, 0.52), 0.1)
+        if kind == "chair":
+            a = rng.uniform(-0.4, 0.4)
+            m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(a, 4, "Z")
+            c = MeshBuilder()
+            c.box((-0.25, -0.25, 0.42), (0.25, 0.22, 0.46), "wood_weathered", color=wood)
+            for lx, ly in ((-0.22, -0.22), (0.22, -0.22), (-0.22, 0.19), (0.22, 0.19)):
+                c.box((lx - 0.025, ly - 0.025, 0.0), (lx + 0.025, ly + 0.025, 0.42), "wood_weathered", color=wood)
+            c.box((-0.25, 0.18, 0.46), (0.25, 0.22, 0.95), "wood_weathered", color=wood)
+            mb.extend(c, m)
+        elif kind == "bench":
+            mb.box((x - 0.6, y - 0.18, z + 0.40), (x + 0.6, y + 0.18, z + 0.44), "wood_weathered", color=wood)
+            for lx in (x - 0.55, x + 0.5):
+                mb.box((lx, y - 0.16, z), (lx + 0.05, y + 0.16, z + 0.40), "wood_weathered", color=wood)
+        elif kind == "pot":
+            mb.cylinder((x, y, z), (0, 0, 0.32), 0.17, "brick", segments=10, radius_top=0.21,
+                        color=(0.75, 0.5, 0.4))
+            mb.disc((x, y, z + 0.29), 0.19, "lawn_leafy", segments=10)
+            for k in range(5):
+                a = k * 1.25
+                mb.tube([(x, y, z + 0.29), (x + math.cos(a) * 0.15, y + math.sin(a) * 0.15, z + 0.55 + 0.1 * (k % 2))],
+                        0.008, "bark", segments=3)
+        else:
+            for k in range(rng.randint(1, 3)):
+                bw = rng.uniform(0.3, 0.5)
+                bz = z + 0.0 if k < 2 else z + 0.35
+                bx = x + (k % 2) * 0.42 - 0.2
+                mb.obox((bx, y, bz + 0.17), (bw, bw * 0.8, 0.34), rng.uniform(-0.3, 0.3), "plywood",
+                        color=(0.72, 0.6, 0.45))
+    if rng.random() < 0.6:                                         # newspapers nobody picked up
+        nx = sx1 + 0.25
+        for k in range(rng.randint(2, 4)):
+            mb.obox((nx + rng.uniform(-0.1, 0.1), yf + 0.4 + rng.uniform(-0.1, 0.1), z + 0.03 + 0.035 * k),
+                    (0.3, 0.12, 0.06), rng.uniform(0, 3), "trim", color=(0.62, 0.6, 0.55))
 
 
 def rail(mb, a, b, z0, trim, rng, wear, height=0.9):

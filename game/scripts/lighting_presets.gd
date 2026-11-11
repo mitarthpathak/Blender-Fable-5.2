@@ -167,17 +167,18 @@ func apply() -> void:
 	var env: Environment = main.world_env.environment
 	env.background_color = p.background_color
 	env.ambient_light_color = p.ambient_color
-	env.ambient_light_energy = p.ambient_energy
-	env.volumetric_fog_density = p.volumetric_fog_density
+	env.ambient_light_energy = p.outdoor_ambient_energy if outdoor else p.ambient_energy
+	env.volumetric_fog_density = p.outdoor_volumetric_fog_density if outdoor else p.volumetric_fog_density
 	env.volumetric_fog_albedo = p.volumetric_fog_albedo
-	env.volumetric_fog_emission = p.volumetric_fog_emission
+	env.volumetric_fog_emission = p.outdoor_volumetric_fog_emission if outdoor else p.volumetric_fog_emission
 	env.volumetric_fog_anisotropy = p.volumetric_fog_anisotropy
 	env.volumetric_fog_length = p.volumetric_fog_length
 	env.volumetric_fog_gi_inject = p.volumetric_fog_gi_inject
-	env.fog_light_color = p.distance_fog_color
-	env.fog_density = p.distance_fog_density
+	env.fog_light_color = p.outdoor_distance_fog_color if outdoor else p.distance_fog_color
+	env.fog_density = p.outdoor_distance_fog_density if outdoor else p.distance_fog_density
 	env.fog_sky_affect = p.distance_fog_sky_affect
-	env.tonemap_exposure = (p.exposure_high if high else p.exposure_low) * brightness
+	var exposure := (p.outdoor_exposure_high if high else p.outdoor_exposure_low) if outdoor 		else (p.exposure_high if high else p.exposure_low)
+	env.tonemap_exposure = exposure * brightness
 	env.tonemap_white = p.tonemap_white
 	env.glow_intensity = p.glow_intensity
 	env.glow_bloom = p.glow_bloom
@@ -189,10 +190,10 @@ func apply() -> void:
 	var key: DirectionalLight3D = main.moon
 	if key:
 		key.light_color = p.key_color
-		key.light_energy = p.key_energy
+		key.light_energy = p.outdoor_key_energy if outdoor else p.key_energy
 		key.light_angular_distance = p.key_angular_distance
 		key.shadow_enabled = p.key_shadows
-		key.light_volumetric_fog_energy = p.key_volumetric_fog_energy
+		key.light_volumetric_fog_energy = p.outdoor_key_volumetric_fog_energy if outdoor else p.key_volumetric_fog_energy
 		key.global_basis = _model_key_basis if p.use_model_angle else p.key_basis()
 
 	var flicker_base: Dictionary = main.get("_flicker_base") if main.get("_flicker_base") != null else {}
@@ -203,7 +204,11 @@ func apply() -> void:
 		var scale := p.street_energy_scale if street else p.lamp_energy_scale
 		var energy: float = _lamp_base[light] * scale
 		light.light_energy = energy
+		light.set_meta("preset_energy", energy)      # for scripts that flicker a light themselves
+		light.set_meta("preset_scale", (scale if p.street_lights_on else 0.0) if street else scale)
 		if street:
+			if outdoor:
+				light.light_volumetric_fog_energy = p.outdoor_street_fog_energy
 			light.visible = p.street_lights_on and not light.has_meta("broken")
 		if flicker_base.has(light):
 			flicker_base[light] = energy     # main.gd flickers around this level
@@ -410,7 +415,7 @@ func _process(delta: float) -> void:
 
 # --- Screenshots ---------------------------------------------------------------------
 
-## `-- --preset-shots [--quality=low] [--out=dir] [--views=a,b]`: render the
+## `-- --preset-shots [--quality=low] [--out=dir] [--views=a,b] [--presets=night,dusk]`: render the
 ## fixed views in every preset and quit. Views can also come from cameras
 ## named cam_preset_<view> anywhere in the scene.
 func _preset_shots() -> void:
@@ -418,6 +423,7 @@ func _preset_shots() -> void:
 	var out := "res://screenshots/presets"
 	var frames := 48
 	var only: PackedStringArray = []
+	var only_presets: PackedStringArray = []
 	for arg in args:
 		if arg.begins_with("--out="):
 			out = arg.get_slice("=", 1)
@@ -425,6 +431,8 @@ func _preset_shots() -> void:
 			frames = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--views="):
 			only = arg.get_slice("=", 1).split(",")
+		elif arg.begins_with("--presets="):
+			only_presets = arg.get_slice("=", 1).split(",")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
 	for n in ["_hud", "_prompt", "player"]:
 		var item = main.get(n)
@@ -443,6 +451,8 @@ func _preset_shots() -> void:
 	camera.make_current()
 	var quality: String = main.quality
 	for id in ORDER:
+		if not only_presets.is_empty() and not id in only_presets:
+			continue
 		set_preset(id, false)
 		_toast.modulate.a = 0.0
 		_toast_time = 0.0

@@ -63,7 +63,8 @@ def ground(coll="ground"):
     covered = []
     for lot in plan.LOTS:
         mat = "lawn_leafy" if lot.key == "L7" else {"kept": "lawn_kept", "overgrown": "lawn_overgrown", "dead": "lawn_dead"}[lot.lawn]
-        grid_quads(lawn, lot.rect, G, mat, 2.0, lambda p: (n(p),) * 3)
+        tint = (0.50, 0.48, 0.38) if mat == "lawn_dead" else (0.85, 0.85, 0.80)   # damp, not bleached
+        grid_quads(lawn, lot.rect, G, mat, 2.0, lambda p, t=tint: mul(t, n(p)))
         covered.append(lot.rect)
     bx0, by0, bx1, by1 = plan.BUILD
     # verge strips: north of the north lots, the corners outside the lots, south of Mill lots
@@ -224,6 +225,21 @@ def road_damage(coll="ground_detail"):
         x, y = rng.uniform(-25, 33), rng.uniform(-17.5, -10.8)
         dc.card((x, y, RD + 0.007), rng.uniform(0.8, 1.8), rng.uniform(0.6, 1.2), rng.uniform(0, math.pi),
                 "decal_oil", flat=True)
+    hot = [(plan.HOUSE_DOOR_X, -9.5, 7.0), (3.5, -16.0, 9.0), (3.5, -24.0, 6.0)]
+    for i in range(110):
+        if i < 80:
+            hx, hy, hr = hot[i % len(hot)]
+            x, y = hx + rng.uniform(-hr, hr), hy + rng.uniform(-hr * 0.6, hr * 0.6)
+        else:
+            x, y = rng.uniform(-28, 36), rng.uniform(-17.8, -8.7)
+        if _on_road(x, y):
+            zz = RD + 0.007
+        elif any(r[0] <= x <= r[2] and r[1] <= y <= r[3] for _, r in plan.SIDEWALKS):
+            zz = SW + 0.006
+        else:
+            zz = G + 0.012
+        dc.card((x, y, zz), rng.uniform(0.9, 2.2), rng.uniform(0.9, 2.2), rng.uniform(0, math.pi), "decal_leaves",
+                flat=True)
     dc.build("decals_ground", coll)
 
     mh = shared("manhole", _manhole)
@@ -490,7 +506,7 @@ def fences(coll="fences"):
             h = math.radians(heading)
             d = Vector((math.cos(h), math.sin(h))) * length / 2
             tall_fence_run(tall, (x - d.x, y - d.y), (x + d.x, y + d.y), rng, 2.4)
-    pk.build("fence_picket", coll)
+    pk.build("fence_pickets", coll)      # not "fence_picket": that is the house's own, removed in the town
     cl.build("fence_chainlink", coll)
     tall.build("fence_tall", coll)
 
@@ -763,7 +779,7 @@ def cars(coll="cars"):
     out = []
     for key, x, y, heading, state in plan.CARS:
         kind = "wagon" if key == "car_wagon" else "sedan"
-        mb = car_mesh(kind, mul(CAR_PAINTS[key], 1 / 0.75), hash(key) & 0xFFFF, crashed=state == "crashed",
+        mb = car_mesh(kind, mul(CAR_PAINTS[key], 1 / 0.75), sum(map(ord, key)), crashed=state == "crashed",
                       flat=state != "on_blocks", on_blocks=state == "on_blocks")
         z = RD if _on_road(x, y) else G
         o = mb.build(key, coll)
@@ -909,10 +925,20 @@ def collision(curbs, houses, coll="collision"):
                 mb.build(f"curb_ramp_{k}-convcolonly", coll)
                 k += 1
     # step ramps: the player's porch steps and each kit house's
-    x0, y0, x1, y1 = (1.05, -2.88, 2.50, -2.28)
+    x0, y0, x1, y1 = (1.05, -3.14, 2.50, -2.30)      # through the noses of the house's two steps
     mb = MeshBuilder()
     wedge(mb, (x0, y0, G - 0.02), (x1, y1, -0.005), "+y")
     mb.build("steps_ramp_L1-convcolonly", coll)
+    # The house's water-table board crosses its front doorway 14 cm above the floor
+    # (exterior_trim, z -0.01..0.14 at y -0.33..-0.30). The house is not ours to edit,
+    # so two small wedges let the player walk over it instead of being stopped by it.
+    dx0, dx1 = plan.HOUSE_DOOR_X - 0.475, plan.HOUSE_DOOR_X + 0.475
+    mb = MeshBuilder()
+    wedge(mb, (dx0, -0.30, -0.02), (dx1, 0.32, 0.145), "-y")
+    mb.build("door_sill_ramp_in-convcolonly", coll)
+    mb = MeshBuilder()
+    wedge(mb, (dx0, -0.85, -0.02), (dx1, -0.33, 0.145), "+y")
+    mb.build("door_sill_ramp_out-convcolonly", coll)
     for key, (obj, m, ramps, steps) in houses.items():
         for j, (lo, hi) in enumerate(ramps):
             mb = MeshBuilder()

@@ -76,6 +76,7 @@ MATS: dict[str, dict] = {
     "decal_grime": dict(diff_png="grime_streaks", tile=1.0, blend=True, rough=0.9),
     "decal_moss": dict(diff_png="moss", tile=1.0, blend=True, rough=0.95),
     "decal_crack": dict(diff_png="crack", tile=1.0, blend=True, rough=0.9),
+    "decal_leaves": dict(diff_png="leaf_litter", tile=1.0, blend=True, rough=0.8),
     "decal_oil": dict(diff_png="oil_stain", tile=1.0, blend=True, rough=0.25),
     "sign_closed": dict(diff_png="sign_road_closed", tile=1.0, rough=0.6),
     "sign_sale": dict(diff_png="sign_for_sale", tile=1.0, rough=0.6),

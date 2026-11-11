@@ -3,7 +3,7 @@
 Runs in Blender (4.5 or later), in the background:
 
     blender -b -P projects/03-town/build.py -- kit       # part 3: the kit, laid out and rendered
-    blender -b -P projects/03-town/build.py -- town      # part 4: town.blend and game/assets/town/town.glb
+    blender -b -P projects/03-town/build.py -- town      # part 4: town.blend and game/assets/town/town.gltf
     blender -b -P projects/03-town/build.py -- stills    # part 4: three Cycles stills (needs town.blend)
 
 Options after the stage: --samples N, --res WxH, --only name (stills).
@@ -38,7 +38,7 @@ from tk import core, house_kit, street_kit  # noqa: E402
 
 BLEND = HERE / "town.blend"
 KIT_BLEND = HERE / "kit.blend"
-GLB = ROOT / "game" / "assets" / "town" / "town.glb"
+GLB = ROOT / "game" / "assets" / "town" / "town.gltf"
 HOUSE_GLB = ROOT / "projects" / "01-house-interior" / "house.glb"
 RENDERS = HERE / "renders"
 
@@ -99,7 +99,7 @@ def world_night(scene, strength=1.0, fog=True):
     world.use_nodes = True
     nt = world.node_tree
     bg = nt.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.020, 0.026, 0.036, 1)
+    bg.inputs["Color"].default_value = (0.040, 0.060, 0.100, 1)
     bg.inputs["Strength"].default_value = strength
     if fog:
         vol = nt.nodes.new("ShaderNodeVolumePrincipled")
@@ -161,12 +161,13 @@ def save_and_export(scene):
     for o in keep:
         o.select_set(True)
     bpy.ops.export_scene.gltf(
-        filepath=str(GLB), export_format="GLB", use_selection=True, export_apply=False,
+        filepath=str(GLB), export_format="GLTF_SEPARATE", export_texture_dir="textures", use_selection=True, export_apply=False,
         export_lights=True, export_cameras=False, export_extras=True, export_yup=True,
         export_image_format="AUTO", export_vertex_color="ACTIVE", export_all_vertex_colors=False,
         export_texcoords=True, export_normals=True, export_materials="EXPORT",
     )
-    print("exported", GLB, GLB.stat().st_size // 1024, "KB")
+    size = sum(f.stat().st_size for f in GLB.parent.rglob("*") if f.is_file() and f.suffix != ".import")
+    print("exported", GLB, size // 1024, "KB with textures")
 
 
 def stats():
@@ -263,7 +264,7 @@ def stage_town(opts):
 
 STILLS = {
     # camera position, target (Blender axes), lens
-    "front_door": ((1.78, 0.6, 1.6), (2.6, -18.0, 0.9), 20),
+    "front_door": ((1.70, 0.45, 1.62), (2.8, -18.0, 0.9), 20),
     "junction": ((9.5, -9.4, 1.65), (2.0, -24.0, 1.4), 22),
     "side_street": ((5.6, -27.0, 1.65), (1.2, -50.0, 1.6), 24),
 }
@@ -272,23 +273,33 @@ STILLS = {
 def stage_stills(opts):
     bpy.ops.wm.open_mainfile(filepath=str(BLEND))
     scene = bpy.context.scene
+    ours = {o.name for o in bpy.data.objects}
     with bpy.context.temp_override(window=bpy.context.window_manager.windows[0]) if bpy.context.window_manager.windows \
             else _null():
         bpy.ops.import_scene.gltf(filepath=str(HOUSE_GLB))
     # the house's own yard, road, fence, pole and lamp are replaced by the town
     for o in list(bpy.data.objects):
+        if o.name in ours:
+            continue
         base = o.name.split(".")[0]
         if base in plan.HOUSE_HIDE or o.name.startswith("cam_hero"):
             bpy.data.objects.remove(o, do_unlink=True)
+            continue
     for o in bpy.data.objects:
+        base = o.name.split(".")[0]
         if any(c.name in ("collision", "kit") for c in o.users_collection):
             o.hide_render = True
+        # stand the front door and the screen door open for the view out of the house
+        if base in ("door_front", "door_screen"):
+            o.rotation_mode = "XYZ"
+            o.rotation_euler = (0.0, 0.0, math.radians(-95 if base == "door_front" else -105))
     render_setup(scene, opts["samples"], opts["res"])
     world_night(scene)
-    moon()
+    scene.view_settings.exposure = 0.9
+    moon(0.9)
     for o in bpy.data.objects:
         if o.type == "LIGHT" and o.name.startswith("street_sodium"):
-            o.data.energy = 900.0
+            o.data.energy = 380.0
             o.data.shadow_soft_size = 0.2
     RENDERS.mkdir(exist_ok=True)
     for name, (loc, tgt, lens) in STILLS.items():

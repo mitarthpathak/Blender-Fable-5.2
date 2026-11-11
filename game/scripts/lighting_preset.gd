@@ -63,6 +63,22 @@ extends Resource
 ## town world turns it off for every preset (see LightingPresets.outdoor).
 @export var sdfgi_read_sky_light := true
 
+@export_group("Outdoors (town world only)")
+## Used instead of the values above when the world is outdoors (the town).
+## The house world never reads these, so Night indoors stays as it was. Out
+## on the street the key light would otherwise light all the fog at once.
+@export_range(0.0, 8.0, 0.01) var outdoor_key_energy := 0.8
+@export_range(0.0, 8.0, 0.01) var outdoor_key_volumetric_fog_energy := 0.25
+@export_range(0.0, 4.0, 0.01) var outdoor_ambient_energy := 0.45
+@export_range(0.0, 0.3, 0.001) var outdoor_volumetric_fog_density := 0.035
+@export var outdoor_volumetric_fog_emission := Color(0.012, 0.016, 0.022)
+@export var outdoor_distance_fog_color := Color(0.07, 0.085, 0.11)
+@export_range(0.0, 0.3, 0.001) var outdoor_distance_fog_density := 0.065
+@export_range(0.1, 6.0, 0.01) var outdoor_exposure_high := 1.15
+@export_range(0.1, 6.0, 0.01) var outdoor_exposure_low := 1.25
+## How strongly the street lights light the volumetric fog around them.
+@export_range(0.0, 8.0, 0.01) var outdoor_street_fog_energy := 1.2
+
 @export_group("Practical lights")
 ## Multiplier on the indoor lamps (table lamps, porch light, flicker bulb, TV).
 @export_range(0.0, 4.0, 0.01) var lamp_energy_scale := 1.0

@@ -247,8 +247,8 @@ CARS = (
 
 # Edge blockers. kind, x, y, heading (deg), length.
 BLOCKERS = (
-    ("barrier", -29.0, -15.6, 90.0, 2.2),
-    ("barrier", -29.3, -12.8, 85.0, 2.2),
+    ("barrier", -29.0, -15.3, 90.0, 2.2),
+    ("barrier", -29.3, -13.0, 85.0, 2.2),
     ("car_west", -28.0, -10.9, 128.0, 0.0),           # crashed into the corner pole
     ("fence_tall", -30.5, -11.0, 90.0, 59.0),         # across the west end, back lots to Mill Road lots
     ("fallen_tree", 36.0, -13.0, 104.0, 15.0),        # across Ashgrove at the east end
