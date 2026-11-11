@@ -20,6 +20,13 @@ static func apply(root: Node) -> Dictionary:
 		if node is MeshInstance3D:
 			var mesh := node as MeshInstance3D
 			var mesh_name := String(mesh.name)
+			# What the lightmap bake should leave alone. Doors move, so they take
+			# their light from the probes; decals, glass and haze get no lightmap.
+			if (mesh_name.begins_with("door_") or mesh_name.ends_with("_door")) and not mesh_name.begins_with("frame_"):
+				mesh.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
+			elif mesh_name.begins_with("decals_") or mesh_name.begins_with("glass_") \
+					or mesh_name.begins_with("shade_") or mesh_name.begins_with("fog_"):
+				mesh.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 			if mesh_name.begins_with("clapboard_"):
 				# The boards' own shadow lines are finer than a shadow map can hold:
 				# left on, they speckle the wall. Their undersides stay dark anyway.

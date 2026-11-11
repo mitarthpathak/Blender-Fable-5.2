@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://blot64dj7640f"
+uid="uid://cr0jwatjl5gli"
 path.s3tc="res://.godot/imported/house_trim_paint_arm.jpg-536729344a051cf90c29816f8dd1e4d8.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
@@ -40,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=512
 detect_3d/compress_to=1
