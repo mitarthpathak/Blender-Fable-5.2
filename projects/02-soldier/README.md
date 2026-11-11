@@ -4,7 +4,9 @@ An original third-person-shooter soldier and rifle, built by script.
 
 ![Front](renders/soldier_front.png)
 
-**Status: first pass, blockout quality.** The proportions, silhouette and
+**Status: superseded by `projects/03-character`**, which has a MakeHuman
+body and a properly modelled version of this rifle. Kept for reference:
+first pass, blockout quality. The proportions, silhouette and
 surface detail are not yet at the level of the house. See "Known problems".
 
 | File | What it is |
