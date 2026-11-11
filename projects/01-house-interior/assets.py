@@ -56,7 +56,7 @@ SETS: dict[str, float] = {
     "peeling_painted_wall": 1.8,
     "moss_wood": 1.0,
     # Kitchen and bathroom
-    "long_white_tiles": 1.27,
+    "long_white_tiles": 2.54,          # photographed at 1.27 m; doubled so a tile is 7.5 x 15 cm
     "checkered_pavement_tiles": 1.5,   # photographed at 2 m; scaled so a square is 15 cm
     "linoleum_brown": 2.0,
     "kitchen_wood": 0.6,
@@ -79,6 +79,7 @@ class Surface:
     normal: float = 1.0
     mono: bool = False          # tint from the grey image: one paint colour, no second hue
     laps: int = 0               # clapboard: this many boards up the image, each shaded under the next
+    mould: float = 0.0          # tiles: how far mould has taken the grout, 0 to 1
 
 
 PLASTER = "painted_plaster_wall"
@@ -91,7 +92,8 @@ SURFACES: dict[str, Surface] = {
     "wall_bedroom": Surface("peeling_painted_wall", "#7d877f"),
     "wall_kitchen": Surface(PLASTER, "#9c9577"),
     "wall_bathroom": Surface("peeling_painted_wall", "#869089", mono=True),
-    "tile_bathroom": Surface("long_white_tiles", "#a7b0a3", mono=True),
+    "tile_bathroom": Surface("long_white_tiles", "#a7b0a3", mono=True, mould=0.45),
+    "tile_bathroom_wet": Surface("long_white_tiles", "#a0a99c", mono=True, mould=1.0),   # round the bath
     "tile_kitchen": Surface("rounded_square_tiled_wall", "#a89f88", mono=True),
     "panel_wood": Surface("dark_paneled_wood", "#3b2b21"),
     "ceiling": Surface("ceiling_interior", "#a5a297", normal=0.7),
@@ -254,6 +256,32 @@ def _shade_laps(image, count):
     return Image.fromarray(np.clip(pixels * shade[:, None, None], 0, 255).astype(np.uint8))
 
 
+def _mould_grout(image, amount):
+    """Blacken the grout lines in patches, and dull the tiles round them.
+    Grout is found as the pixels darker than their surroundings, so the
+    mould follows the real joints of whichever tile photograph this is."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+
+    pixels = np.asarray(image, dtype=np.float32)
+    lum = pixels.mean(axis=2)
+    around = np.asarray(image.convert("L").filter(ImageFilter.GaussianBlur(9)), dtype=np.float32)
+    grout = np.clip((around * 0.97 - lum) / 14.0, 0.0, 1.0)
+    rng = np.random.default_rng(7)
+    height, width = lum.shape
+
+    def blotches(cell):
+        small = (rng.random((height // cell + 2, width // cell + 2)) * 255).astype(np.uint8)
+        return np.asarray(Image.fromarray(small).resize((width, height), Image.BICUBIC), dtype=np.float32) / 255.0
+
+    patch = np.clip((blotches(160) * 0.6 + blotches(48) * 0.4 - (0.72 - 0.42 * amount)) * 4.0, 0.0, 1.0)
+    cover = (grout * patch * (0.55 + 0.45 * amount))[..., None]
+    film = (patch * 0.16 * amount)[..., None]
+    mould = np.array([34.0, 38.0, 30.0], dtype=np.float32)
+    out = pixels * (1.0 - film) * (1.0 - cover) + mould * cover
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+
+
 def derive():
     from PIL import Image, ImageStat
 
@@ -273,6 +301,8 @@ def derive():
                 image = Image.merge("RGB", bands)
                 if surface.laps:
                     image = _shade_laps(image, surface.laps)
+                if surface.mould:
+                    image = _mould_grout(image, surface.mould)
                 image.save(target, quality=92)
                 print(f"  ~ {target.relative_to(HERE)}")
         if surface.rough != 1.0:

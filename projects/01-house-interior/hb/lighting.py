@@ -36,6 +36,9 @@ HERO = {
     "hero_porch": dict(at=(6.4, -7.6, 1.25), to=(1.7, -0.6, 1.75), lens=24),
     "hero_hallway": dict(at=(1.86, 0.42, 1.48), to=(1.02, 5.0, 1.22), lens=18),
     "hero_stairs": dict(at=(1.72, 1.02, 1.30), to=(0.42, 4.75, 2.55), lens=19),
+    "hero_living": dict(at=(2.95, 0.42, 1.50), to=(6.2, 3.4, 0.85), lens=17),
+    "hero_kitchen": dict(at=(2.80, 4.88, 1.52), to=(6.4, 7.2, 0.95), lens=16),
+    "hero_bathroom": dict(at=(3.30, 5.05, plan.FFL[1] + 1.55), to=(6.5, 7.7, plan.FFL[1] + 0.75), lens=16),
     "hero_bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.50), to=(5.55, 3.85, plan.FFL[1] + 0.72), lens=18),
 }
 
