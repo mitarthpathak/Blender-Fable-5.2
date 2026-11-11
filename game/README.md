@@ -16,6 +16,7 @@ Open `game/` in Godot 4.7.2, or run the Windows build in `build/`
 | Mouse | Look (Esc frees the pointer, click recaptures) |
 | E | Open or close the nearest door |
 | F | Flashlight |
+| Right / left mouse | Aim / fire (only once the character is installed, see below) |
 | F1 | Graphics quality: High or Low (remembered) |
 | F3 | FPS counter |
 
@@ -30,6 +31,14 @@ up in code, so a fresh export from Blender needs no hand edits:
   are left out.
 - **Doors**: every door keeps its hinge pivot and swings by the
   `opens_degrees` the model carries.
+- **Player**: `scripts/player.gd`, a capsule on a spring-arm camera. When
+  the Mixamo files are in `assets/character/` (put them in
+  `projects/03-character/mixamo/`, then run `tools/import_character.py` as
+  that folder's README says), `scripts/character.gd` replaces the capsule
+  with the animated human: an AnimationTree blending idle, walk and run by
+  speed, an upper-body aim blend, fire and jump one-shots, and the rifle
+  (`assets/character/rifle.glb`) on the right-hand bone. Without those
+  files the game runs with the capsule exactly as before.
 - **Lighting**: a cool moon, warm lamps, a scripted failing-bulb flicker on
   `light_hall_flicker`, and a television glow added as a light.
 - **Environment**: plain night fog for a sky, cool ambient light, AgX tone

@@ -39,7 +39,17 @@ BORE_Z = 0.058        # the bore is this far above the origin
 GRIP_U = 0.080        # and the origin this far behind gun-space zero
 
 # Material ids as baked into the mask map's blue channel.
-IDS = {"alu": 0.0, "steel": 0.3, "polymer": 0.6, "grip": 0.6, "rubber": 0.8, "glass": 1.0}
+IDS = {"alu": 0.0, "steel": 0.3, "polymer": 0.58, "grip": 0.58, "rubber": 0.75, "glass": 0.88, "reticle": 1.0}
+
+# The parts that move, each exported as its own object under `rifle`.
+# name: (pivot in gun space (x, u, z), what an animation does with it)
+PARTS = {
+    "body": None,
+    "magazine": ((0.0, 0.054, -0.060), {"motion": "slide", "axis": "down along the magazine", "travel_m": 0.20}),
+    "bolt": ((0.0, 0.028, 0.0), {"motion": "slide", "axis": "+Y (back)", "travel_m": 0.085}),
+    "charging_handle": ((0.0, -0.099, 0.0115), {"motion": "slide", "axis": "+Y (back)", "travel_m": 0.075}),
+    "trigger": ((0.0, -0.0095, -0.060), {"motion": "turn", "axis": "X", "pull_degrees": 12.0}),
+}
 
 
 def window():
@@ -100,6 +110,27 @@ def lathe(profile, segments=16, z=0.0, x=0.0):
     return bm
 
 
+def handle(stations, points=14, power=2.6):
+    """A hand grip lofted through rounded cross-sections.
+    `stations` are (u centre, z, half length along the gun, half width)."""
+    bm = bmesh.new()
+    rings = []
+    for u, z, half_u, half_x in stations:
+        ring = []
+        for k in range(points):
+            t = 2.0 * math.pi * k / points
+            c, sn = math.cos(t), math.sin(t)
+            du = half_u * math.copysign(abs(c) ** (2.0 / power), c)
+            dx = half_x * math.copysign(abs(sn) ** (2.0 / power), sn)
+            ring.append(bm.verts.new(P(dx, u + du, z)))
+        rings.append(ring)
+    bm.faces.new(rings[0])
+    bm.faces.new(tuple(reversed(rings[-1])))
+    for ring_a, ring_b in zip(rings, rings[1:]):
+        _loft(bm, ring_a, ring_b)
+    return bm
+
+
 def pin(u, z, radius, x0, x1, segments=10):
     """A cylinder across the gun: pins, buttons, knobs."""
     bm = bmesh.new()
@@ -114,8 +145,7 @@ def pin(u, z, radius, x0, x1, segments=10):
 class Gun:
     def __init__(self):
         self.parts = []
-        self.materials = {name: bpy.data.materials.new(name) for name in ("alu", "steel", "polymer", "grip",
-                                                                         "rubber", "glass")}
+        self.materials = {name: bpy.data.materials.new(name) for name in IDS}
         for mat in self.materials.values():
             mat.use_nodes = True
 
@@ -128,7 +158,7 @@ class Gun:
         bpy.context.scene.collection.objects.link(obj)
         return obj
 
-    def add(self, name, bm, material, bevel=0.0010, segments=1, cut=()):
+    def add(self, name, bm, material, bevel=0.0010, segments=1, cut=(), part="body"):
         obj = self._object(bm, name)
         if cut:
             obj = self._cut(obj, cut)
@@ -139,6 +169,8 @@ class Gun:
         obj.data.materials.append(self.materials[material])
         for polygon in obj.data.polygons:
             polygon.material_index = 0
+        tag = obj.data.attributes.new("part", "INT", "FACE")
+        tag.data.foreach_set("value", [list(PARTS).index(part)] * len(obj.data.polygons))
         self.parts.append(obj)
         return obj
 
@@ -203,13 +235,13 @@ def build_gun() -> bpy.types.Object:
     upper = [(-0.100, -0.024), (0.095, -0.024), (0.095, 0.019), (0.088, 0.026), (-0.093, 0.026), (-0.100, 0.019)]
     g.add("upper", prism(upper, 0.0200), "alu", 0.0014,
           cut=[box(-0.004, 0.060, -0.010, 0.011, -0.0300, -0.0165)])
-    g.add("bolt_carrier", box(-0.003, 0.059, -0.009, 0.010, -0.0172, -0.0160), "steel", 0.0)
-    g.add("bolt_face", box(0.030, 0.050, -0.006, 0.007, -0.0180, -0.0165), "steel", 0.0005)
+    g.add("bolt_carrier", box(-0.003, 0.059, -0.009, 0.010, -0.0172, -0.0160), "steel", 0.0, part="bolt")
+    g.add("bolt_face", box(0.030, 0.050, -0.006, 0.007, -0.0180, -0.0165), "steel", 0.0005, part="bolt")
     g.add("dust_cover", box(-0.004, 0.060, -0.0235, -0.0115, -0.0222, -0.0200), "alu", 0.0006)
     g.add("deflector", prism([(-0.034, -0.012), (-0.010, -0.012), (-0.010, 0.014), (-0.026, 0.014)], 0.0035,
                              -0.0225), "alu", 0.0012)
     g.add("charging_handle", prism([(-0.126, 0.004), (-0.099, 0.004), (-0.099, 0.019), (-0.120, 0.019),
-                                    (-0.126, 0.013)], 0.0250), "alu", 0.0010)
+                                    (-0.126, 0.013)], 0.0250), "alu", 0.0010, part="charging_handle")
 
     # Lower receiver with the magazine well and the buffer tower.
     lower = [(0.090, -0.024), (0.094, -0.084), (0.022, -0.094), (0.018, -0.062), (-0.046, -0.062),
@@ -224,7 +256,7 @@ def build_gun() -> bpy.types.Object:
              (-0.051, -0.070), (-0.040, -0.0995), (0.0105, -0.0995), (0.0185, -0.090)]
     g.add("trigger_guard", prism(guard, 0.0065), "alu", 0.0006)
     g.add("trigger", prism([(-0.013, -0.060), (-0.006, -0.060), (-0.008, -0.074), (-0.003, -0.090),
-                            (-0.007, -0.092), (-0.014, -0.076)], 0.0032), "steel", 0.0006)
+                            (-0.007, -0.092), (-0.014, -0.076)], 0.0032), "steel", 0.0006, part="trigger")
     for name, u, z in (("pin_front", 0.072, -0.036), ("pin_rear", -0.088, -0.030)):
         g.add(name, pin(u, z, 0.0040, -0.0184, 0.0184), "steel", 0.0005)
     g.add("selector_hub", pin(-0.062, -0.034, 0.0058, 0.0165, 0.0196), "steel", 0.0005)
@@ -233,26 +265,29 @@ def build_gun() -> bpy.types.Object:
     g.add("bolt_catch", prism([(0.034, -0.030), (0.047, -0.030), (0.047, -0.008), (0.040, -0.004),
                                (0.034, -0.010)], 0.0016, 0.0186), "steel", 0.0006)
 
-    # Pistol grip, raked back, rounded for the hand.
-    grip = [(-0.048, -0.060), (-0.058, -0.090), (-0.066, -0.116), (-0.082, -0.168), (-0.128, -0.162),
-            (-0.119, -0.116), (-0.111, -0.082), (-0.108, -0.056)]
-    g.add("grip", prism(grip, 0.0148), "grip", 0.0050, segments=2)
+    # Pistol grip: raked back, oval in section, with a palm swell and a flared base.
+    g.add("grip", handle([(-0.0780, -0.0560, 0.0270, 0.0122), (-0.0815, -0.0740, 0.0250, 0.0138),
+                          (-0.0870, -0.0980, 0.0236, 0.0150), (-0.0940, -0.1240, 0.0226, 0.0150),
+                          (-0.1010, -0.1500, 0.0236, 0.0146), (-0.1055, -0.1660, 0.0258, 0.0152),
+                          (-0.1065, -0.1700, 0.0246, 0.0140)]), "grip", 0.0)
+    g.add("grip_tang", prism([(-0.100, -0.050), (-0.122, -0.040), (-0.127, -0.047), (-0.106, -0.064)], 0.0120),
+          "grip", 0.0020)
 
     # Magazine: follows mag_front(), with pressed ribs and a floor plate.
     levels = [-0.060, -0.085, -0.125, -0.165, -0.205, -0.246]
     body = [(mag_front(z), z) for z in levels] + [(mag_front(z) - 0.060, z - 0.004 * (z < -0.2)) for z in
                                                   reversed(levels)]
-    g.add("magazine", prism(body, 0.0112), "polymer", 0.0016)
+    g.add("magazine", prism(body, 0.0112), "polymer", 0.0016, part="magazine")
     for index, (near, far) in enumerate(((0.008, 0.016), (0.026, 0.034), (0.044, 0.052))):
         rib_levels = [-0.100, -0.140, -0.180, -0.215, -0.238]
         rib = [(mag_front(z) - near, z) for z in rib_levels] + [(mag_front(z) - far, z) for z in
                                                                 reversed(rib_levels)]
-        g.add(f"mag_rib_{index}", prism(rib, 0.0122), "polymer", 0.0008)
+        g.add(f"mag_rib_{index}", prism(rib, 0.0122), "polymer", 0.0008, part="magazine")
     plate_z = -0.246
     g.add("mag_floorplate", prism([(mag_front(plate_z) + 0.004, plate_z + 0.002),
                                    (mag_front(plate_z) + 0.003, plate_z - 0.010),
                                    (mag_front(plate_z) - 0.064, plate_z - 0.014),
-                                   (mag_front(plate_z) - 0.065, plate_z - 0.002)], 0.0130), "polymer", 0.0016)
+                                   (mag_front(plate_z) - 0.065, plate_z - 0.002)], 0.0130), "polymer", 0.0016, part="magazine")
 
     # Handguard: an eight-sided free-float tube with slots on three faces.
     w, top, bottom, c = 0.0215, 0.026, -0.028, 0.0110
@@ -310,6 +345,17 @@ def build_gun() -> bpy.types.Object:
           cut=[box(-0.080, 0.060, 0.0545, 0.0850, -0.0130, 0.0130)])
     g.add("optic_lens_rear", box(-0.0360, -0.0345, 0.0540, 0.0855, -0.0135, 0.0135), "glass", 0.0)
     g.add("optic_lens_front", box(0.0050, 0.0065, 0.0540, 0.0855, -0.0135, 0.0135), "glass", 0.0)
+    # The reticle: a lit dot and four ticks on the shooter's side of the rear lens.
+    # (The lenses are opaque in a game material, so it cannot sit behind one.)
+    mid = (0.0540 + 0.0855) / 2.0
+    g.add("reticle_dot", lathe([(-0.0368, 0.0008), (-0.0362, 0.0008)], 10, z=mid), "reticle", 0.0)
+    for dz, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        lo, hi = 0.0030, 0.0062
+        if dz:
+            tick = box(-0.0368, -0.0362, mid + min(dz * lo, dz * hi), mid + max(dz * lo, dz * hi), -0.00028, 0.00028)
+        else:
+            tick = box(-0.0368, -0.0362, mid - 0.00028, mid + 0.00028, min(dx * lo, dx * hi), max(dx * lo, dx * hi))
+        g.add(f"reticle_tick_{dz}_{dx}", tick, "reticle", 0.0)
     g.add("optic_turret", pin(-0.016, 0.070, 0.0065, -0.0215, -0.0175), "steel", 0.0006)
     g.add("optic_dial", box(-0.024, -0.008, 0.092, 0.096, -0.0080, 0.0080), "alu", 0.0010)
 
@@ -320,8 +366,9 @@ def build_gun() -> bpy.types.Object:
 
     # Stubby fore grip clamped under the handguard.
     g.add("foregrip_clamp", box(0.200, 0.252, -0.0370, -0.0275, -0.0150, 0.0150), "alu", 0.0010)
-    g.add("foregrip", prism([(0.206, -0.036), (0.246, -0.036), (0.242, -0.062), (0.238, -0.108),
-                             (0.212, -0.108), (0.209, -0.062)], 0.0135), "grip", 0.0045, segments=2)
+    g.add("foregrip", handle([(0.2260, -0.0365, 0.0190, 0.0125), (0.2258, -0.0500, 0.0165, 0.0120),
+                              (0.2250, -0.0800, 0.0155, 0.0126), (0.2244, -0.1000, 0.0166, 0.0132),
+                              (0.2240, -0.1090, 0.0178, 0.0138), (0.2240, -0.1120, 0.0164, 0.0124)]), "grip", 0.0)
 
     with window():
         bpy.ops.object.select_all(action="DESELECT")
@@ -418,9 +465,10 @@ def _surface_nodes(tree, name):
     bsdf = n.new("ShaderNodeBsdfPrincipled")
     bevel = n.new("ShaderNodeBevel")
     bevel.samples = 8
-    bevel.inputs["Radius"].default_value = 0.0012 if name != "glass" else 0.0
+    bevel.inputs["Radius"].default_value = 0.0012 if name not in ("glass", "reticle") else 0.0
     coords = n.new("ShaderNodeTexCoord")
-    strength = {"alu": 0.10, "steel": 0.14, "polymer": 0.30, "grip": 0.55, "rubber": 0.5, "glass": 0.0}[name]
+    strength = {"alu": 0.10, "steel": 0.14, "polymer": 0.30, "grip": 0.55, "rubber": 0.5, "glass": 0.0,
+                "reticle": 0.0}[name]
     if name in ("grip", "rubber"):
         height = n.new("ShaderNodeTexVoronoi")           # moulded stipple
         height.inputs["Scale"].default_value = 520.0 if name == "grip" else 300.0
@@ -504,7 +552,8 @@ def compose(images):
     edge, cavity, ident = masks[..., 0], masks[..., 1], masks[..., 2]
     blotch, scratch, grain = noise[..., 0], noise[..., 1], noise[..., 2]
     alu, steel = ident < 0.15, (ident >= 0.15) & (ident < 0.45)
-    polymer, rubber, glass = (ident >= 0.45) & (ident < 0.7), (ident >= 0.7) & (ident < 0.9), ident >= 0.9
+    polymer, rubber = (ident >= 0.45) & (ident < 0.68), (ident >= 0.68) & (ident < 0.82)
+    glass, reticle = (ident >= 0.82) & (ident < 0.95), ident >= 0.95
     metal_part = alu | steel
 
     # How much of the finish is gone: edges first, then scratches and rubbed patches.
@@ -537,6 +586,8 @@ def compose(images):
     base[glass] = rgb(0.16, 0.30, 0.27)
     rough[glass] = 0.05
     metallic[glass] = 1.0
+    base[reticle] = rgb(0.95, 0.16, 0.10)
+    rough[reticle] = 0.5
 
     # Rust blooms on the steel, never on aluminium or plastic.
     rust = steel * np.clip((blotch - 0.62) * 3.5, 0.0, 1.0) * np.clip(grain * 1.6 - 0.2, 0.0, 1.0) * 0.75
@@ -545,7 +596,7 @@ def compose(images):
     metallic = metallic * (1.0 - rust * 0.9)
 
     # Dust and old oil in the recesses.
-    dirt = np.clip(cavity * 1.5 - 0.2, 0.0, 1.0) * (0.45 + 0.55 * blotch) * (~glass)
+    dirt = np.clip(cavity * 1.5 - 0.2, 0.0, 1.0) * (0.45 + 0.55 * blotch) * ~(glass | reticle)
     base = lerp(base, rgb(0.30, 0.265, 0.22), dirt * 0.55)
     rough = rough + (0.90 - rough) * dirt * 0.7
     metallic = metallic * (1.0 - dirt * 0.6)
@@ -553,6 +604,7 @@ def compose(images):
     write("rifle_basecolor", base, True)
     write("rifle_roughness", np.clip(rough, 0.04, 1.0), False)
     write("rifle_metallic", metallic, False)
+    write("rifle_emissive", rgb(1.0, 0.10, 0.06) * reticle[..., None], True)
     write("rifle_normal", pixels(images["normal"])[..., :3], False)
     for image in images.values():
         bpy.data.images.remove(image)
@@ -579,6 +631,8 @@ def final_material(obj):
     normal_map.location = (-300, -420)
     links.new(texture("normal", False, -420).outputs["Color"], normal_map.inputs["Color"])
     links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+    links.new(texture("emissive", True, 700).outputs["Color"], bsdf.inputs["Emission Color"])
+    bsdf.inputs["Emission Strength"].default_value = 4.0
 
     old = list(obj.data.materials)
     obj.data.materials.clear()
@@ -589,20 +643,62 @@ def final_material(obj):
         bpy.data.materials.remove(material)
 
 
-def report(obj):
-    mesh = obj.data
-    triangles = sum(len(p.vertices) - 2 for p in mesh.polygons)
-    xs, ys, zs = zip(*(tuple(v.co) for v in mesh.vertices))
-    print(f"RIFLE triangles {triangles}  length {max(ys) - min(ys):.3f} m  height {max(zs) - min(zs):.3f} m  "
+def split_parts(rifle):
+    """Lift the moving parts out of the joined mesh into child objects, each
+    with its origin where it slides or turns. They keep the shared material
+    and UVs, so one texture set still covers everything."""
+    names = list(PARTS)
+    made = []
+    for index, name in enumerate(names):
+        if index == 0:
+            continue
+        mesh = rifle.data.copy()
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        layer = bm.faces.layers.int["part"]
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f[layer] != index], context="FACES")
+        pivot = P(*PARTS[name][0])
+        bmesh.ops.translate(bm, verts=bm.verts, vec=-pivot)
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.name = f"rifle_{name}"
+        part = bpy.data.objects.new(f"rifle_{name}", mesh)
+        bpy.context.scene.collection.objects.link(part)
+        part.parent = rifle
+        part.location = pivot
+        for key, value in PARTS[name][1].items():
+            part[key] = value
+        made.append(part)
+    bm = bmesh.new()
+    bm.from_mesh(rifle.data)
+    layer = bm.faces.layers.int["part"]
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f[layer] != 0], context="FACES")
+    bm.to_mesh(rifle.data)
+    bm.free()
+    for obj in [rifle] + made:
+        obj.data.attributes.remove(obj.data.attributes["part"])
+    return made
+
+
+def report(objects):
+    points, total = [], 0
+    for obj in objects:
+        triangles = sum(len(p.vertices) - 2 for p in obj.data.polygons)
+        total += triangles
+        points += [obj.matrix_world @ v.co for v in obj.data.vertices]
+        print(f"  {obj.name:24s} {triangles:5d} triangles  origin {tuple(round(c, 4) for c in obj.matrix_world.translation)}")
+    xs, ys, zs = zip(*(tuple(p) for p in points))
+    print(f"RIFLE triangles {total}  length {max(ys) - min(ys):.3f} m  height {max(zs) - min(zs):.3f} m  "
           f"width {max(xs) - min(xs):.3f} m")
 
 
-def export(obj):
+def export(objects):
     EXPORT.mkdir(exist_ok=True)
     with window():
         bpy.ops.object.select_all(action="DESELECT")
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
         bpy.ops.export_scene.fbx(
             filepath=str(EXPORT / "rifle.fbx"), use_selection=True, object_types={"MESH"},
             apply_scale_options="FBX_SCALE_UNITS", axis_forward="-Z", axis_up="Y", mesh_smooth_type="EDGE",
@@ -687,17 +783,41 @@ def render(obj):
     bpy.ops.render.render(write_still=True)
     print("  + renders/rifle_detail.png")
 
+    # 3: the moving parts pulled out along their travel, seen from behind on the right,
+    # which is also where the reticle shows.
+    moved = {"rifle_magazine": Vector((0.0, -0.035, -0.17)), "rifle_bolt": Vector((0.0, 0.045, 0.0)),
+             "rifle_charging_handle": Vector((0.0, 0.06, 0.0))}
+    for name, offset in moved.items():
+        bpy.data.objects[name].location += offset
+    bpy.data.objects["rifle_trigger"].rotation_euler.x = math.radians(-12.0)
+    camera.data.lens = 60.0
+    camera.location = (-0.78, 0.86, 0.30)
+    aim(camera, Vector((0.0, -0.10, -0.03)))
+    lights[0].location = (-1.6, 1.2, 1.9)
+    aim(lights[0], centre)
+    lights[2].location = (1.4, -0.4, 1.5)
+    aim(lights[2], centre)
+    scene.render.resolution_x, scene.render.resolution_y = 1800, 1100
+    scene.render.filepath = str(RENDERS / "rifle_parts.png")
+    bpy.ops.render.render(write_still=True)
+    print("  + renders/rifle_parts.png")
+    for name, offset in moved.items():
+        bpy.data.objects[name].location -= offset
+    bpy.data.objects["rifle_trigger"].rotation_euler.x = 0.0
+
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     bpy.ops.wm.read_homefile(use_empty=True)
     rifle = build_gun()
-    report(rifle)
     unwrap(rifle)
     stats = compose(bake_maps(rifle))
     print(f"  finish worn away on {stats['wear'] * 100:.0f}% of the metal, dirt on {stats['dirt'] * 100:.0f}%")
     final_material(rifle)
-    export(rifle)
+    parts = [rifle] + split_parts(rifle)
+    bpy.context.view_layer.update()
+    report(parts)
+    export(parts)
     with window():
         bpy.ops.wm.save_as_mainfile(filepath=str(HERE / "rifle.blend"), compress=True, relative_remap=True)
     if "--no-render" not in args:

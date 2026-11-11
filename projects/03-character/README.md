@@ -38,10 +38,28 @@ of a real 5.56 carbine. It is an original design and copies no real firearm.
 
 | | |
 | --- | --- |
-| Triangles | 5,776 |
+| Triangles | 5,972 in all |
 | Size | 0.886 m long, 0.356 m tall, 51 mm wide; 0.35 m length of pull |
-| Mesh | One object, one material; muzzle along -Y, origin at the top of the pistol grip |
-| Textures | 2K base colour, normal, roughness and metallic |
+| Objects | `rifle` and four moving parts parented to it (below); one material |
+| Axes | Muzzle along -Y in Blender (+Z in Godot); origin at the top of the pistol grip |
+| Textures | 2K base colour, normal, roughness, metallic and emissive (the reticle) |
+
+The moving parts are separate objects so they can be animated. Each has its
+origin where it moves from, and carries its travel as custom properties
+(glTF extras in Godot):
+
+| Object | Pivot | Motion |
+| --- | --- | --- |
+| `rifle_magazine` | top of the magazine, in the well | slides down and out, about 0.20 m |
+| `rifle_bolt` | middle of the bolt carrier | slides back (+Y) 0.085 m |
+| `rifle_charging_handle` | its front edge | slides back (+Y) 0.075 m |
+| `rifle_trigger` | its pin | turns about X, 12 degrees |
+
+The pistol grip and fore grip are lofted through oval sections, with a palm
+swell and a flared base. The optic has a lit reticle (a dot and four ticks)
+on the shooter's side of its rear lens.
+
+![Parts](renders/rifle_parts.png)
 
 Edges are chamfered in the mesh and rounded in the normal map. The wear is
 baked, not painted: Cycles records where the convex edges, the recesses and
@@ -58,8 +76,9 @@ moulded polymer polished where it is handled, and dust in the recesses.
 | `human.py` | Builds, exports and renders the human |
 | `rifle.py` | Builds, bakes, exports and renders the carbine |
 | `export/` | `human_tpose.fbx`, `rifle.fbx`, and a `.glb` of each |
+| `mixamo/` | Where the rigged character and its animations go: see `mixamo/README.md` |
 | `textures/` | The texture sets, as files |
-| `renders/` | `human_{front,side,back}.png`, `rifle_{side,detail}.png` |
+| `renders/` | `human_{front,side,back}.png`, `rifle_{side,detail,parts}.png` |
 
 ```bash
 python3 projects/03-character/fetch.py
@@ -88,7 +107,11 @@ blender -b --python projects/03-character/rifle.py
   and hands, which MakeHuman models densely (inner mouth included).
 - The teeth and tongue were left out to stay in budget, so the mouth cannot
   open onto anything yet.
-- The rifle has no moving parts split out (bolt, magazine and trigger are
-  joined to the body) and the inside of the optic has no reticle.
-- Not yet rigged or brought into Godot: Mixamo needs a browser and an Adobe
-  login, which a cloud session does not have.
+- The rifle is solid: with the magazine out there is no magazine well to
+  look into, and the bolt slides over a flat pocket. The reticle is painted
+  on the rear lens, not projected, so it does not stay on target as the eye
+  moves.
+- Not yet rigged: Mixamo needs a browser and an Adobe login, which a cloud
+  session does not have. The Godot side is ready for the files
+  (`mixamo/README.md`, `game/scripts/character.gd`); it was tested with a
+  stand-in rig, so the rifle's position in the hand is a first guess.
