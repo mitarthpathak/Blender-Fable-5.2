@@ -193,19 +193,24 @@ def book(mb, x, y, z, region=None, yaw=0.0, size=(0.13, 0.19, 0.028), key="book_
         obox(mb, (x, y, z), size, yaw, key)
 
 
-def heap(mb, x, y, z, rx, ry, height, key, seed=0, yaw=0.0, n=14):
+def heap(mb, x, y, z, rx, ry, height, key, seed=0, yaw=0.0, n=20):
     """A pile of cloth: dropped clothes, a towel on the floor, washing in a
-    basket. A lumpy mound, never the same twice."""
+    basket. A low, soft mound with a few folds, never the same twice. Build
+    it into a mesh that is shaded fully smooth."""
     rng = random.Random(seed)
+    folds = [(rng.uniform(0, 6.28), rng.randint(2, 4), rng.uniform(0.05, 0.12)) for _ in range(3)]
     rings = []
-    for t in (0.0, 0.25, 0.55, 0.8):
-        loop = ring(x, y, z + height * (t ** 0.8), rx * (1.0 - 0.75 * t ** 1.4), ry * (1.0 - 0.75 * t ** 1.4), n, 2.4, yaw)
-        for p in loop:
-            p.x += rng.uniform(-0.12, 0.12) * rx * (0.3 + t)
-            p.y += rng.uniform(-0.12, 0.12) * ry * (0.3 + t)
-            p.z += rng.uniform(-0.10, 0.16) * height * (0.2 + t)
+    for t in (0.0, 0.12, 0.3, 0.5, 0.7, 0.88):
+        scale = 1.0 - 0.9 * t ** 1.5
+        loop = ring(x, y, 0.0, rx * scale, ry * scale, n, 2.2, yaw)
+        for k, p in enumerate(loop):
+            a = 2.0 * math.pi * k / n
+            wave = sum(amp * math.sin(a * lobes + phase) for phase, lobes, amp in folds)
+            p.x = x + (p.x - x) * (1.0 + wave * (0.4 + t))
+            p.y = y + (p.y - y) * (1.0 + wave * (0.4 + t))
+            p.z = z + height * (1.0 - (1.0 - t) ** 1.7) * (1.0 + 0.5 * wave)
         rings.append(loop)
-    rings.append([Vector((x + rng.uniform(-0.2, 0.2) * rx, y + rng.uniform(-0.2, 0.2) * ry, z + height))])
+    rings.append([Vector((x, y, z + height))])
     loft(mb, rings, key)
 
 
@@ -398,13 +403,16 @@ def vhs_stack(mb, x, y, z, count=4, yaw=0.0, seed=0):
              yaw + rng.uniform(-6, 6), "c_black", prints={"front": "vhs"})
 
 
-def suitcase(mb, x, y, z, yaw=0.0, key="leather", seed=0):
-    """A suitcase open on the floor, half packed."""
+def suitcase(mb, soft, x, y, z, yaw=0.0, key="vinyl", seed=0):
+    """A suitcase open on the floor, half packed. The clothes go into `soft`."""
     obox(mb, (x, y, z), (0.62, 0.42, 0.11), yaw, key)
     ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
     obox(mb, (x - 0.24 * sa, y + 0.24 * ca, z + 0.11), (0.62, 0.09, 0.42), yaw, key, lean=-14.0)     # the lid, up
-    heap(mb, x, y, z + 0.10, 0.27, 0.17, 0.10, "fabric_bed", seed=seed)
-    heap(mb, x + 0.12 * ca, y + 0.12 * sa, z + 0.12, 0.12, 0.10, 0.07, "fabric_plaid", seed=seed + 1)
+    for sx in (-1, 1):                                         # the catches
+        obox(mb, (x + sx * 0.18 * ca + 0.212 * sa, y + sx * 0.18 * sa - 0.212 * ca, z + 0.06), (0.04, 0.008, 0.03), yaw,
+             "metal_brass")
+    heap(soft, x, y, z + 0.10, 0.27, 0.17, 0.09, "fabric_curtain", seed=seed)
+    heap(soft, x + 0.12 * ca, y + 0.12 * sa, z + 0.13, 0.13, 0.10, 0.06, "fabric_plaid", seed=seed + 1)
 
 
 def clock_radio(mb, x, y, z, yaw=0.0):

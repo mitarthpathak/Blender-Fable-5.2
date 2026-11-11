@@ -15,7 +15,8 @@ from mathutils import Vector
 
 import plan
 from . import dressing as dr
-from . import bathroom, joinery, kitchen, models
+from . import bathroom, joinery, kitchen, models, shapes
+from . import clutter as cl
 from .core import MeshBuilder
 from .dressing import (CHIMNEY, DIVIDER_N, DIVIDER_S, EAST, F1, HALL_EAST, NORTH, ROOM_WEST, SOUTH, WEST,
                        Decals)
@@ -75,32 +76,14 @@ def bed(name, x0, y0, x1, y1, floor, seed=5, coll="furniture"):
             duvet.face([q[0] for q in quad], "fabric_bed", uvs=[q[1] for q in quad])
     made.append(duvet.build(name + "_duvet", coll, smooth=True))
 
+    # Pillows: one slept on, one shoved against the headboard, one on the floor beside the bed.
     pillows = MeshBuilder()
-    for k, (px, ang) in enumerate((((x0 + x1) / 2 - 0.40, 6.0), ((x0 + x1) / 2 + 0.38, -11.0))):
-        _pillow(pillows, px, y1 - 0.34, top + 0.05, 0.33, 0.23, 0.075, ang)
-    made.append(pillows.build(name + "_pillows", coll, smooth=True, recalc=True))
+    mid = (x0 + x1) / 2
+    cl.pillow(pillows, mid - 0.40, y1 - 0.36, top + 0.085, 0.34, 0.23, 0.17, yaw=6.0, dent=0.45, seed=1)
+    cl.pillow(pillows, mid + 0.38, y1 - 0.25, top + 0.17, 0.34, 0.23, 0.18, yaw=-9.0, lean=38.0, dent=0.15, seed=2)
+    cl.pillow(pillows, x1 + 0.42, y0 + 0.75, floor + 0.07, 0.33, 0.22, 0.16, yaw=64.0, dent=0.2, seed=3)
+    made.append(shapes.soften(pillows.build(name + "_pillows", coll), 60.0))
     return made
-
-
-def _pillow(mb, cx, cy, cz, rx, ry, rz, angle_deg, key="fabric_pillow"):
-    seg_u, seg_v = 14, 8
-    ca, sa = math.cos(math.radians(angle_deg)), math.sin(math.radians(angle_deg))
-
-    def pt(i, j):
-        u = 2 * math.pi * i / seg_u
-        v = math.pi * (j / seg_v - 0.5)
-
-        def sq(c, p=0.45):                                  # push the sphere towards a cushion shape
-            return math.copysign(abs(c) ** p, c)
-        x, y, z = sq(math.cos(u)) * abs(math.cos(v)) ** 0.5 * rx, sq(math.sin(u)) * abs(math.cos(v)) ** 0.5 * ry, \
-            math.sin(v) * rz
-        return Vector((cx + x * ca - y * sa, cy + x * sa + y * ca, cz + z))
-
-    for i in range(seg_u):
-        for j in range(seg_v):
-            quad = [pt(i, j), pt(i + 1, j), pt(i + 1, j + 1), pt(i, j + 1)]
-            mb.face(quad, key, uvs=[(i / seg_u * 2, j / seg_v), ((i + 1) / seg_u * 2, j / seg_v),
-                                    ((i + 1) / seg_u * 2, (j + 1) / seg_v), (i / seg_u * 2, (j + 1) / seg_v)])
 
 
 def wardrobe(name, face, a0, a1, floor, depth=0.58, height=2.02, ajar=24.0, coll="furniture"):
@@ -196,7 +179,37 @@ def hall():
     # a framed picture taken down and left leaning at the foot of the stair wall
     put("hanging_picture_frame_02", "picture_leaning", 0.10, 1.82, 0.27, facing=0, tilt=(0, 0))
 
+    # Lived in: shoes under the coats, an umbrella, the post, a telephone, family photographs.
+    small, soft = MeshBuilder(), MeshBuilder()
+    dr.curtain("coat_hall_short", WEST, hooks[0] - 0.17, hooks[0] + 0.17, 1.66, 0.92, seed=13, off=0.08,
+               key="fabric_plaid")
+    for y, yaw, kind, boot in ((0.50, 4, "wood_dark", True), (0.63, -6, "wood_dark", True), (0.92, 10, "rubber", False),
+                               (1.04, -3, "rubber", False), (1.34, 14, "vinyl", False)):
+        cl.shoe(small, 0.20, y, GF, yaw=yaw, key=kind, boot=boot)
+    cl.shoe(small, 0.46, 1.50, GF, yaw=-40, key="vinyl", tipped=True)
+    cl.umbrella(small, (0.07, 0.10, GF), (0.05, 0.05, GF + 0.86))
+    cl.post(small, 1.72, 0.80, GF + 0.013, seed=5, spread=0.36, count=9)
+    cl.paper_stack(small, 2.12, 0.42, GF, count=14, yaw=8, seed=2)
+    shapes.sheet(small, (2.10, 0.44, GF + 0.128), 0.21, "magazine_a", yaw=30, lift=0.001)
+    cl.phone(small, 2.17, 3.06, GF + 0.762, yaw=-82)
+    cl.book(small, 2.19, 2.83, GF + 0.762, "phonebook", yaw=-96, size=(0.15, 0.21, 0.035))
+    cl.keys_dish(small, 2.16, 2.80, GF + 0.797, seed=3)
+    cl.framed(small, HALL_EAST, 2.55, 1.66, 0.25, "photo_a", tilt=-1.5)
+    cl.framed(small, HALL_EAST, 2.93, 1.58, 0.19, "photo_d", tilt=5.0, key="wood_mid")
+    cl.framed(small, HALL_EAST, 2.60, 1.34, 0.16, "photo_b", tilt=1.0, key="metal_brass")
+    shapes.poster(small, HALL_EAST, 0.50, 1.52, 0.21, "missing", tilt=2.0)                     # taped up by the front door
+    shapes.poster(small, HALL_EAST, 0.74, 1.40, 0.15, "letter", tilt=-3.0)
+    cl.open_box(small, 1.80, 7.46, GF, yaw=14, seed=1)
+    cl.heap(soft, 1.80, 7.46, GF + 0.14, 0.19, 0.14, 0.14, "fabric_curtain", seed=4, yaw=14)
+    cl.open_box(small, 1.28, 7.60, GF, size=(0.40, 0.40, 0.34), yaw=-8, flaps=(170.0, 100.0, 160.0, 120.0), seed=2)
+    for k in range(5):
+        cl.book(small, 1.28 + 0.01 * k, 7.60, GF + 0.03 + k * 0.03, yaw=-8 + 9 * k, key=dr.BOOK_COLORS[k])
+    shapes.soften(small.build("clutter_hall", "clutter"))
+    shapes.soften(soft.build("clutter_hall_cloth", "clutter"), 80.0)
+
     fx = MeshBuilder()
+    dr.cable(fx, [(2.10, 3.12, 0.77), (2.02, 3.22, 0.60), (2.30, 3.45, 0.04), (2.385, 3.56, 0.30)], radius=0.0028,
+             key="plastic_cream")
     dr.switch(fx, HALL_EAST, 0.95, 1.22, double=True)             # by the front door
     dr.switch(fx, WEST, 7.25, 1.22)
     dr.socket(fx, HALL_EAST, 3.62, 0.32)
@@ -240,19 +253,53 @@ def living():
     put("hanging_picture_frame_02", "picture_living", plan.PART_X1, 3.55, 1.62, facing=0, tilt=(0, -4.0))
     put("wine_bottles_01", "bottles", 5.36, 2.02, 0.545, facing=20, scale=0.9)
     put("ceramic_vase_01", "vase_sideboard", 5.02, 4.14, 0.832, facing=0, scale=0.8)
-    put("Ottoman_01", "ottoman", 5.25, 3.42, 0.012, facing=-75)
+    put("Ottoman_01", "ottoman", 5.18, 3.30, 0.012, facing=-75, scale=0.7)
     dr.radiator("radiator_living", SOUTH, 4.22, 5.62, GF)
 
     dr.curtain_pole("pole_living_front", SOUTH, 3.50, 6.34, 2.40)
     dr.curtain("curtain_living_front_l", SOUTH, 3.52, 4.18, 2.39, 0.04, seed=1)
     dr.curtain("curtain_living_front_r", SOUTH, 5.28, 6.32, 2.39, 0.04, seed=2)
 
-    small = MeshBuilder()
-    dr.mug(small, 5.50, 2.52, 0.545)
-    dr.mug(small, 5.33, 2.44, 0.545)
-    dr.newspaper(small, 5.44, 2.20, 0.545, 28)
-    dr.newspaper(small, 4.9, 3.05, 0.012, 64)
-    small.build("clutter_living", "clutter", smooth=False)
+    small, soft = MeshBuilder(), MeshBuilder()
+    table = 0.548
+    dr.mug(small, 5.50, 2.52, table)
+    dr.mug(small, 5.33, 2.44, table)
+    shapes.sheet(small, (5.43, 2.20, table), 0.30, "newspaper", yaw=118, lift=0.002)
+    shapes.sheet(small, (5.48, 2.02, table), 0.20, "magazine_a", yaw=70, lift=0.004)
+    cl.ashtray(small, 5.36, 2.62, table, butts=7, seed=6)
+    cl.cigarettes(small, 5.50, 2.66, table, yaw=25)
+    shapes.obox(small, (5.42, 2.70, table), (0.045, 0.055, 0.006), -30, "c_red", prints={"top": "matchbook"})
+    cl.remote(small, 5.30, 2.28, table, yaw=-20)
+    cl.tin(small, 5.52, 2.36, table, "beer", radius=0.032, height=0.12, turn=40)
+    cl.tin(small, 5.05, 2.95, 0.045, "beer", radius=0.032, height=0.12, turn=120)         # one on the rug, on its side
+    shapes.sheet(small, (4.9, 3.05, 0.013), 0.30, "newspaper", yaw=64, lift=0.002)
+    shapes.sheet(small, (5.0, 1.5, 0.013), 0.21, "magazine_b", yaw=-20, lift=0.002)
+    # on the sofa: two cushions and a blanket someone slept under
+    cl.pillow(soft, 4.02, 1.68, 0.60, 0.22, 0.22, 0.15, yaw=90, lean=-62, seed=11, key="fabric_plaid")
+    cl.pillow(soft, 4.20, 3.02, 0.50, 0.22, 0.22, 0.15, yaw=70, lean=-18, dent=0.4, seed=12, key="fabric_plaid")
+    cl.heap(soft, 4.30, 2.35, 0.40, 0.26, 0.55, 0.12, "fabric_plaid", seed=13)
+    cl.pillow(soft, 5.9, 3.42, 0.52, 0.20, 0.20, 0.13, yaw=10, lean=-30, seed=14, key="fabric_curtain")
+    # by the television: a video recorder, tapes, and slippers kicked off by the armchair
+    shapes.obox(small, (6.98, 0.82, 0.30), (0.26, 0.38, 0.085), 68, "c_black")
+    cl.vhs_stack(small, 6.60, 1.36, 0.012, count=5, yaw=20, seed=3)
+    cl.vhs_stack(small, 6.86, 1.32, 0.012, count=2, yaw=-35, seed=4)
+    cl.shoe(small, 5.62, 2.96, 0.012, yaw=-70, key="fabric_plaid", length=0.27)
+    cl.shoe(small, 5.80, 2.86, 0.012, yaw=-95, key="fabric_plaid", length=0.27)
+    # photographs: on the sideboard and the mantelpiece, and hung over the sideboard
+    cl.standing_photo(small, 5.30, 4.20, 0.832, "photo_c", yaw=6)
+    cl.standing_photo(small, 4.92, 4.26, 0.832, "polaroid", yaw=-14, width=0.09, key="wood_dark")
+    cl.standing_photo(small, 6.86, 2.62, 1.146, "photo_b", yaw=-96, width=0.11)
+    cl.framed(small, DIVIDER_S, 5.55, 1.62, 0.34, "photo_a", tilt=-2.0)
+    cl.framed(small, DIVIDER_S, 5.08, 1.52, 0.20, "photo_d", tilt=4.0, key="metal_brass")
+    cl.framed(small, DIVIDER_S, 6.02, 1.50, 0.18, "photo_c", tilt=-1.0, key="wood_mid")
+    # a packing box by the bookcase, half filled with what came off its shelves
+    cl.open_box(small, 6.58, 3.72, 0.0, yaw=80, seed=3)
+    for k in range(6):
+        cl.book(small, 6.58, 3.72 + 0.004 * k, 0.03 + k * 0.032, yaw=80 + 11 * k, key=dr.BOOK_COLORS[(k * 2) % 6])
+    cl.book(small, 6.36, 4.10, 0.0, "paperback", yaw=30)
+    cl.book(small, 6.42, 4.14, 0.028, yaw=75, key="book_green")
+    shapes.soften(small.build("clutter_living", "clutter"))
+    shapes.soften(soft.build("clutter_living_cloth", "clutter"), 80.0)
 
     fx = MeshBuilder()
     dr.switch(fx, ROOM_WEST, 2.22, 1.22, double=True)
@@ -261,6 +308,8 @@ def living():
     dr.cable(fx, [(6.96, 0.66, 0.60), (6.99, 0.42, 0.30), (6.90, 0.10, 0.02), (6.74, 0.012, 0.30)], radius=0.0035)
     dr.cable(fx, [(5.87, 4.15, 0.84), (6.02, 4.28, 0.6), (6.15, 4.36, 0.05), (6.25, 4.388, 0.30)], radius=0.003)
     dr.cable(fx, [(2.86, 2.55, 0.02), (2.66, 2.9, 0.01), (2.60, 3.3, 0.01), (2.552, 3.6, 0.30)], radius=0.003)
+    dr.cable(fx, [(7.05, 0.80, 0.32), (7.16, 0.50, 0.12), (7.05, 0.20, 0.02), (6.80, 0.012, 0.30)], radius=0.003)
+    dr.cable(fx, [(7.10, 0.86, 0.58), (7.24, 0.9, 0.40), (7.27, 1.2, 0.04), (7.20, 1.45, 0.02)], radius=0.0025)
     dr.socket(fx, ROOM_WEST, 3.6, 0.32)
     fx.build("electrics_living", "fixtures")
 
@@ -287,6 +336,21 @@ def landing():
     dr.rug("runner_landing", 1.36, 3.25, 2.22, 7.55, F1, key="carpet_runner")
     dr.radiator("radiator_landing", WEST, 0.6, 1.5, F1)
     put("cardboard_box_01", "box_landing", 0.5, 7.5, F1, facing=70, scale=0.9)
+
+    small, soft = MeshBuilder(), MeshBuilder()
+    cl.heap(soft, 0.44, 0.50, F1 + 0.46, 0.20, 0.18, 0.10, "fabric_curtain", seed=31)              # clothes on the chair
+    cl.heap(soft, 0.95, 0.62, F1, 0.26, 0.20, 0.09, "fabric_plaid", seed=32, yaw=30)
+    cl.shoe(small, 1.30, 0.34, F1, yaw=100, key="wood_dark")
+    cl.shoe(small, 1.46, 0.42, F1, yaw=80, key="wood_dark", tipped=True)
+    cl.paper_stack(small, 2.16, 0.60, F1, count=9, yaw=-12, seed=5)
+    cl.framed(small, HALL_EAST, 4.05, F1 + 1.62, 0.26, "photo_b", tilt=1.5)
+    cl.framed(small, HALL_EAST, 4.45, F1 + 1.56, 0.18, "photo_c", tilt=-4.0, key="wood_mid")
+    cl.framed(small, HALL_EAST, 6.15, F1 + 1.60, 0.20, "photo_d", tilt=0.0, key="metal_brass")
+    cl.open_box(small, 1.72, 7.50, F1, size=(0.44, 0.36, 0.28), yaw=-20, flaps=(100.0, 165.0, 130.0, 95.0), seed=6)
+    cl.heap(soft, 1.72, 7.50, F1 + 0.10, 0.18, 0.14, 0.17, "fabric_curtain", seed=33, yaw=-20)
+    shapes.sheet(small, (1.9, 2.4, F1), 0.21, "magazine_b", yaw=50, lift=0.014)
+    shapes.soften(small.build("clutter_landing", "clutter"))
+    shapes.soften(soft.build("clutter_landing_cloth", "clutter"), 80.0)
 
     fx = MeshBuilder()
     dr.switch(fx, HALL_EAST, 2.85, F1 + 1.22, double=True)
@@ -322,15 +386,37 @@ def bedroom():
     dr.curtain("curtain_bedroom_l", SOUTH, 3.52, 4.95, F1 + 2.39, F1 + 0.04, seed=5)
     dr.curtain("curtain_bedroom_r", SOUTH, 5.72, 6.32, F1 + 2.39, F1 + 0.04, seed=6)
 
-    small = MeshBuilder()
+    small, soft = MeshBuilder(), MeshBuilder()
     dr.mug(small, 3.95, 4.14, F1 + 0.70)
-    dr.newspaper(small, 6.05, 3.2, F1 + 0.002, 40)
+    shapes.sheet(small, (6.05, 3.2, F1), 0.30, "newspaper", yaw=40, lift=0.003)
+    # bedside: a glass, pills, an ashtray, a paperback, a clock radio
+    cl.glass(small, 3.82, 4.20, F1 + 0.70)
+    cl.tin(small, 4.04, 4.24, F1 + 0.70, "pills", radius=0.022, height=0.065, turn=30)
+    cl.tin(small, 4.08, 4.08, F1 + 0.722, "pills", radius=0.022, height=0.065, turn=200)
+    cl.book(small, 3.80, 4.04, F1 + 0.70, "paperback", yaw=-15)
+    cl.clock_radio(small, 6.28, 4.24, F1 + 0.617, yaw=12)
+    cl.ashtray(small, 6.06, 4.02, F1 + 0.617, butts=4, seed=9)
+    # clothes: over the chair, on the floor, and a suitcase open and half packed
+    cl.heap(soft, 6.56, 1.86, F1 + 0.46, 0.20, 0.18, 0.14, "fabric_plaid", seed=41)
+    cl.heap(soft, 5.95, 1.55, F1, 0.30, 0.22, 0.07, "towel", seed=42, yaw=40)
+    cl.heap(soft, 3.50, 2.45, F1, 0.22, 0.18, 0.08, "fabric_curtain", seed=43, yaw=-20)
+    cl.suitcase(small, soft, 5.36, 2.98, F1 + 0.585, yaw=78, seed=44)       # on the foot of the bed
+    cl.shoe(small, 4.02, 3.20, F1, yaw=95, key="wood_dark")
+    cl.shoe(small, 3.90, 3.02, F1, yaw=70, key="wood_dark")
+    cl.shoe(small, 6.20, 2.70, F1, yaw=-150, key="rubber", boot=True, tipped=True)
+    # the top of the chest of drawers: photographs, a tin of coins, a hairbrush's worth of clutter
+    cl.standing_photo(small, 7.04, 0.78, F1 + 0.92, "photo_a", yaw=-100)
+    cl.standing_photo(small, 7.08, 1.24, F1 + 0.92, "polaroid_b", yaw=-80, width=0.09, key="wood_dark")
+    shapes.sheet(small, (6.90, 0.98, F1 + 0.92), 0.10, "polaroid", yaw=30, lift=0.002)
+    shapes.sheet(small, (6.86, 0.62, F1 + 0.92), 0.13, "postcard", yaw=-60, lift=0.002)
+    cl.framed(small, DIVIDER_S, 5.95, F1 + 1.66, 0.24, "photo_b", tilt=3.0)
     rng = random.Random(9)
     for k in range(4):                                      # books stacked by the bed
         t = rng.uniform(0.022, 0.04)
         small.box((3.72, 3.52, F1 + 0.001 + k * 0.034), (3.92, 3.80, F1 + 0.001 + k * 0.034 + t),
                   rng.choice(dr.BOOK_COLORS), skip="-z")
-    small.build("clutter_bedroom", "clutter")
+    shapes.soften(small.build("clutter_bedroom", "clutter"))
+    shapes.soften(soft.build("clutter_bedroom_cloth", "clutter"), 80.0)
 
     fx = MeshBuilder()
     dr.switch(fx, ROOM_WEST, 3.05, F1 + 1.22)
@@ -338,6 +424,8 @@ def bedroom():
     dr.socket(fx, DIVIDER_S, 3.7, F1 + 0.32)
     dr.cable(fx, [(6.19, 4.15, F1 + 0.63), (6.33, 4.25, F1 + 0.5), (6.42, 4.36, F1 + 0.1), (6.45, 4.388, F1 + 0.30)],
              radius=0.003)
+    dr.cable(fx, [(6.34, 4.28, F1 + 0.63), (6.40, 4.33, F1 + 0.45), (6.46, 4.37, F1 + 0.12), (6.49, 4.388, F1 + 0.30)],
+             radius=0.0025)
     fx.build("electrics_bedroom", "fixtures")
 
     d = Decals("decals_bedroom", seed=24)

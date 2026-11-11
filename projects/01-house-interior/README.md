@@ -145,8 +145,9 @@ stains, mould, rust, limescale, grease, burnt-on spills, mug rings).
 - **Practicals**: warm lamps on the hall table, the sideboard and the bedside;
   the cooker hood and the open fridge in the kitchen; the strip light over
   the bathroom mirror.
-- **Flicker-ready**: `light_hall_flicker` (the hall pendant) and
-  `light_tv_flicker` carry a `flicker` custom property. In Blender the pendant
+- **Flicker-ready**: `light_hall_flicker` (the hall pendant),
+  `light_kitchen_flicker` (the kitchen strip light) and `light_tv_flicker`
+  carry a `flicker` custom property. In Blender the pendant
   has a noise modifier on its power; in an engine, drive the energy yourself.
 - **Haze**: `fog_volume` is a render-only box of thin fog that turns the
   moonlight into beams. It is not exported; use the engine's volumetric fog.

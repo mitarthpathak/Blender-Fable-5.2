@@ -89,7 +89,7 @@ SURFACES: dict[str, Surface] = {
     "wall_hall": Surface("decrepit_wallpaper", "#8a8570"),
     "wall_landing": Surface("decrepit_wallpaper", "#8a8570"),
     "wall_living": Surface("decrepit_wallpaper", "#7c7f6a"),
-    "wall_bedroom": Surface("peeling_painted_wall", "#7d877f"),
+    "wall_bedroom": Surface("peeling_painted_wall", "#7d877f", mono=True),
     "wall_kitchen": Surface(PLASTER, "#9c9577"),
     "wall_bathroom": Surface("peeling_painted_wall", "#869089", mono=True),
     "tile_bathroom": Surface("long_white_tiles", "#a7b0a3", mono=True, mould=0.45),

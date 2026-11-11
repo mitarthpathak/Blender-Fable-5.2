@@ -238,7 +238,7 @@ def stove(small):
     EAST.box(hood, a0 + 0.30, a0 + 0.44, 0.40, 0.47, GF + 1.552, GF + 1.556, "bulb_on")
     hood.build("kitchen_hood", "fixtures", recalc=True)
     lamp = EAST.P(a0 + 0.37, 0.43, GF + 1.52)
-    dr.lightpoint("hood", tuple(lamp), "warm", 24.0)
+    dr.lightpoint("hood", tuple(lamp), "warm", 36.0)
     return obj
 
 
@@ -270,7 +270,7 @@ def fridge(small):
     shapes.printed(mb, [(xf - 0.0605, y0 + 0.31, top - 0.11), (xf - 0.0605, y0 + 0.07, top - 0.11),
                         (xf - 0.0605, y0 + 0.07, top - 0.05), (xf - 0.0605, y0 + 0.31, top - 0.05)], "fridge_badge")
     obj = mb.build("kitchen_fridge", "furniture")
-    dr.lightpoint("fridge", (xb - 0.14, (y0 + y1) / 2, split - 0.10), "warm", 18.0)
+    dr.lightpoint("fridge", (xb - 0.14, (y0 + y1) / 2, split - 0.10), "warm", 30.0)
 
     # the lower door: hinged on the south side, so it opens towards the room
     door = MeshBuilder()
@@ -425,10 +425,14 @@ def wall_things(small):
     dr.socket(fx, EAST, 5.50, GF + 1.12)
     dr.socket(fx, EAST, 4.72, GF + 0.32)
     dr.cable(fx, [(7.02, 5.44, GF + 1.02), (7.20, 5.48, GF + 1.06), (7.288, 5.50, GF + 1.12)], radius=0.003)
-    # a fluorescent strip light on the ceiling: dead
+    # a fluorescent strip light on the ceiling, on its way out: it flickers
     fx.box((3.86, 5.95, plan.CEILING - 0.055), (5.06, 6.09, plan.CEILING), "plastic_white")
-    fx.cylinder((3.90, 6.02, plan.CEILING - 0.07), (1.12, 0, 0), 0.014, "bulb_off", segments=8)
     fx.build("electrics_kitchen", "fixtures")
+    tube = MeshBuilder()
+    tube.cylinder((3.90, 6.02, plan.CEILING - 0.07), (1.12, 0, 0), 0.014, "bulb_on", segments=8)
+    lamp = tube.build("lamp_kitchen_tube", "lamps")
+    lamp.visible_shadow = False
+    dr.lightpoint("kitchen", (4.46, 6.02, plan.CEILING - 0.14), "flicker", 55.0)
 
     dr.radiator("radiator_kitchen", ROOM_WEST, 7.38, 7.92, GF)
     dr.curtain_pole("pole_kitchen", NORTH, 3.87, 5.99, GF + 2.36)

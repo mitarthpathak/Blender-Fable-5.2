@@ -213,6 +213,8 @@ LIGHTS: tuple[tuple[int, str, float, float, str], ...] = (
     (0, "broken", 2.85, 2.55, "broken floor lamp"),
     (0, "warm", 5.90, 4.20, "lamp"),
     (0, "warm", 6.80, 4.96, "fridge, left open"),
+    (0, "flicker", 4.46, 6.02, "strip light (flicker-ready)"),
+    (0, "warm", 6.95, 6.33, "cooker hood"),
     (1, "warm", 6.05, 4.05, "bedside lamp"),
     (1, "warm", 5.85, 4.70, "mirror light"),
 )

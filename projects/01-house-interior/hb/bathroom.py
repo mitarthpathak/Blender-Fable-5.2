@@ -176,7 +176,7 @@ def basin(small):
     return obj
 
 
-def furnishings(small):
+def furnishings(small, soft):
     fx = MeshBuilder()
     # towel rail on the south wall, one towel hung and one on the floor
     DIVIDER_N.box(fx, 3.98, 4.00, 0.0, 0.075, F1 + 1.12, F1 + 1.14, "metal_chrome")
@@ -229,13 +229,13 @@ def furnishings(small):
     # laundry basket with the washing spilling out of it
     shapes.lathe(small, 3.12, 6.10, [(0.17, F1), (0.21, F1 + 0.52), (0.20, F1 + 0.52), (0.16, F1 + 0.03)], "wicker", 16,
                  cap_last=True)
-    cl.heap(small, 3.12, 6.10, F1 + 0.40, 0.19, 0.19, 0.24, "fabric_bed", seed=7)
-    cl.heap(small, 3.46, 6.30, F1, 0.26, 0.20, 0.10, "fabric_curtain", seed=8, yaw=-25)
-    cl.heap(small, 3.36, 5.86, F1, 0.18, 0.14, 0.07, "fabric_pillow", seed=10, yaw=40)
-    cl.heap(small, 5.30, 6.86, F1, 0.30, 0.22, 0.07, "towel", seed=9, yaw=18)                           # a dropped towel
+    cl.heap(soft, 3.12, 6.10, F1 + 0.42, 0.19, 0.19, 0.20, "fabric_plaid", seed=7)
+    cl.heap(soft, 3.46, 6.30, F1, 0.26, 0.20, 0.10, "fabric_curtain", seed=8, yaw=-25)
+    cl.heap(soft, 3.36, 5.86, F1, 0.18, 0.14, 0.06, "towel", seed=10, yaw=40)
+    cl.heap(soft, 5.30, 6.86, F1, 0.30, 0.22, 0.07, "towel", seed=9, yaw=18)                           # a dropped towel
     # a chair by the bath with clothes left on it, and a stool
     models.place("painted_wooden_chair_01", "bathroom_chair", (5.22, 7.56, F1), facing=-25)
-    cl.heap(small, 5.22, 7.54, F1 + 0.46, 0.17, 0.15, 0.09, "fabric_plaid", seed=12)
+    cl.heap(soft, 5.22, 7.54, F1 + 0.46, 0.17, 0.15, 0.09, "fabric_plaid", seed=12)
     models.place("wooden_stool_01", "bathroom_stool", (4.62, 5.02, F1), facing=30)
     # scales, a bin, the toilet brush and a plunger
     shapes.obox(small, (4.95, 5.20, F1), (0.30, 0.30, 0.045), 12, "c_grey")
@@ -297,11 +297,12 @@ def decals():
 
 
 def build():
-    small = MeshBuilder()
+    small, soft = MeshBuilder(), MeshBuilder()
     bath()
     toilet()
     basin(small)
-    furnishings(small)
+    furnishings(small, soft)
+    shapes.soften(soft.build("clutter_bathroom_cloth", "clutter"), 80.0)
     obj = shapes.soften(small.build("clutter_bathroom", "clutter"))
     obj.visible_shadow = True
     fx = MeshBuilder()
