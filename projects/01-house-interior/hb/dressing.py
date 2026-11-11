@@ -65,11 +65,17 @@ CHIMNEY = Face("y", 6.95, -1)
 
 # --- Light points -----------------------------------------------------------
 
-def lightpoint(name, location, kind, watts=40.0):
-    """Mark where a lamp's bulb is. The lighting phase turns these into lights."""
+def lightpoint(name, location, kind, watts=40.0, colour=None, haze=True):
+    """Mark where a lamp's bulb is. The lighting phase turns these into lights.
+    `colour` (r, g, b) replaces the warm tungsten default: a fluorescent tube.
+    `haze=False` stops the lamp lighting the render-only haze: a lamp that
+    lights a whole room through it leaves the render blotchy."""
     obj = core.empty("lightpoint_" + name, "lightpoints", location)
     obj["kind"] = kind
     obj["watts"] = watts
+    if colour:
+        obj["colour"] = list(colour)
+    obj["haze"] = bool(haze)
     return obj
 
 

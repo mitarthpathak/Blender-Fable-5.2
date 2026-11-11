@@ -9,11 +9,15 @@ extends Node3D
 ## thick and pale enough to see; indoors it falls back to a thin dark one.
 ## The High preset (volumetric fog on) is left exactly as main.gd sets it.
 ##
-## The `night_fill` lights are moonlight bounced round the upstairs rooms. On
-## High, SDFGI replaces the flat ambient light and those rooms go black
-## without them; on Low the ambient light is still there, so they are turned
-## well down. They cast no shadows and are not baked: once the lightmaps are
-## baked they are switched off (FILL_WITH_LIGHTMAPS).
+## The `night_fill` lights are moonlight bounced round the rooms. On High,
+## SDFGI replaces the flat ambient light and the rooms away from a lamp go
+## black without them; on Low the ambient light is still there, so they are
+## turned well down. They follow the lighting preset's lamp scale, cast no
+## shadows and are not baked: once the lightmaps are baked they are switched
+## off (FILL_WITH_LIGHTMAPS).
+##
+## Both jobs sit on top of the lighting presets (scripts/lighting_presets.gd):
+## the Low fog starts from the current preset's own fog colour and density.
 
 ## The house's footprint in Godot space, with a small margin: x0, z0, x1, z1.
 const INDOORS := Rect2(-0.5, -8.5, 8.3, 9.0)
@@ -33,6 +37,8 @@ func _ready() -> void:
 	for child in get_children():
 		if child is Light3D and child.is_in_group("night_fill"):
 			_fills[child] = (child as Light3D).light_energy
+			if not Engine.is_editor_hint():
+				(child as Light3D).light_energy = 0.0     # set every frame in _process; never a "lamp" to the presets
 
 
 func _process(delta: float) -> void:
@@ -47,7 +53,7 @@ func _process(delta: float) -> void:
 	var baked := has_node("LightmapGI") and ($LightmapGI as LightmapGI).light_data != null
 	var level := FILL_WITH_LIGHTMAPS if baked else (FILL_HIGH if high else FILL_LOW)
 	for light in _fills:
-		(light as Light3D).light_energy = _fills[light] * level
+		(light as Light3D).light_energy = _fills[light] * level * float((light as Node).get_meta("preset_scale", 1.0))
 	if high:
 		return                                    # High: the fog is main.gd's
 	var camera := get_viewport().get_camera_3d()
@@ -56,4 +62,11 @@ func _process(delta: float) -> void:
 	var at := camera.global_position
 	var target := 0.0 if INDOORS.has_point(Vector2(at.x, at.z)) else 1.0
 	_outside = move_toward(_outside, target, delta * 1.5)
-	HouseLights.apply_low_fog(_environment, _outside)
+	var colour := HouseLights.LOW_FOG_INDOORS
+	var density := 0.055
+	var presets := get_parent().get_node_or_null("LightingPresets") if get_parent() else null
+	if presets:
+		var look: LightingPreset = presets.preset()
+		colour = look.distance_fog_color
+		density = look.distance_fog_density
+	HouseLights.apply_low_fog(_environment, _outside, colour, density)

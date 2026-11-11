@@ -154,7 +154,7 @@ def basin(small):
     DIVIDER_N.box(light, a - 0.22, a + 0.22, 0.07, 0.085, F1 + 1.965, F1 + 2.015, "bulb_on")
     lamp = light.build("lamp_mirror", "lamps")
     lamp.visible_shadow = False
-    dr.lightpoint("mirror", (a, wall_y + 0.16, F1 + 1.98), "warm", 10.0)
+    dr.lightpoint("mirror", (a, wall_y + 0.16, F1 + 1.98), "warm", 10.0, haze=False)
 
     shelf_z = (z0 + z1) / 2 + 0.008
     for k, (dx, region) in enumerate(((-0.20, "pills"), (-0.13, "pills"), (-0.05, "soap"))):

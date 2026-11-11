@@ -149,8 +149,10 @@ stains, mould, rust, limescale, grease, burnt-on spills, mug rings).
   `light_kitchen_flicker` (the kitchen strip light) and `light_tv_flicker`
   carry a `flicker` custom property. In Blender the pendant
   has a noise modifier on its power; in an engine, drive the energy yourself.
-- **Haze**: `fog_volume` is a render-only box of thin fog that turns the
-  moonlight into beams. It is not exported; use the engine's volumetric fog.
+- **Haze**: `fog_volume` is render-only thin fog, outdoors and in the rooms
+  the moon reaches, that turns the moonlight into beams. The kitchen and
+  bathroom have none: lit by their own lamps, haze there only made the
+  renders blotchy. It is not exported; use the engine's volumetric fog.
 
 Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
 `cam_hero_stairs`, `cam_hero_living`, `cam_hero_kitchen`,

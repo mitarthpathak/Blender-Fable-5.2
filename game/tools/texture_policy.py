@@ -8,10 +8,12 @@
 Every texture is VRAM-compressed with mipmaps. Sizes are capped by rule so the
 build stays small without touching what the player looks at closely:
 
-  2K   walls, floors, ceilings, the clapboard, grass: colour and normal
+  2K   walls, floors, ceilings, wall and floor tiles, the clapboard, grass,
+       the print sheet: colour and normal
   1K   roughness/AO maps of those; road, roof, paths; trim, doors, fabrics;
-       large furniture
-  512  small props, and the roughness/AO maps of everything at 1K
+       cabinets, counters and the kitchen splashback; large furniture
+  512  small props, plain enamel and porcelain, and the roughness/AO maps of
+       everything at 1K
 
 The rules only ever shrink a texture. Run with --clean to also delete
 extracted textures that the current house.glb no longer uses: Godot numbers
@@ -30,9 +32,14 @@ HOUSE = Path(__file__).resolve().parents[1] / "assets" / "house"
 MEDIUM = ("asphalt_02", "roof_slates_02", "concrete_floor_worn_02", "dirty_tiles", "painted_plaster_wall",
           "rough_linen", "white_planks_clean", "ext_trim", "porch_boards", "trim_paint", "door_paint",
           "front_door_paint", "door_worn", "fabric_bed", "fabric_curtain", "fabric_pillow", "carpet_runner",
-          "wood_mid", "wood_dark")
+          "wood_mid", "wood_dark",
+          # kitchen and bathroom: cabinet fronts, counters, the splashback and soft things
+          "cabinet", "kitchen_wood", "counter", "terrazzo_tiles", "tile_kitchen", "rounded_square_tiled_wall",
+          "towel", "terry_cloth", "gingham", "shower_curtain")
 # Hidden behind the modelled boards, or a few centimetres across.
-SMALL = ("ext_siding", "stone_sill")
+SMALL = ("ext_siding", "stone_sill",
+         # plain enamel and porcelain: there is nothing in them for 1K to show
+         "enamel", "porcelain", "hob")
 # Furniture big enough to walk up to keeps its 1K maps; every other model drops to 512.
 LARGE_MODELS = ("sofa_02", "ArmChair_01", "WoodenTable_03", "wooden_table_02", "Shelf_01", "television_02",
                 "vintage_grandfather_clock_01", "vintage_wooden_drawer_01", "small_wooden_table_01",

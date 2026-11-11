@@ -28,6 +28,7 @@ TOP = 0.90            # counter height
 CARCASS = 0.58        # cabinet depth without doors
 DOOR_T = 0.018
 WALL_Z0, WALL_Z1, WALL_D = 1.42, 2.12, 0.32
+TUBE = (0.74, 0.90, 0.86)      # an old cool-white fluorescent tube: pale, slightly green
 
 
 # --- Cabinets -----------------------------------------------------------------
@@ -238,7 +239,7 @@ def stove(small):
     EAST.box(hood, a0 + 0.30, a0 + 0.44, 0.40, 0.47, GF + 1.552, GF + 1.556, "bulb_on")
     hood.build("kitchen_hood", "fixtures", recalc=True)
     lamp = EAST.P(a0 + 0.37, 0.43, GF + 1.52)
-    dr.lightpoint("hood", tuple(lamp), "warm", 36.0)
+    dr.lightpoint("hood", tuple(lamp), "warm", 12.0, haze=False)
     return obj
 
 
@@ -270,7 +271,7 @@ def fridge(small):
     shapes.printed(mb, [(xf - 0.0605, y0 + 0.31, top - 0.11), (xf - 0.0605, y0 + 0.07, top - 0.11),
                         (xf - 0.0605, y0 + 0.07, top - 0.05), (xf - 0.0605, y0 + 0.31, top - 0.05)], "fridge_badge")
     obj = mb.build("kitchen_fridge", "furniture")
-    dr.lightpoint("fridge", (xb - 0.14, (y0 + y1) / 2, split - 0.10), "warm", 30.0)
+    dr.lightpoint("fridge", (xb - 0.14, (y0 + y1) / 2, split - 0.10), "warm", 12.0, haze=False)
 
     # the lower door: hinged on the south side, so it opens towards the room
     door = MeshBuilder()
@@ -432,7 +433,7 @@ def wall_things(small):
     tube.cylinder((3.90, 6.02, plan.CEILING - 0.07), (1.12, 0, 0), 0.014, "bulb_on", segments=8)
     lamp = tube.build("lamp_kitchen_tube", "lamps")
     lamp.visible_shadow = False
-    dr.lightpoint("kitchen", (4.46, 6.02, plan.CEILING - 0.14), "flicker", 55.0)
+    dr.lightpoint("kitchen", (4.46, 6.02, plan.CEILING - 0.14), "flicker", 26.0, colour=TUBE, haze=False)
 
     dr.radiator("radiator_kitchen", ROOM_WEST, 7.38, 7.92, GF)
     dr.curtain_pole("pole_kitchen", NORTH, 3.87, 5.99, GF + 2.36)

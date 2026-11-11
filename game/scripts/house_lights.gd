@@ -5,8 +5,9 @@ class_name HouseLights
 const WARM := Color(1.0, 0.62, 0.34)
 const MOONLIGHT := Color(0.50, 0.66, 1.0)
 const SODIUM := Color(1.0, 0.55, 0.20)
+const TUBE := Color(0.74, 0.90, 0.86)           # the kitchen's failing fluorescent strip
 const LOW_FOG_INDOORS := Color(0.112, 0.144, 0.192)
-const LOW_FOG_OUTDOORS := Color(0.20, 0.25, 0.33)
+const LOW_FOG_OUTDOOR_GAIN := 1.75             # outdoors the fog is this much paler than indoors
 
 
 ## Configure every light under `root`. Returns {"moon": light, "lamps": [...]}.
@@ -73,17 +74,29 @@ static func apply(root: Node) -> Dictionary:
 			if n.contains("flicker"):
 				lamp.light_energy = 0.5
 				lamp.light_bake_mode = Light3D.BAKE_DISABLED   # it changes, so it cannot be baked
+			if n.contains("kitchen"):
+				# Cool and dim, so the kitchen sits with the moonlit rooms and not above them.
+				lamp.light_color = TUBE
+				lamp.light_energy = 0.42
+				lamp.omni_range = 4.6
+			elif n.contains("hood") or n.contains("fridge"):
+				lamp.light_energy = 0.32
+				lamp.omni_range = 2.6
 			result["lamps"].append(lamp)
 	return result
 
 
-## Fog for the Low preset, blended by how far outdoors the camera is (0 to 1).
-## Indoors: thin and dark, so rooms keep their contrast. Outdoors: pale
-## moonlit fog that hides the street beyond about 25 m and pools on the ground.
-static func apply_low_fog(env: Environment, outside: float) -> void:
+## Fog for the Low quality preset, blended by how far outdoors the camera is
+## (0 to 1). Indoors it is the lighting preset's own distance fog, thin enough
+## for rooms to keep their contrast. Outdoors the same fog is paler and
+## thicker, hides the street beyond about 25 m and pools on the ground.
+static func apply_low_fog(env: Environment, outside: float, indoor_color := LOW_FOG_INDOORS,
+		indoor_density := 0.055) -> void:
+	var outdoor_color := indoor_color * LOW_FOG_OUTDOOR_GAIN
+	outdoor_color.a = 1.0
 	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
-	env.fog_light_color = LOW_FOG_INDOORS.lerp(LOW_FOG_OUTDOORS, outside)
-	env.fog_density = lerpf(0.055, 0.09, outside)
+	env.fog_light_color = indoor_color.lerp(outdoor_color, outside)
+	env.fog_density = lerpf(indoor_density, indoor_density * 1.64, outside)
 	env.fog_sky_affect = 1.0
 	env.fog_sun_scatter = 0.0
 	env.fog_aerial_perspective = 0.0

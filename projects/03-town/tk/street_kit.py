@@ -982,16 +982,9 @@ def collision(curbs, houses, coll="collision"):
     mb = MeshBuilder()
     wedge(mb, (x0, y0, G - 0.02), (x1, y1, -0.005), "+y")
     mb.build("steps_ramp_L1-convcolonly", coll)
-    # The house's water-table board crosses its front doorway 14 cm above the floor
-    # (exterior_trim, z -0.01..0.14 at y -0.33..-0.30). The house is not ours to edit,
-    # so two small wedges let the player walk over it instead of being stopped by it.
-    dx0, dx1 = plan.HOUSE_DOOR_X - 0.475, plan.HOUSE_DOOR_X + 0.475
-    mb = MeshBuilder()
-    wedge(mb, (dx0, -0.30, -0.02), (dx1, 0.32, 0.145), "-y")
-    mb.build("door_sill_ramp_in-convcolonly", coll)
-    mb = MeshBuilder()
-    wedge(mb, (dx0, -0.85, -0.02), (dx1, -0.33, 0.145), "+y")
-    mb.build("door_sill_ramp_out-convcolonly", coll)
+    # (The house's water-table board used to cross its front doorway, and two wedges
+    # here carried the player over it. The house now stops the board at the doorway,
+    # so the wedges are gone; town.gd drops them from town models exported before that.)
     for key, (obj, m, ramps, steps) in houses.items():
         for j, (lo, hi) in enumerate(ramps):
             mb = MeshBuilder()

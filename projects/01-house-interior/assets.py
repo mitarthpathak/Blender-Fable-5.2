@@ -154,6 +154,17 @@ MODEL_IDS = [
 ]
 
 
+# Models whose own colour map needs correcting. The sofa's show-wood is a
+# saturated orange varnish that glows against everything else in the house:
+# it is taken down to the dark walnut of the other furniture.
+MODEL_FIXES = {"sofa_02": "orange_wood"}
+
+
+def model_diffuse_fix(model_id: str) -> Path | None:
+    """The corrected colour map for a model, if it has one."""
+    return TEXTURES / "derived" / f"model_{model_id}_diff.jpg" if model_id in MODEL_FIXES else None
+
+
 def tile_of(key: str) -> float | None:
     surface = SURFACES.get(key)
     return SETS[surface.set] if surface else None
@@ -282,11 +293,31 @@ def _mould_grout(image, amount):
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 
+def _fix_orange_wood(image):
+    """Darken and desaturate strongly orange pixels; leave the rest alone."""
+    import numpy as np
+    from PIL import Image
+
+    pixels = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+    r, g, b = pixels[..., 0], pixels[..., 1], pixels[..., 2]
+    orange = np.clip((r - b) * 3.2 - 0.25, 0.0, 1.0) * np.clip((r - g) * 6.0, 0.0, 1.0)
+    grey = pixels.mean(axis=2, keepdims=True)
+    walnut = (grey * 0.55 + pixels * 0.45) * np.array([0.42, 0.36, 0.32], dtype=np.float32)
+    out = pixels * (1.0 - orange[..., None]) + walnut * orange[..., None]
+    return Image.fromarray((np.clip(out, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8))
+
+
 def derive():
     from PIL import Image, ImageStat
 
     out = TEXTURES / "derived"
     out.mkdir(parents=True, exist_ok=True)
+    for model_id in MODEL_FIXES:
+        source = MODELS / model_id / "textures" / f"{model_id}_diff_{MODEL_RES}.jpg"
+        target = model_diffuse_fix(model_id)
+        if source.exists() and not target.exists():
+            _fix_orange_wood(Image.open(source)).save(target, quality=92)
+            print(f"  ~ {target.relative_to(HERE)}")
     for key, surface in SURFACES.items():
         if surface.tint:
             source, target = set_file(surface.set, "diff"), out / f"{key}_diff.jpg"

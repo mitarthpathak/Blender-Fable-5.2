@@ -122,9 +122,17 @@ def trim(coll="exterior"):
                    "ext_trim")
             mb.box((min(x, x - sx * w), min(y, y + sy * d), 0.0), (max(x, x - sx * w), max(y, y + sy * d), plan.ROOF_Z),
                    "ext_trim")
-    for face, a0, a1 in ((OUT_S, x0, x1), (OUT_N, x0, x1), (OUT_W, y0, y1), (OUT_E, y0, y1)):
-        face.box(mb, a0, a1, 0.0, 0.03, -0.01, 0.14, "ext_trim")
     faces = {"wall_ext_south": OUT_S, "wall_ext_north": OUT_N, "wall_ext_west": OUT_W}
+    doorways = {face: sorted((o.start, o.end) for o in next(w for w in plan.WALLS if w.name == wall).openings
+                             if o.kind == "door") for wall, face in faces.items()}
+    for face, a0, a1 in ((OUT_S, x0, x1), (OUT_N, x0, x1), (OUT_W, y0, y1), (OUT_E, y0, y1)):
+        # The water table runs round the house but stops at each doorway: across
+        # one it would be a 14 cm board to step over.
+        cursor = a0
+        for start, end in doorways.get(face, []) + [(a1, a1)]:
+            if start > cursor:
+                face.box(mb, cursor, start, 0.0, 0.03, -0.01, 0.14, "ext_trim")
+            cursor = max(cursor, end)
     for wall in plan.WALLS:
         face = faces.get(wall.name)
         if not face:

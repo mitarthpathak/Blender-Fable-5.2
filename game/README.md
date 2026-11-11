@@ -66,7 +66,8 @@ start the game with `--rendering-method gl_compatibility`.
 ## Baked lighting
 
 `world.tscn` holds the house, a `LightmapGI` node, a reflection probe for
-each room and two dim fill lights upstairs (`FillBedroom`, `FillBoxroom`).
+each room (hall, living room, kitchen, landing, bedroom, bathroom) and four
+dim fill lights (`FillLiving`, `FillKitchen`, `FillBedroom`, `FillBathroom`).
 The model imports with lightmap UVs (`light_baking` set to static
 lightmaps), and `scripts/world.gd` is a tool script that configures the
 lights in the editor exactly as the game does.
@@ -252,10 +253,11 @@ code, like `main.gd` does for the house:
 - **Collision.** Trimesh for ground, houses, fences, cars and barriers;
   cylinders for trees, poles, trash cans and the hydrant; none for mailboxes,
   leaf piles, grass, signs, wires or decals. The town model carries
-  collision-only wedges (`-convcolonly` in Blender) for every curb, every
-  flight of porch steps and the house's front-door sill, because the player
-  capsule cannot climb a 13 cm step by itself, and four invisible walls on
-  the edge of the playable area.
+  collision-only wedges (`-convcolonly` in Blender) for every curb and every
+  flight of porch steps, because the player capsule cannot climb a 13 cm
+  step by itself, and four invisible walls on the edge of the playable area.
+  (The two wedges that used to carry the player over a board across the
+  house's front doorway are dropped at load: the house no longer has it.)
 - **Instancing.** 199 repeated props (grass clumps, leaf piles, trees, poles,
   lamp heads, mailboxes, cans, manholes) are folded into 15 `MultiMesh`
   nodes at load. The five houses are one mesh each and share their materials.

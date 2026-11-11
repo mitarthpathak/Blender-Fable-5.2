@@ -94,6 +94,8 @@ def practicals():
                 data.color = (1.0, 0.52, 0.16)
                 data.energy = watts * 0.22
                 data.shadow_soft_size = 0.15
+            if "colour" in marker:
+                data.color = tuple(marker["colour"])
             flicker = kind == "flicker"
             obj = bpy.data.objects.new(f"light_{name}_flicker" if flicker else f"light_{name}", data)
             obj.location = marker.location
@@ -101,6 +103,7 @@ def practicals():
                 obj["flicker"] = True
                 _flicker(data, data.energy)
         obj["kind"] = kind
+        obj.visible_volume_scatter = bool(marker.get("haze", True))
         made.append(core.link(obj, "lights"))
     return made
 
@@ -131,10 +134,28 @@ def _flicker(light_data, base):
 
 
 def haze(density=0.012):
-    """Dust in the air: one box of thin, even fog filling the house."""
+    """Dust and fog in the air: thin, even haze outdoors and in the rooms the
+    moon shines into, so its light reads as beams."""
     mb = MeshBuilder()
-    m = 0.05
-    mb.box((-15.0, -17.0, -0.44), (22.0, 16.0, 11.0), "haze")
+    e, m = plan.EXT_T + 0.05, 0.02
+    w, d, top = plan.WIDTH, plan.DEPTH, 11.0
+    f1 = plan.FFL[1]
+    boxes = [
+        # outdoors: four slabs round the house and one over it
+        ((-15.0, -17.0, -0.44), (-e, 16.0, top)), ((w + e, -17.0, -0.44), (22.0, 16.0, top)),
+        ((-e, -17.0, -0.44), (w + e, -e, top)), ((-e, d + e, -0.44), (w + e, 16.0, top)),
+        ((-e, -e, 8.7), (w + e, d + e, top)),
+        # indoors, only where the moon reaches: the front rooms, the hall and the stairwell.
+        # The kitchen and bathroom are lit by their own lamps; haze there adds
+        # nothing but noise that the denoiser turns into blotches.
+        ((plan.PART_X1 + m, m, m), (w - m, plan.DIVIDER_Y0 - m, plan.CEILING - m)),                 # living room
+        ((plan.PART_X1 + m, m, f1 + m), (w - m, plan.DIVIDER_Y0 - m, plan.ROOF_Z - m)),             # bedroom
+        ((m, m, m), (plan.PART_X0 - m, d - m, plan.CEILING - m)),                                   # hall
+        ((m, m, f1 + m), (plan.PART_X0 - m, plan.VOID_Y0 - m, plan.ROOF_Z - m)),                    # front landing
+        ((m, plan.VOID_Y0 + m, plan.CEILING + m), (plan.VOID_X1 - m, plan.VOID_Y1 - m, plan.ROOF_Z - m)),   # stairwell
+    ]
+    for lo, hi in boxes:
+        mb.box(lo, hi, "haze")
     obj = mb.build("fog_volume", "atmosphere", recalc=True)
     mat = core.material("haze")
     tree = mat.node_tree
@@ -173,8 +194,13 @@ def render_settings(samples=220, resolution=(1920, 1080), exposure=3.3):
     c.device = "CPU"
     c.samples = samples
     c.use_adaptive_sampling = True
-    c.adaptive_threshold = 0.025
+    c.adaptive_threshold = 0.012          # dark rooms need the samples: looser than this leaves blotches
     c.use_denoising = True
+    for name, value in (("denoising_prefilter", "ACCURATE"), ("denoising_input_passes", "RGB_ALBEDO_NORMAL")):
+        try:
+            setattr(c, name, value)
+        except (AttributeError, TypeError):
+            pass
     c.max_bounces, c.diffuse_bounces, c.glossy_bounces = 7, 4, 3
     c.transmission_bounces, c.volume_bounces, c.transparent_max_bounces = 4, 0, 12
     c.sample_clamp_indirect = 6.0
