@@ -40,8 +40,8 @@ MATS: dict[str, dict] = {
     "brick": dict(set="red_brick", tile=1.4),
     "concrete": dict(set="concrete_floor_worn_02", tile=2.0),
     "metal_painted": dict(set="rusty_painted_metal", diff="metal_neutral", tile=1.5),
-    "glass": dict(color=(0.06, 0.07, 0.075), rough=0.06, metal=0.0, spec=0.6),
-    "glass_dirty": dict(color=(0.09, 0.09, 0.085), rough=0.35),
+    "glass": dict(flat="glass", tile=1.2, spec=0.6),
+    "glass_dirty": dict(flat="glass_dirty", tile=1.2),
     "interior_dark": dict(color=(0.025, 0.024, 0.022), rough=0.9),
     "window_lit": dict(color=(0.55, 0.42, 0.26), rough=0.8, emit=(1.0, 0.62, 0.32), emit_strength=1.2),
     "screen_mesh": dict(color=(0.05, 0.05, 0.05), rough=0.6, alpha=0.5),
@@ -61,13 +61,16 @@ MATS: dict[str, dict] = {
     "manhole": dict(set="metal_plate", tile=0.8),
     "barrier_concrete": dict(set="dirty_concrete", tile=2.0),
     "tyre": dict(set="rubber_tiles", tile=0.6),
-    "chrome_dull": dict(color=(0.45, 0.45, 0.44), rough=0.45, metal=1.0),
-    "plastic_dark": dict(color=(0.05, 0.05, 0.05), rough=0.55),
-    "lamp_red": dict(color=(0.25, 0.03, 0.02), rough=0.3),
-    "lamp_clear": dict(color=(0.5, 0.48, 0.42), rough=0.15),
+    "chrome_dull": dict(flat="chrome", tile=0.4),
+    "plastic_dark": dict(flat="plastic_dark", tile=0.5),
+    "bag_plastic": dict(flat="bag_plastic", tile=0.6),
+    "pumpkin": dict(flat="pumpkin", tile=0.5),
+    "toy_plastic": dict(flat="toy_plastic", tile=0.5),
+    "lamp_red": dict(flat="lamp_red", tile=0.3),
+    "lamp_clear": dict(flat="lamp_clear", tile=0.3),
     "sodium_on": dict(color=(1.0, 0.62, 0.30), rough=0.3, emit=(1.0, 0.55, 0.22), emit_strength=12.0),
     "sodium_off": dict(color=(0.30, 0.26, 0.20), rough=0.25),
-    "wire": dict(color=(0.03, 0.03, 0.03), rough=0.6),
+    "wire": dict(flat="wire", tile=0.08),
     "paint_marking": dict(diff_png="marking_yellow", tile=1.0, clip=True, rough=0.7),
     "paint_white": dict(diff_png="marking_white", tile=1.0, clip=True, rough=0.7),
     "chainlink": dict(diff_png="chainlink", tile=1.0, clip=True, rough=0.5, metal=0.6),
@@ -80,6 +83,18 @@ MATS: dict[str, dict] = {
     "decal_oil": dict(diff_png="oil_stain", tile=1.0, blend=True, rough=0.25),
     "sign_closed": dict(diff_png="sign_road_closed", tile=1.0, rough=0.6),
     "sign_sale": dict(diff_png="sign_for_sale", tile=1.0, rough=0.6),
+    "sign_parking": dict(diff_png="sign_parking", tile=1.0),
+    "sign_bus": dict(diff_png="sign_bus", tile=1.0),
+    "sign_beware": dict(diff_png="sign_beware", tile=1.0),
+    "poster_missing": dict(diff_png="poster_missing", tile=1.0, clip=True, two_sided=True),
+    "poster_meeting": dict(diff_png="poster_meeting", tile=1.0, clip=True, two_sided=True),
+    "poster_yardsale": dict(diff_png="poster_yardsale", tile=1.0, clip=True, two_sided=True),
+    "weed_card": dict(diff_png="weed_tuft", tile=1.0, clip=True, two_sided=True),
+    "decal_moss_strip": dict(diff_png="moss_strip", tile=1.0, blend=True),
+    "decal_tyre": dict(diff_png="tyre_marks", tile=1.0, blend=True),
+    "decal_litter": dict(diff_png="litter", tile=1.0, clip=True),
+    "decal_shards": dict(diff_png="glass_shards", tile=1.0, clip=True),
+    "backdrop": dict(diff_png="backdrop_trees", tile=1.0, clip=True, two_sided=True),
 }
 
 _cache: dict[str, bpy.types.Material] = {}
@@ -148,13 +163,40 @@ def material(key: str) -> bpy.types.Material:
         nmap.inputs["Strength"].default_value = spec.get("normal", 1.0)
         nt.links.new(nor.outputs["Color"], nmap.inputs["Color"])
         nt.links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
-    elif "diff_png" in spec:
+    elif "diff_png" in spec or "flat" in spec:
+        # Generated maps (derive.py, detail_maps.py): albedo (+ alpha), a normal map
+        # and an ORM map (occlusion, roughness, metalness), like the Poly Haven sets.
+        if "flat" in spec:
+            base = HERE / "textures" / "flat" / spec["flat"]
+            files = (Path(f"{base}_diff.png"), Path(f"{base}_nor.png"), Path(f"{base}_orm.png"))
+        else:
+            files = (DECALS / f"{spec['diff_png']}.png", DECALS / f"{spec['diff_png']}_nor.png",
+                     DECALS / f"{spec['diff_png']}_orm.png")
         tex = nt.nodes.new("ShaderNodeTexImage")
-        tex.image = _image(DECALS / f"{spec['diff_png']}.png")
+        tex.image = _image(files[0])
         tex.location = (-500, 100)
         nt.links.new(tex.outputs["Color"], mix.inputs[6])
-        bsdf.inputs["Roughness"].default_value = spec.get("rough", 0.7)
-        bsdf.inputs["Metallic"].default_value = spec.get("metal", 0.0)
+        if files[2].exists():
+            arm = nt.nodes.new("ShaderNodeTexImage")
+            arm.image = _image(files[2], True)
+            arm.location = (-500, -200)
+            sep = nt.nodes.new("ShaderNodeSeparateColor")
+            sep.location = (-200, -200)
+            nt.links.new(arm.outputs["Color"], sep.inputs["Color"])
+            nt.links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+            nt.links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+        else:
+            bsdf.inputs["Roughness"].default_value = spec.get("rough", 0.7)
+            bsdf.inputs["Metallic"].default_value = spec.get("metal", 0.0)
+        if files[1].exists():
+            nor = nt.nodes.new("ShaderNodeTexImage")
+            nor.image = _image(files[1], True)
+            nor.location = (-500, -500)
+            nmap = nt.nodes.new("ShaderNodeNormalMap")
+            nmap.location = (-200, -500)
+            nmap.inputs["Strength"].default_value = spec.get("normal", 1.0)
+            nt.links.new(nor.outputs["Color"], nmap.inputs["Color"])
+            nt.links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
         if spec.get("clip"):
             gt = nt.nodes.new("ShaderNodeMath")
             gt.operation = "GREATER_THAN"
@@ -165,14 +207,6 @@ def material(key: str) -> bpy.types.Material:
             mat.surface_render_method = "DITHERED"
         elif spec.get("blend"):
             nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-            mat.surface_render_method = "BLENDED"
-        # normal maps for the generated decals come from a small flat normal
-    else:
-        mix.inputs[6].default_value = (*spec["color"], 1.0)
-        bsdf.inputs["Roughness"].default_value = spec.get("rough", 0.7)
-        bsdf.inputs["Metallic"].default_value = spec.get("metal", 0.0)
-        if "alpha" in spec:
-            bsdf.inputs["Alpha"].default_value = spec["alpha"]
             mat.surface_render_method = "BLENDED"
     if "spec" in spec:
         bsdf.inputs["Specular IOR Level"].default_value = spec["spec"]
@@ -369,7 +403,7 @@ class MeshBuilder:
     def empty(self) -> bool:
         return not self.faces
 
-    def build_mesh(self, name: str, merge: float = 0.0005, smooth=False) -> bpy.types.Mesh:
+    def build_mesh(self, name: str, merge: float = 0.0005, smooth=False, sharp_angle=None) -> bpy.types.Mesh:
         mesh = bpy.data.meshes.new(name)
         mesh.from_pydata([tuple(v) for v in self.verts], [], self.faces)
         keys = []
@@ -400,14 +434,16 @@ class MeshBuilder:
             bm.to_mesh(mesh)
             bm.free()
         for p in mesh.polygons:
-            p.use_smooth = smooth
+            p.use_smooth = smooth or sharp_angle is not None
+        if sharp_angle is not None:
+            mesh.set_sharp_from_angle(angle=math.radians(sharp_angle))   # smooth panels, crisp creases
         return mesh
 
-    def build(self, name: str, coll: str, origin=(0, 0, 0), smooth=False, merge=0.0005) -> bpy.types.Object:
+    def build(self, name: str, coll: str, origin=(0, 0, 0), smooth=False, merge=0.0005, sharp_angle=None):
         o = Vector(origin)
         if o.length > 0:
             self.verts = [v - o for v in self.verts]
-        mesh = self.build_mesh(name, merge=merge, smooth=smooth)
+        mesh = self.build_mesh(name, merge=merge, smooth=smooth, sharp_angle=sharp_angle)
         obj = bpy.data.objects.new(name, mesh)
         obj.location = o
         collection(coll).objects.link(obj)

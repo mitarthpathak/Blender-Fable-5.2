@@ -227,12 +227,13 @@ def stage_kit(opts):
         ob = fn().build("kit_" + name, "kit")
         ob.location = (i * 3.2, row, 0.45 if name in ("trash_can", "hydrant", "sawhorse", "jersey", "leaf_pile", "grass",
                                                       "manhole", "pole", "lamp_on", "lamp_broken") else 0.0)
+    from tk import cars as car_kit
     for i, (kind, paint, state) in enumerate((("sedan", (0.30, 0.31, 0.33), "abandoned"),
                                               ("wagon", (0.33, 0.24, 0.16), "on_blocks"),
-                                              ("sedan", (0.18, 0.22, 0.27), "crashed"))):
-        ob = sk.car_mesh(kind, core.mul(paint, 1 / 0.75), 10 + i, crashed=state == "crashed",
-                         flat=state != "on_blocks", on_blocks=state == "on_blocks").build(f"kit_car_{state}", "kit")
-        ob.location = (i * 6.0, -20.0, 0.0)
+                                              ("pickup", (0.18, 0.22, 0.27), "crashed"))):
+        ob = car_kit.build(kind, paint, 10 + i, state, f"kit_car_{kind}", "kit")
+        ob.location = (2.0, -19.0 - i * 3.4, 0.0)
+        ob.rotation_euler.z = math.radians(8 * (i - 1))
     fm = core.MeshBuilder()
     rng = __import__("random").Random(2)
     sk.picket_run(fm, (20.0, -20.0), (26.0, -20.0), rng, gap=(23.0, -20.0))
@@ -259,9 +260,12 @@ def stage_kit(opts):
         "02_kit_houses": ((22, -14, 15), (22, 8, 3), 24),
         "02_kit_house_sample": ((-2, -14, 5), (-10.5, 3, 4.5), 28),
         "02_kit_street": ((14, -36, 6), (14, -15, 1.5), 26),
+        "02_kit_cars": ((10.5, -30.5, 3.0), (2.0, -22.4, 0.6), 32),
     }
     RENDERS.mkdir(exist_ok=True)
     for name, (loc, tgt, lens) in shots.items():
+        if opts["only"] and opts["only"] not in name:
+            continue
         cam = camera("cam_" + name, loc, tgt, lens)
         scene.camera = cam
         scene.render.filepath = str(RENDERS / f"{name}.png")
@@ -281,6 +285,9 @@ STILLS = {
     "front_door": ((1.70, 0.45, 1.62), (2.8, -18.0, 0.9), 20),
     "junction": ((9.5, -9.4, 1.65), (2.0, -24.0, 1.4), 22),
     "side_street": ((5.6, -27.0, 1.65), (1.2, -50.0, 1.6), 24),
+    # close-ups for checking detail (not part of the three hero stills)
+    "detail_pothole": ((0.9, -9.9, 1.0), (-1.6, -12.4, -0.55), 28),
+    "detail_curb": ((6.4, -11.6, 0.9), (1.8, -9.6, -0.3), 26),
 }
 
 

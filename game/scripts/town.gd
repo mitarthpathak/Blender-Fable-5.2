@@ -28,13 +28,16 @@ const HOUSE_HIDE := ["yard_ground", "yard_paths", "street_road", "fence_picket",
 ## Town meshes that get trimesh collision.
 const TRIMESH_PREFIXES := ["ground_", "house_", "fence_", "car_", "barrier_", "jersey_", "fallen_tree_stump", "sign_road_closed"]
 ## Flat or thin things that should not cast shadows.
-const NO_SHADOW_PREFIXES := ["puddles", "decals_", "road_markings", "road_patches", "grass", "wires", "manhole", "leaf_pile", "ground_"]
+const NO_SHADOW_PREFIXES := ["puddles", "decals_", "detail_", "road_markings", "road_patches", "grass", "weed", "wires", "manhole", "leaf_pile", "ground_", "backdrop"]
 ## Repeated props drawn as MultiMesh instances.
-const INSTANCED_PREFIXES := ["grass_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "pole_P", "streetlamp_P"]
+const INSTANCED_PREFIXES := ["grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "pole_P", "streetlamp_P"]
 ## Simple cylinder colliders: name prefix -> [radius, height].
 const CYLINDERS := {"tree_": [0.26, 4.0], "pole_P": [0.17, 8.0], "trash_can_": [0.31, 0.9], "hydrant_": [0.14, 0.75]}
 ## Small props that fade out with distance (metres). Fog hides them sooner.
-const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0}
+## Decals and street detail come from Blender in 24 m sectors ("decals_3_7"), so
+## each sector is culled and faded on its own.
+const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
+	"decals_": 46.0, "detail_": 48.0}
 
 const SODIUM := Color(1.0, 0.55, 0.20)
 const WINDOW_WARM := Color(1.0, 0.62, 0.34)

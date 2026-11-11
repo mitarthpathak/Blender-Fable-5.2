@@ -156,7 +156,11 @@ def sign(name, lines, bg, fg, size=(512, 256)):
     img = Image.new("RGB", size, bg)
     d = ImageDraw.Draw(img)
     d.rectangle([8, 8, size[0] - 9, size[1] - 9], outline=fg, width=8)
-    font = _font(int(size[1] / (len(lines) + 1.2)))
+    px = int(size[1] / (len(lines) + 1.2))
+    font = _font(px)
+    while px > 12 and max(d.textlength(line, font=font) for line in lines) > size[0] * 0.86:
+        px -= 2
+        font = _font(px)
     total = len(lines)
     for i, line in enumerate(lines):
         w = d.textlength(line, font=font)
@@ -212,7 +216,7 @@ def main():
     neutral(TEX / "rusty_painted_metal/rusty_painted_metal_diff_1k.jpg", DERIVED / "metal_neutral_diff.jpg",
             contrast=0.9, keep_chroma=0.15)
     neutral(TEX / "rusty_metal_02/rusty_metal_02_diff_1k.jpg", DERIVED / "carpaint_neutral_diff.jpg",
-            contrast=0.8, keep_chroma=0.7)
+            contrast=0.45, keep_chroma=0.4)
     lawn_rough()
     marking("marking_yellow", (0.62, 0.50, 0.20))
     marking("marking_white", (0.68, 0.67, 0.62))
@@ -223,6 +227,8 @@ def main():
     oil_stain()
     sign("sign_road_closed", ["ROAD", "CLOSED"], (176, 70, 30), (232, 226, 210))
     sign("sign_for_sale", ["FOR SALE", "HALDEN REALTY"], (210, 205, 190), (120, 30, 25))
+    import detail_maps                      # detail-pass decals, flat sets, normal + ORM maps
+    detail_maps.run()
 
 
 if __name__ == "__main__":
