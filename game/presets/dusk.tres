@@ -46,6 +46,7 @@ outdoor_distance_fog_density = 0.055
 outdoor_exposure_high = 0.95
 outdoor_exposure_low = 1.35
 outdoor_street_fog_energy = 1.0
+outdoor_street_halo_low = 0.35
 lamp_energy_scale = 1.0
 street_lights_on = true
 street_energy_scale = 0.8

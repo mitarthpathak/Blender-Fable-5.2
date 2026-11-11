@@ -50,6 +50,7 @@ const VIEWS := {
 }
 
 var _street_lights: Array[OmniLight3D] = []
+var _halos := {}                    # OmniLight3D -> MeshInstance3D
 var _flicker: Array[OmniLight3D] = []
 var _flicker_material: StandardMaterial3D
 var _flicker_emission := 1.0
@@ -74,6 +75,7 @@ func _ready() -> void:
 	var town: Node3D = $Town
 	var stats := _setup_town(town)
 	_add_view_cameras()
+	_make_halos()
 	_noise.frequency = 1.0
 	print("town ready: %d collision bodies, %d meshes kept, %d instanced into %d multimeshes, %d street lights" % [
 		stats["bodies"], stats["meshes"], stats["instanced"], stats["multimeshes"], _street_lights.size()])
@@ -180,6 +182,7 @@ func _process(delta: float) -> void:
 		if _shadow_timer <= 0.0:
 			_shadow_timer = 0.5
 			_update_shadows(main)
+		_update_halos()
 
 
 ## Low is aimed at Intel UHD 620 class graphics, where the street costs per
@@ -204,6 +207,58 @@ func _apply_quality(high: bool) -> void:
 	RenderingServer.positional_soft_shadow_filter_set_quality(filter)
 	if not high and not fixed_scale:
 		get_viewport().scaling_3d_scale = LOW_SCALE
+
+
+## On Low there is no volumetric fog, so a lamp in fog is just a bright dot. A
+## soft additive billboard round each street light stands in for the lit fog.
+## It ignores the distance fog on purpose: far lamps show as dim orbs in it.
+func _make_halos() -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1, 1, 1, 1))
+	gradient.set_color(1, Color(1, 1, 1, 0))
+	gradient.add_point(0.08, Color(1, 1, 1, 0.5))
+	gradient.add_point(0.28, Color(1, 1, 1, 0.16))
+	gradient.add_point(0.6, Color(1, 1, 1, 0.04))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = 128
+	texture.height = 128
+	for lamp in _street_lights:
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		mat.albedo_texture = texture
+		mat.albedo_color = SODIUM
+		mat.disable_fog = true
+		mat.disable_receive_shadows = true
+		var quad := QuadMesh.new()
+		quad.size = Vector2(9.0, 9.0)
+		var halo := MeshInstance3D.new()
+		halo.name = "halo_" + String(lamp.name)
+		halo.mesh = quad
+		halo.material_override = mat
+		halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		halo.position = lamp.position
+		halo.visible = false
+		lamp.get_parent().add_child(halo)
+		_halos[lamp] = halo
+
+
+func _update_halos() -> void:
+	for lamp in _halos:
+		var halo: MeshInstance3D = _halos[lamp]
+		var strength: float = lamp.get_meta("preset_halo", 0.0)
+		halo.visible = _quality == "low" and lamp.visible and strength > 0.0
+		if halo.visible:
+			var level: float = lamp.light_energy / maxf(lamp.get_meta("preset_energy", 9.0), 0.001)
+			var c := SODIUM
+			c.a = clampf(strength * level, 0.0, 1.0)
+			(halo.material_override as StandardMaterial3D).albedo_color = c
 
 
 func _update_shadows(main: Node) -> void:

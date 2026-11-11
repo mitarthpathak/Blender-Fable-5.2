@@ -78,6 +78,9 @@ extends Resource
 @export_range(0.1, 6.0, 0.01) var outdoor_exposure_low := 1.25
 ## How strongly the street lights light the volumetric fog around them.
 @export_range(0.0, 8.0, 0.01) var outdoor_street_fog_energy := 1.2
+## Low quality has no volumetric fog, so nothing glows round a lamp. The town
+## draws a soft halo round each street light instead; this is its strength.
+@export_range(0.0, 2.0, 0.01) var outdoor_street_halo_low := 0.55
 
 @export_group("Practical lights")
 ## Multiplier on the indoor lamps (table lamps, porch light, flicker bulb, TV).

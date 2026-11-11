@@ -209,6 +209,7 @@ func apply() -> void:
 		if street:
 			if outdoor:
 				light.light_volumetric_fog_energy = p.outdoor_street_fog_energy
+				light.set_meta("preset_halo", p.outdoor_street_halo_low)
 			light.visible = p.street_lights_on and not light.has_meta("broken")
 		if flicker_base.has(light):
 			flicker_base[light] = energy     # main.gd flickers around this level
