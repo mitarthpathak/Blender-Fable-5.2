@@ -5,6 +5,8 @@ class_name HouseLights
 const WARM := Color(1.0, 0.62, 0.34)
 const MOONLIGHT := Color(0.50, 0.66, 1.0)
 const SODIUM := Color(1.0, 0.55, 0.20)
+const LOW_FOG_INDOORS := Color(0.112, 0.144, 0.192)
+const LOW_FOG_OUTDOORS := Color(0.20, 0.25, 0.33)
 
 
 ## Configure every light under `root`. Returns {"moon": light, "lamps": [...]}.
@@ -15,7 +17,16 @@ static func apply(root: Node) -> Dictionary:
 		var node: Node = stack.pop_back()
 		for child in node.get_children():
 			stack.append(child)
-		if node is DirectionalLight3D:
+		if node is MeshInstance3D:
+			var mesh := node as MeshInstance3D
+			var mesh_name := String(mesh.name)
+			if mesh_name.begins_with("clapboard_"):
+				# The boards' own shadow lines are finer than a shadow map can hold:
+				# left on, they speckle the wall. Their undersides stay dark anyway.
+				mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			elif mesh_name == "roof":
+				mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_DOUBLE_SIDED
+		elif node is DirectionalLight3D:
 			var moon := node as DirectionalLight3D
 			moon.light_color = MOONLIGHT
 			moon.light_energy = 1.6
@@ -57,3 +68,17 @@ static func apply(root: Node) -> Dictionary:
 				lamp.light_bake_mode = Light3D.BAKE_DISABLED   # it changes, so it cannot be baked
 			result["lamps"].append(lamp)
 	return result
+
+
+## Fog for the Low preset, blended by how far outdoors the camera is (0 to 1).
+## Indoors: thin and dark, so rooms keep their contrast. Outdoors: pale
+## moonlit fog that hides the street beyond about 25 m and pools on the ground.
+static func apply_low_fog(env: Environment, outside: float) -> void:
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+	env.fog_light_color = LOW_FOG_INDOORS.lerp(LOW_FOG_OUTDOORS, outside)
+	env.fog_density = lerpf(0.055, 0.09, outside)
+	env.fog_sky_affect = 1.0
+	env.fog_sun_scatter = 0.0
+	env.fog_aerial_perspective = 0.0
+	env.fog_height = -0.45 + 1.6                 # ground fog: thickest in the first metre and a half
+	env.fog_height_density = lerpf(0.0, 0.35, outside)

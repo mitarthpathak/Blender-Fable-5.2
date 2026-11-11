@@ -364,10 +364,10 @@ class Decals:
     def __init__(self, name, seed=0):
         self.name, self.mb, self.rng = name, MeshBuilder(), random.Random(seed)
 
-    def wall(self, texture, face, a, z, w, h, flip=None):
+    def wall(self, texture, face, a, z, w, h, flip=None, offset=0.0022):
         key = decal_material(texture)
         flip = self.rng.random() < 0.5 if flip is None else flip
-        d = 0.0022 + self.rng.random() * 0.0006
+        d = offset + self.rng.random() * 0.0006
         corners = [face.P(a - w / 2, d, z - h / 2), face.P(a + w / 2, d, z - h / 2),
                    face.P(a + w / 2, d, z + h / 2), face.P(a - w / 2, d, z + h / 2)]
         uvs = [(0, 0), (1, 0), (1, 1), (0, 1)]

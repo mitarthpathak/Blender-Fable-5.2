@@ -1,6 +1,6 @@
 """The outside of the house (docs/ART_BIBLE.md): porch, screen door, trim,
-gutters, yard, fence and a streetlight. The house walls themselves get their
-clapboard from the shell builder."""
+gutters, yard, fence and a streetlight, and the clapboard itself: one lapped
+board per course over the flat wall the shell builder makes."""
 
 from __future__ import annotations
 
@@ -138,6 +138,89 @@ def trim(coll="exterior"):
     return [mb.build("exterior_trim", coll, recalc=True)]
 
 
+LAP = 0.115            # how much of each board shows
+LAP_OUT = 0.016        # the bottom edge of a board stands this far off the wall
+LAP_IN = 0.003         # and its top edge, tucked under the next board, this far
+CASING = 0.10          # boards stop at the window and door casings
+
+
+LAP_TILE = 16 * LAP      # the board texture repeats every 16 courses (assets.py, `laps`)
+
+
+def _lap(mb, face, a0, a1, z0, z1, rng, base, a0_top=None, a1_top=None):
+    """One clapboard: a face leaning out towards its bottom edge. The dark
+    line under each board is in the texture as well as in the geometry, so
+    it survives at a distance where a 13 mm ledge is smaller than a pixel.
+    `base` is the height the courses are counted from."""
+    a0_top = a0 if a0_top is None else a0_top
+    a1_top = a1 if a1_top is None else a1_top
+    if a1 - a0 < 0.02 or z1 - z0 < 0.008:
+        return
+    du, dv = rng.random(), rng.randrange(16) / 16.0      # every board is a different piece of wood
+    pts = [face.P(a0, LAP_OUT, z0), face.P(a1, LAP_OUT, z0), face.P(a1_top, LAP_IN, z1), face.P(a0_top, LAP_IN, z1)]
+    uvs = [(a / LAP_TILE + du, (z - base) / LAP_TILE + dv)
+           for a, z in ((a0, z0), (a1, z0), (a1_top, z1), (a0_top, z1))]
+    if (pts[1] - pts[0]).cross(pts[2] - pts[0]).dot(face.normal) < 0:
+        pts, uvs = pts[::-1], uvs[::-1]
+    mb.face(pts, "ext_clapboard", uvs=uvs)
+
+
+def clapboard(coll="exterior"):
+    """Lapped boards on the four walls and the two gables. Each course is cut
+    at the casings; a course that crosses the top or bottom of an opening
+    keeps the part of the board above or below it."""
+    rng = random.Random(11)
+    made = []
+    x0, x1, y0, y1 = -E, plan.WIDTH + E, -E, plan.DEPTH + E
+    walls = (("south", OUT_S, x0, x1, "wall_ext_south"), ("north", OUT_N, x0, x1, "wall_ext_north"),
+             ("west", OUT_W, y0, y1, "wall_ext_west"), ("east", OUT_E, y0, y1, "wall_ext_east"))
+    bottom, top = 0.14, plan.ROOF_Z + 0.16
+    courses = []
+    z = bottom
+    while z < top - 1e-6:
+        courses.append((z, min(z + LAP, top)))
+        z += LAP
+
+    for name, face, lo, hi, wall_name in walls:
+        wall = next(w for w in plan.WALLS if w.name == wall_name)
+        holes = [(o.start - CASING, o.end + CASING, o.sill - (0.0 if o.kind == "door" else 0.06), o.head + CASING + 0.035)
+                 for o in wall.openings]
+        cuts = sorted({lo + 0.11, hi - 0.11} | {v for h in holes for v in h[:2]})
+        mb = MeshBuilder()
+        for z0, z1 in courses:
+            spans = []                                   # (a0, a1, z0, z1) pieces of this course
+            for a0, a1 in zip(cuts, cuts[1:]):
+                am = (a0 + a1) / 2
+                hole = next((h for h in holes if h[0] < am < h[1] and h[2] < z1 and h[3] > z0), None)
+                if hole is None:
+                    if spans and spans[-1][1] == a0 and spans[-1][2:] == (z0, z1):
+                        spans[-1] = (spans[-1][0], a1, z0, z1)
+                    else:
+                        spans.append((a0, a1, z0, z1))
+                else:
+                    if hole[2] > z0 + 0.008:
+                        spans.append((a0, a1, z0, hole[2]))
+                    if hole[3] < z1 - 0.008:
+                        spans.append((a0, a1, hole[3], z1))
+            for a0, a1, za, zb in spans:
+                _lap(mb, face, a0, a1, za, zb, rng, z0)
+        made.append(mb.build(f"clapboard_{name}", coll))
+
+    # The gables: the same courses, each one narrower than the last.
+    over, rise = 0.35, 2.3
+    mid, half = (y0 + y1) / 2, (y1 - y0) / 2 + over
+    for name, face in (("gable_west", OUT_W), ("gable_east", OUT_E)):
+        mb = MeshBuilder()
+        z = top
+        while z < top + rise - 0.02:
+            z1 = min(z + LAP, top + rise - 0.01)
+            w0, w1 = half * (1 - (z - top) / rise), half * (1 - (z1 - top) / rise)
+            _lap(mb, face, mid - w0, mid + w0, z, z1, rng, z, mid - w1, mid + w1)
+            z += LAP
+        made.append(mb.build(f"clapboard_{name}", coll))
+    return made
+
+
 def gutters(coll="exterior"):
     mb = MeshBuilder()
     over = 0.35
@@ -224,23 +307,24 @@ def porch_light(coll="exterior"):
 
 def weathering():
     d = Decals("decals_exterior", seed=31)
+    OFF = LAP_OUT + 0.002                    # clear of the boards' bottom edges
     for face, lo, hi in ((OUT_S, -E, plan.WIDTH + E), (OUT_N, -E, plan.WIDTH + E),
                          (OUT_W, -E, plan.DEPTH + E), (OUT_E, -E, plan.DEPTH + E)):
         a = lo + 0.9
         while a < hi - 0.6:
-            d.wall("moss", face, a, 0.42, 1.9, 0.9)
+            d.wall("moss", face, a, 0.62, 1.9, 0.9, offset=OFF)
             a += 1.7
         for a in (lo + 0.25, hi - 0.25):                                   # down from the gutter ends
-            d.wall("grime_streaks", face, a, plan.ROOF_Z - 1.4, 0.9, 2.8)
-        d.wall("grime_streaks", face, (lo + hi) / 2 + 1.3, plan.ROOF_Z - 1.0, 1.1, 2.0)
+            d.wall("grime_streaks", face, a, plan.ROOF_Z - 1.4, 0.9, 2.8, offset=OFF)
+        d.wall("grime_streaks", face, (lo + hi) / 2 + 1.3, plan.ROOF_Z - 1.0, 1.1, 2.0, offset=OFF)
     for wall, face in (("wall_ext_south", OUT_S), ("wall_ext_north", OUT_N), ("wall_ext_west", OUT_W)):
         for o in next(w for w in plan.WALLS if w.name == wall).openings:
             if o.kind == "window":
-                d.wall("grime_streaks", face, (o.start + o.end) / 2, o.sill - 0.75, o.width + 0.2, 1.3)
+                d.wall("grime_streaks", face, (o.start + o.end) / 2, o.sill - 0.75, o.width + 0.2, 1.3, offset=OFF)
     return d.build()
 
 
 def build():
-    made = porch() + [screen_door()] + trim() + gutters() + yard() + porch_light()
+    made = porch() + [screen_door()] + trim() + clapboard() + gutters() + yard() + porch_light()
     weathering()
     return made

@@ -43,6 +43,7 @@ SPECS: dict[str, Spec] = {
     "panel_wood": Spec("#3b2b21", 0.55),
     "ceiling": Spec("#c9c6bd", 0.9, tile=2.4),
     "ext_siding": Spec("#8d9186", 0.8, rot=True),      # boards run along the wall
+    "ext_clapboard": Spec("#8d9186", 0.8),             # the modelled boards over it
     "ext_trim": Spec("#a9a79b", 0.7),
     "ground_grass": Spec("#3a4030", 0.95),
     "ground_path": Spec("#6f6d66", 0.9),

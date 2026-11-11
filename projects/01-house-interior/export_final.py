@@ -2,7 +2,7 @@
 
     blender -b house.blend --python export_final.py
 
-- house_packed.blend: every texture and the HDRI packed inside the file.
+- house_packed.blend: every texture packed inside the file.
 - house.glb: geometry, materials with their textures, and the lights, for
   Godot. The render-only haze and the lamp markers are left out.
 """

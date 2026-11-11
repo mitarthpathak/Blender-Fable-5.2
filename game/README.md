@@ -32,13 +32,18 @@ up in code, so a fresh export from Blender needs no hand edits:
   `opens_degrees` the model carries.
 - **Lighting**: a cool moon, warm lamps, a scripted failing-bulb flicker on
   `light_hall_flicker`, and a television glow added as a light.
-- **Environment**: night-street sky, cool ambient light, AgX tone mapping.
+- **Environment**: plain night fog for a sky, cool ambient light, AgX tone
+  mapping. `scripts/world.gd` thickens and pales the Low preset's fog when
+  the camera is outdoors (`HouseLights.apply_low_fog`).
+- **Exterior**: the clapboard is modelled, one leaning board per course
+  (`clapboard_*`). The boards cast no shadows and the roof casts
+  double-sided ones; both are set in `scripts/house_lights.gd`.
 
 ## Graphics settings
 
 | | High | Low |
 | --- | --- | --- |
-| Volumetric fog | on | off (cheap distance fog) |
+| Volumetric fog | on | off (cheap depth and ground fog, thicker outdoors) |
 | SDFGI, SSR, SSIL | on | off |
 | SSAO, glow, normal maps, decals, mipmaps, probes | on | on |
 | Render scale | 100% | 77% with FSR upscaling |

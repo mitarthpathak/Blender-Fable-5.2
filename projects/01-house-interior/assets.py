@@ -9,7 +9,6 @@ Layout on disk, all inside this project and stored in Git LFS:
 
     textures/<set>/<set>_{diff,nor_gl,arm}_2k.jpg    surfaces, 2K
     textures/derived/<material>_{diff,arm}.jpg       tinted or re-glossed copies
-    hdri/<id>_4k.hdr                                 the night sky
     models/<id>/                                     furniture as glTF with 1K textures
 """
 
@@ -24,7 +23,6 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 TEXTURES = HERE / "textures"
 MODELS = HERE / "models"
-HDRI_DIR = HERE / "hdri"
 API = "https://api.polyhaven.com/files/"
 AGENT = {"User-Agent": "blender-house-builder"}
 
@@ -59,9 +57,6 @@ SETS: dict[str, float] = {
     "moss_wood": 1.0,
 }
 
-HDRI = "cobblestone_street_night"
-HDRI_RES = "4k"
-
 
 @dataclass(frozen=True)
 class Surface:
@@ -73,6 +68,8 @@ class Surface:
     tint: str | None = None
     rough: float = 1.0
     normal: float = 1.0
+    mono: bool = False          # tint from the grey image: one paint colour, no second hue
+    laps: int = 0               # clapboard: this many boards up the image, each shaded under the next
 
 
 PLASTER = "painted_plaster_wall"
@@ -87,6 +84,7 @@ SURFACES: dict[str, Surface] = {
     "panel_wood": Surface("dark_paneled_wood", "#3b2b21"),
     "ceiling": Surface("ceiling_interior", "#a5a297", normal=0.7),
     "ext_siding": Surface("white_planks_clean", "#6c7167"),
+    "ext_clapboard": Surface("peeling_painted_wall", "#6c7167", normal=0.8, mono=True, laps=16),
     "ext_trim": Surface("white_planks_clean", "#8f8d82", normal=0.4),
     "roof": Surface("roof_slates_02"),
     "foundation": Surface("concrete_floor_worn_02"),
@@ -151,10 +149,6 @@ def surface_files(key: str) -> dict[str, Path] | None:
     return {"diff": diff, "nor": set_file(surface.set, "nor_gl"), "arm": arm}
 
 
-def hdri_file() -> Path:
-    return HDRI_DIR / f"{HDRI}_{HDRI_RES}.hdr"
-
-
 def model_file(model_id: str) -> Path:
     return MODELS / model_id / f"{model_id}_{MODEL_RES}.gltf"
 
@@ -203,14 +197,6 @@ def fetch_textures():
                 print(f"  + {set_file(set_id, kind).relative_to(HERE)}")
 
 
-def fetch_hdri():
-    if hdri_file().exists():
-        return
-    listing = _listing(HDRI)
-    if listing and _download(listing["hdri"][HDRI_RES]["hdr"]["url"], hdri_file()):
-        print(f"  + {hdri_file().relative_to(HERE)}")
-
-
 def fetch_models():
     for model_id in MODEL_IDS:
         target = model_file(model_id)
@@ -229,6 +215,23 @@ def fetch_models():
 
 # --- Tinted and re-glossed variants -----------------------------------------
 
+def _shade_laps(image, count):
+    """Darken the top of each board, where the one above overhangs it, and
+    lift its bottom edge a little. V runs up the image."""
+    import numpy as np
+    from PIL import Image
+
+    pixels = np.asarray(image, dtype=np.float32)
+    height = pixels.shape[0]
+    f = ((height - 1 - np.arange(height)) / height * count) % 1.0     # 0 at a board's bottom edge, 1 at its top
+    shade = np.ones(height, dtype=np.float32)
+    top = f > 0.80
+    shade[top] = 1.0 - 0.72 * ((f[top] - 0.80) / 0.20) ** 1.6
+    low = f < 0.06
+    shade[low] = 1.0 + 0.10 * (1.0 - f[low] / 0.06)
+    return Image.fromarray(np.clip(pixels * shade[:, None, None], 0, 255).astype(np.uint8))
+
+
 def derive():
     from PIL import Image, ImageStat
 
@@ -239,11 +242,16 @@ def derive():
             source, target = set_file(surface.set, "diff"), out / f"{key}_diff.jpg"
             if source.exists() and not target.exists():
                 image = Image.open(source).convert("RGB")
+                if surface.mono:
+                    image = image.convert("L").convert("RGB")
                 mean = ImageStat.Stat(image).mean
                 want = [int(surface.tint.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
                 bands = [band.point(lambda v, s=want[i] / max(mean[i], 1.0): min(255, int(v * s + 0.5)))
                          for i, band in enumerate(image.split())]
-                Image.merge("RGB", bands).save(target, quality=92)
+                image = Image.merge("RGB", bands)
+                if surface.laps:
+                    image = _shade_laps(image, surface.laps)
+                image.save(target, quality=92)
                 print(f"  ~ {target.relative_to(HERE)}")
         if surface.rough != 1.0:
             source, target = set_file(surface.set, "arm"), out / f"{key}_arm.jpg"
@@ -258,8 +266,6 @@ def main():
     if "--derive" not in sys.argv:
         print("textures")
         fetch_textures()
-        print("hdri")
-        fetch_hdri()
         print("models")
         fetch_models()
     print("derived")

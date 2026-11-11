@@ -84,7 +84,7 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `house.blend` | The house scene, rebuilt by `build.py` at each later phase |
 | `assets.py` | Manifest of everything taken from Poly Haven; running it downloads and tints |
 | `decals.py` | Generates the grime and damage decal textures |
-| `textures/`, `hdri/`, `models/` | The downloaded assets (CC0), in Git LFS |
+| `textures/`, `models/` | The downloaded assets (CC0), in Git LFS |
 
 Build and render headless, which has no time limit:
 
@@ -110,10 +110,10 @@ All Poly Haven assets are CC0.
 
 ## Lighting
 
-- **Moon**: `light_moon`, a cool directional light from the south-west. It
-  comes through the front windows and the tall stair window.
-- **Street**: a night HDRI of a lamp-lit street, kept dim; it is what you see
-  through the glass.
+- **Moon**: `light_moon`, a cool directional light from just west of south.
+  It comes through the front windows and the tall stair window.
+- **Street**: a sodium streetlight in plain night fog. There is no sky
+  image: the backdrop is the fog colour from `docs/ART_BIBLE.md`.
 - **Practicals**: warm lamps on the hall table, the sideboard and the bedside.
 - **Flicker-ready**: `light_hall_flicker` (the hall pendant) and
   `light_tv_flicker` carry a `flicker` custom property. In Blender the pendant
@@ -128,7 +128,7 @@ and `cam_hero_bedroom`.
 
 | File | What it is |
 | --- | --- |
-| `house_packed.blend` | The finished scene with every texture and the HDRI packed inside |
+| `house_packed.blend` | The finished scene with every texture packed inside |
 | `house.glb` | For Godot: meshes, materials with textures, point and directional lights, cameras |
 | `renders/06_lighting_hero_*.png` | The three hero shots, 1920x1080 |
 

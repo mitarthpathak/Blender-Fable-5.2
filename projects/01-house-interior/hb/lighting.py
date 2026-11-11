@@ -4,8 +4,8 @@ Three kinds of light, in order of strength:
 
 1. Moonlight: a cool sun from the south-west, through the front windows and
    the stair window. This is the key light and the source of the shafts.
-2. The street: a night HDRI of a lamp-lit street, seen through the windows
-   and adding a dim sodium glow near them.
+2. The street: the sodium streetlight outside, in plain night fog. There is
+   no sky image.
 3. Practicals: a warm lamp wherever the props phase left a `lightpoint_*`
    marker, the hall pendant set up to flicker, and a cold flicker from the
    television.
@@ -20,7 +20,6 @@ import math
 import bpy
 from mathutils import Vector
 
-import assets
 import plan
 from . import core
 from .core import MeshBuilder
@@ -29,8 +28,8 @@ WARM = (1.0, 0.63, 0.32)         # an old tungsten bulb
 COOL_TV = (0.55, 0.70, 1.0)
 MOON = (0.42, 0.58, 1.0)
 
-# Light travels this way: from the south-west, coming down at 31 degrees.
-MOON_DIRECTION = Vector((0.30, 0.95, 0.0)).normalized() * math.cos(math.radians(24)) \
+# Light travels this way: from just west of south, coming down at 24 degrees.
+MOON_DIRECTION = Vector((0.15, 0.95, 0.0)).normalized() * math.cos(math.radians(24)) \
     + Vector((0, 0, -math.sin(math.radians(24))))
 
 HERO = {
@@ -41,25 +40,16 @@ HERO = {
 }
 
 
-def world(strength=0.22, rotation_deg=205.0):
-    w = bpy.data.worlds.new("night_street")
+FOG = (0.044, 0.052, 0.064)       # the night fog, as in the game (docs/ART_BIBLE.md)
+
+
+def world(strength=0.5):
+    """No sky photograph: in thick fog at night there is only the fog."""
+    w = bpy.data.worlds.new("night_fog")
     w.use_nodes = True
-    tree = w.node_tree
-    tree.nodes.clear()
-    out = tree.nodes.new("ShaderNodeOutputWorld")
-    bg = tree.nodes.new("ShaderNodeBackground")
-    env = tree.nodes.new("ShaderNodeTexEnvironment")
-    mapping = tree.nodes.new("ShaderNodeMapping")
-    coords = tree.nodes.new("ShaderNodeTexCoord")
-    path = assets.hdri_file()
-    if path.exists():
-        env.image = bpy.data.images.load(str(path), check_existing=True)
-    mapping.inputs["Rotation"].default_value = (0, 0, math.radians(rotation_deg))
+    bg = next(n for n in w.node_tree.nodes if n.type == "BACKGROUND")
+    bg.inputs["Color"].default_value = (*FOG, 1.0)
     bg.inputs["Strength"].default_value = strength
-    tree.links.new(coords.outputs["Generated"], mapping.inputs["Vector"])
-    tree.links.new(mapping.outputs["Vector"], env.inputs["Vector"])
-    tree.links.new(env.outputs["Color"], bg.inputs["Color"])
-    tree.links.new(bg.outputs["Background"], out.inputs["Surface"])
     bpy.context.scene.world = w
     return w
 

@@ -313,5 +313,10 @@ def build_envelope(coll="structure"):
     mb.face([a, c, b], "ext_siding")                             # west gable
     mb.face([a + span, b + span, c + span], "ext_siding")        # east gable
     mb.face([a, b, b + span, a + span], "foundation")           # underside
+    # Fascia boards closing the eaves. The moon comes in almost parallel to
+    # the south slope, which makes the slope a poor shadow caster in a game
+    # engine; a board square to the light gives the eave a clean shadow.
+    for y, s in ((y0 - over, -1), (y1 + over, 1)):
+        mb.box((x0, min(y, y + s * 0.025), eave - 0.17), (x1, max(y, y + s * 0.025), eave + 0.035), "ext_trim")
     made.append(mb.build("roof", coll, recalc=True))
     return made
