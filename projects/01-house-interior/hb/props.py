@@ -1,6 +1,7 @@
 """Phase 5: furnish and dress the house.
 
-Placement is written out room by room. Furniture comes from Poly Haven
+Placement is written out room by room; the kitchen and the bathroom have
+modules of their own (kitchen.py, bathroom.py). Furniture comes from Poly Haven
 models where a good one exists and is built here where it has to fit the
 room (bed, wardrobe, chest, bookcases, curtains, radiators).
 """
@@ -14,7 +15,7 @@ from mathutils import Vector
 
 import plan
 from . import dressing as dr
-from . import joinery, models
+from . import bathroom, joinery, kitchen, models
 from .core import MeshBuilder
 from .dressing import (CHIMNEY, DIVIDER_N, DIVIDER_S, EAST, F1, HALL_EAST, NORTH, ROOM_WEST, SOUTH, WEST,
                        Decals)
@@ -221,72 +222,59 @@ def living():
     put("sofa_02", "sofa", 4.28, 2.30, GF, facing=0)
     dr.rug("rug_living", 4.05, 1.05, 6.55, 3.55, GF)
     put("small_wooden_table_01", "coffee_table", 5.42, 2.30, 0.012, facing=0)
-    put("ArmChair_01", "armchair", 5.75, 4.30, GF, facing=-62)
+    put("ArmChair_01", "armchair", 6.02, 3.42, GF, facing=-82)
     put("side_table_01", "tv_table", 6.98, 0.82, GF, facing=180)
     put("television_02", "television", 6.98, 0.82, 0.551, facing=158)
     dr.lightpoint("tv", (6.75, 0.92, 0.78), "tv", 6.0)
     put("potted_plant_02", "plant_living", 3.08, 0.62, GF, facing=40, scale=0.85)
-    dr.bookcase("bookcase_living", EAST, 3.28, 4.52, GF, seed=2)
-    put("vintage_grandfather_clock_01", "clock_living", 2.80, 7.62, GF, facing=0)
-    put("wooden_table_02", "dining_table", 4.95, 6.40, GF, facing=-90, scale=1.35)
-    put("painted_wooden_chair_01", "dining_chair_1", 4.42, 7.22, GF, facing=-92)
-    put("painted_wooden_chair_01", "dining_chair_2", 5.48, 7.28, GF, facing=-80)
-    put("painted_wooden_chair_01", "dining_chair_3", 4.30, 5.42, GF, facing=62)
-    put("painted_wooden_chair_01", "dining_chair_fallen", 5.85, 5.15, 0.245, facing=205, tilt=(-90, 0))
-    put("WoodenTable_03", "sideboard", 7.01, 6.30, GF, facing=180)
-    dr.table_lamp("sideboard", (7.02, 6.82, 0.832), kind="warm", watts=20)
-    dr.broken_floor_lamp("broken", (3.25, 4.55, GF), direction_deg=18)
-    dr.pendant("living", 4.9, 2.4, plan.CEILING, drop=0.6, kind="off")
+    dr.bookcase("bookcase_living", EAST, 3.14, 4.36, GF, seed=2)
+    put("vintage_grandfather_clock_01", "clock_living", 4.42, 4.16, GF, facing=-90)
+    put("WoodenTable_03", "sideboard", 5.42, 4.12, GF, facing=-90)
+    dr.table_lamp("sideboard", (5.86, 4.14, 0.832), kind="warm", watts=20)
+    dr.broken_floor_lamp("broken", (2.86, 2.55, GF), direction_deg=76)
+    dr.pendant("living", 4.9, 2.3, plan.CEILING, drop=0.6, kind="off")
     put("mantel_clock_01", "mantel_clock", 6.84, 2.30, 1.146, facing=180)
     put("standing_picture_frame_02", "mantel_photo", 6.85, 1.74, 1.146, facing=165)
     put("brass_vase_01", "mantel_vase", 6.84, 2.90, 1.146, facing=0, scale=0.55)
     put("fancy_picture_frame_02", "picture_fireplace", 6.95, 2.30, 1.86, facing=180)
-    put("hanging_picture_frame_02", "picture_living", plan.PART_X1, 4.05, 1.62, facing=0, tilt=(0, -4.0))
+    put("hanging_picture_frame_02", "picture_living", plan.PART_X1, 3.55, 1.62, facing=0, tilt=(0, -4.0))
     put("wine_bottles_01", "bottles", 5.36, 2.02, 0.545, facing=20, scale=0.9)
-    put("ceramic_vase_01", "vase_sideboard", 7.02, 5.88, 0.832, facing=0, scale=0.8)
-    put("Ottoman_01", "ottoman", 5.05, 3.62, 0.012, facing=-75)
+    put("ceramic_vase_01", "vase_sideboard", 5.02, 4.14, 0.832, facing=0, scale=0.8)
+    put("Ottoman_01", "ottoman", 5.25, 3.42, 0.012, facing=-75)
     dr.radiator("radiator_living", SOUTH, 4.22, 5.62, GF)
-    dr.radiator("radiator_dining", NORTH, 4.3, 5.5, GF)
 
     dr.curtain_pole("pole_living_front", SOUTH, 3.50, 6.34, 2.40)
     dr.curtain("curtain_living_front_l", SOUTH, 3.52, 4.18, 2.39, 0.04, seed=1)
     dr.curtain("curtain_living_front_r", SOUTH, 5.28, 6.32, 2.39, 0.04, seed=2)
-    dr.curtain_pole("pole_dining", NORTH, 3.72, 6.12, 2.40)
-    dr.curtain("curtain_dining_l", NORTH, 3.74, 4.62, 2.39, 0.04, seed=3)
-    dr.curtain("curtain_dining_r", NORTH, 5.40, 6.10, 2.39, 0.04, seed=4)
 
     small = MeshBuilder()
     dr.mug(small, 5.50, 2.52, 0.545)
     dr.mug(small, 5.33, 2.44, 0.545)
     dr.newspaper(small, 5.44, 2.20, 0.545, 28)
-    dr.mug(small, 4.72, 6.22, 1.085)
-    dr.newspaper(small, 5.20, 6.48, 1.082, -12)
     dr.newspaper(small, 4.9, 3.05, 0.012, 64)
     small.build("clutter_living", "clutter", smooth=False)
 
     fx = MeshBuilder()
     dr.switch(fx, ROOM_WEST, 2.22, 1.22, double=True)
-    dr.switch(fx, ROOM_WEST, 7.12, 1.22)
     dr.socket(fx, SOUTH, 6.72, 0.32)
-    dr.socket(fx, EAST, 5.05, 0.32)
-    dr.socket(fx, EAST, 7.35, 0.32)
+    dr.socket(fx, DIVIDER_S, 6.25, 0.32)
     dr.cable(fx, [(6.96, 0.66, 0.60), (6.99, 0.42, 0.30), (6.90, 0.10, 0.02), (6.74, 0.012, 0.30)], radius=0.0035)
-    dr.cable(fx, [(7.02, 6.84, 0.84), (7.20, 6.98, 0.6), (7.27, 7.20, 0.05), (7.288, 7.35, 0.30)], radius=0.003)
-    dr.cable(fx, [(3.25, 4.55, 0.02), (2.9, 4.3, 0.01), (2.62, 3.9, 0.01), (2.552, 3.6, 0.30)], radius=0.003)
+    dr.cable(fx, [(5.87, 4.15, 0.84), (6.02, 4.28, 0.6), (6.15, 4.36, 0.05), (6.25, 4.388, 0.30)], radius=0.003)
+    dr.cable(fx, [(2.86, 2.55, 0.02), (2.66, 2.9, 0.01), (2.60, 3.3, 0.01), (2.552, 3.6, 0.30)], radius=0.003)
     dr.socket(fx, ROOM_WEST, 3.6, 0.32)
     fx.build("electrics_living", "fixtures")
 
     d = Decals("decals_living", seed=22)
-    d.wall("floor_grime", ROOM_WEST, 3.4, 0.34, 2.4, 0.36)
-    d.wall("floor_grime", EAST, 5.6, 0.33, 2.0, 0.34)
+    d.wall("floor_grime", ROOM_WEST, 3.2, 0.34, 2.0, 0.36)
+    d.wall("floor_grime", DIVIDER_S, 5.6, 0.33, 2.0, 0.34)
     d.wall("grime_streaks", SOUTH, 3.2, 1.9, 0.7, 1.5)
     d.wall("grime_streaks", SOUTH, 4.9, 0.44, 1.9, 0.62)
-    d.wall("grime_streaks", NORTH, 6.6, 1.95, 0.8, 1.4)
+    d.wall("grime_streaks", DIVIDER_S, 6.7, 1.95, 0.8, 1.4)
     d.wall("crack", CHIMNEY, 2.75, 2.05, 0.9, 0.9)
-    d.wall("water_stain", EAST, 4.2, 2.25, 1.1, 0.8)
+    d.wall("water_stain", EAST, 3.8, 2.25, 1.0, 0.8)
     d.wall("smudge", ROOM_WEST, 2.22, 1.2, 0.36, 0.42)
-    d.wall("plaster_damage", ROOM_WEST, 6.55, 0.62, 0.5, 0.5)
-    d.flat("water_stain", 6.3, 4.9, plan.CEILING, 1.6, 1.4, up=False, angle_deg=70)
+    d.wall("plaster_damage", DIVIDER_S, 4.55, 2.2, 0.5, 0.5)
+    d.flat("water_stain", 6.2, 3.6, plan.CEILING, 1.5, 1.3, up=False, angle_deg=70)
     d.build()
 
 
@@ -363,52 +351,11 @@ def bedroom():
     d.build()
 
 
-def boxroom():
-    put("wooden_table_02", "desk", 6.92, 5.90, F1, facing=180)
-    put("painted_wooden_chair_01", "desk_chair", 6.22, 5.98, F1, facing=12)
-    put("desk_lamp_arm_01", "desk_lamp", 6.96, 5.44, F1 + 0.80, facing=140)
-    put("book_encyclopedia_set_01", "desk_books", 7.08, 6.25, F1 + 0.80, facing=180)
-    dr.bookcase("bookcase_boxroom", DIVIDER_N, 3.62, 4.82, F1, seed=6, key="wood_mid")
-    put("cardboard_box_01", "box_1", 2.95, 7.52, F1, facing=5)
-    put("cardboard_box_01", "box_2", 3.48, 7.48, F1, facing=-20)
-    put("cardboard_box_01", "box_3", 3.02, 7.50, F1 + 0.34, facing=30, scale=0.9)
-    put("cardboard_box_01", "box_4", 3.25, 6.85, F1, facing=75, scale=1.1)
-    put("cardboard_box_01", "box_5", 2.92, 5.95, F1, facing=100)
-    put("plastic_crate_03", "crate_boxroom", 4.05, 7.62, F1, facing=0)
-    put("wooden_stool_01", "stool_boxroom", 5.15, 7.25, F1, facing=30)
-    put("vintage_wooden_drawer_01", "filing_drawers", 5.55, 4.54 + 0.52, F1, facing=90, scale=0.62)
-    dr.pendant("boxroom", 4.9, 6.2, plan.ROOF_Z, drop=0.55, kind="off")
-    dr.curtain_pole("pole_boxroom", NORTH, 3.95, 5.90, F1 + 2.40)
-    dr.curtain("curtain_boxroom", NORTH, 3.97, 4.75, F1 + 2.39, F1 + 0.75, seed=7)
-
-    small = MeshBuilder()
-    dr.newspaper(small, 6.85, 5.75, F1 + 0.80, 80)
-    dr.newspaper(small, 4.6, 6.1, F1 + 0.002, 20)
-    dr.newspaper(small, 5.0, 6.5, F1 + 0.002, 140)
-    dr.mug(small, 6.8, 6.42, F1 + 0.80)
-    small.build("clutter_boxroom", "clutter")
-
-    fx = MeshBuilder()
-    dr.switch(fx, ROOM_WEST, 5.9, F1 + 1.22)
-    dr.socket(fx, EAST, 5.3, F1 + 0.32)
-    dr.cable(fx, [(7.1, 5.40, F1 + 0.80), (7.24, 5.34, F1 + 0.7), (7.27, 5.31, F1 + 0.05), (7.288, 5.30, F1 + 0.30)],
-             radius=0.003)
-    fx.build("electrics_boxroom", "fixtures")
-
-    d = Decals("decals_boxroom", seed=25)
-    d.wall("floor_grime", ROOM_WEST, 6.9, F1 + 0.34, 1.9, 0.36)
-    d.wall("grime_streaks", NORTH, 3.3, F1 + 1.9, 0.9, 1.5)
-    d.wall("grime_streaks", NORTH, 6.6, F1 + 1.9, 0.8, 1.5)
-    d.wall("plaster_damage", EAST, 7.3, F1 + 1.55, 0.7, 0.7)
-    d.wall("crack", EAST, 6.3, F1 + 1.9, 1.2, 1.2)
-    d.flat("water_stain", 3.4, 7.0, plan.ROOF_Z, 1.8, 1.6, up=False, angle_deg=55)
-    d.build()
-
-
 def build():
     models.reset()
     hall()
     living()
+    kitchen.build()
     landing()
     bedroom()
-    boxroom()
+    bathroom.build()

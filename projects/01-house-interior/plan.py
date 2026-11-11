@@ -33,10 +33,10 @@ WIDTH = 7.30                    # interior, east-west
 DEPTH = 8.00                    # interior, north-south
 
 HALL_W = 2.40                   # hallway, including the stair
-PART_X0 = HALL_W                # hall / living partition
+PART_X0 = HALL_W                # hall / rooms partition
 PART_X1 = PART_X0 + INT_T       # 2.54
-DIVIDER_Y0 = 4.40               # first-floor wall between the two rooms
-DIVIDER_Y1 = DIVIDER_Y0 + INT_T  # 4.54
+DIVIDER_Y0 = 4.40               # wall between the front and back rooms, on both floors:
+DIVIDER_Y1 = DIVIDER_Y0 + INT_T  # 4.54   living | kitchen below, bedroom | bathroom above
 
 # --- Stair: one straight flight along the west wall, climbing north ----------
 STAIR_W = 1.05
@@ -135,7 +135,11 @@ WALLS: tuple[Wall, ...] = (
 
     Wall("wall_gf_partition", PART_X0, 0.0, PART_X1, DEPTH, 0.0, CEILING, (
         Opening("door_living", "door", 1.15, DOOR_W, 0.0, DOOR_H, hinge="start", swing="+"),
-        Opening("opening_dining", "opening", 5.50, 1.50, 0.0, 2.20),
+        Opening("opening_hall_kitchen", "opening", 5.50, 1.50, 0.0, 2.20),
+    )),
+    Wall("wall_gf_divider", PART_X1, DIVIDER_Y0, WIDTH, DIVIDER_Y1, 0.0, CEILING, (
+        # Living room to kitchen: a cased opening, no door.
+        Opening("opening_living_kitchen", "opening", 3.00, 1.10, 0.0, DOOR_H),
     )),
     Wall("chimney_breast_gf", 6.95, 1.50, WIDTH, 3.10, 0.0, CEILING, (
         Opening("fireplace", "fireplace", 2.02, 0.56, 0.0, 0.72, on_plan=False),
@@ -144,7 +148,7 @@ WALLS: tuple[Wall, ...] = (
     Wall("wall_ff_partition", PART_X0, 0.0, PART_X1, DEPTH, _z(1, 0.0), ROOF_Z, (
         Opening("door_bedroom", "door", 3.25, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
                 hinge="end", swing="+"),
-        Opening("door_boxroom", "door", 4.80, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
+        Opening("door_bathroom", "door", 4.80, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
                 hinge="start", swing="+"),
     )),
     Wall("wall_ff_divider", PART_X1, DIVIDER_Y0, WIDTH, DIVIDER_Y1, _z(1, 0.0), ROOF_Z),
@@ -154,14 +158,15 @@ WALLS: tuple[Wall, ...] = (
 # --- Rooms ------------------------------------------------------------------
 ROOMS: tuple[Room, ...] = (
     Room("hall", "HALLWAY", 0, ((0.0, 0.0, HALL_W, DEPTH),), (1.22, 1.52)),
-    Room("living", "LIVING / DINING", 0, ((PART_X1, 0.0, WIDTH, DEPTH),), (4.92, 4.55)),
+    Room("living", "LIVING ROOM", 0, ((PART_X1, 0.0, WIDTH, DIVIDER_Y0),), (4.92, 3.95)),
+    Room("kitchen", "KITCHEN", 0, ((PART_X1, DIVIDER_Y1, WIDTH, DEPTH),), (4.60, 5.25)),
     Room("landing", "LANDING", 1, (
         (0.0, 0.0, HALL_W, VOID_Y0),              # front landing
         (VOID_X1, VOID_Y0, HALL_W, DEPTH),        # corridor past the stairwell
         (0.0, VOID_Y1, VOID_X1, DEPTH),           # head of the stair
     ), (1.20, 1.90)),
     Room("bedroom", "BEDROOM", 1, ((PART_X1, 0.0, WIDTH, DIVIDER_Y0),), (4.92, 1.55)),
-    Room("boxroom", "BOX ROOM / STUDY", 1, ((PART_X1, DIVIDER_Y1, WIDTH, DEPTH),), (4.75, 6.20)),
+    Room("bathroom", "BATHROOM", 1, ((PART_X1, DIVIDER_Y1, WIDTH, DEPTH),), (4.75, 5.95)),
 )
 
 # The hole in the first floor over the stair.
@@ -184,34 +189,40 @@ FURNITURE: tuple[tuple[int, str, float, float, float, float], ...] = (
     (0, "sofa", 3.90, 1.25, 4.80, 3.35),
     (0, "table", 5.35, 1.85, 5.95, 2.75),
     (0, "fire / TV", 6.72, 1.75, 6.95, 2.85),
-    (0, "armchair", 5.85, 0.30, 6.65, 1.10),
-    (0, "books", 6.95, 3.25, 7.30, 4.55),
-    (0, "dining table", 4.05, 5.95, 5.85, 6.85),
-    (0, "sideboard", 6.85, 5.50, 7.30, 7.10),
+    (0, "armchair", 5.30, 0.25, 6.10, 1.05),
+    (0, "books", 6.95, 3.14, 7.30, 4.36),
+    (0, "sideboard", 4.75, 3.95, 6.35, 4.40),
+    (0, "counter / sink", 3.30, 7.40, 7.30, 8.00),
+    (0, "stove", 6.66, 5.95, 7.30, 6.71),
+    (0, "fridge", 6.58, 4.60, 7.30, 5.32),
+    (0, "table", 3.85, 5.55, 5.05, 6.45),
     (1, "chair", 0.15, 0.25, 0.80, 0.90),
     (1, "wardrobe", 2.54, 0.25, 3.14, 2.15),
     (1, "bed", 4.25, 2.35, 5.85, 4.40),
     (1, "drawers", 6.85, 0.20, 7.30, 1.40),
-    (1, "desk", 6.65, 5.10, 7.30, 6.70),
-    (1, "shelves", 3.60, 4.54, 5.40, 4.86),
-    (1, "boxes", 2.70, 6.90, 3.70, 7.85),
+    (1, "bath", 5.55, 7.22, 7.25, 8.00),
+    (1, "wc", 3.05, 7.28, 3.47, 8.00),
+    (1, "basin", 5.55, 4.54, 6.15, 5.00),
+    (1, "shelves", 2.54, 6.60, 2.84, 7.60),
 )
 
 # storey, kind, x, y, label. Kinds: "warm" practical, "flicker", "broken".
 LIGHTS: tuple[tuple[int, str, float, float, str], ...] = (
     (0, "warm", 2.24, 2.70, "table lamp"),
     (0, "flicker", 1.78, 5.30, "pendant (flicker-ready)"),
-    (0, "broken", 6.30, 1.45, "broken floor lamp"),
-    (0, "warm", 7.08, 6.85, "lamp"),
+    (0, "broken", 2.85, 2.55, "broken floor lamp"),
+    (0, "warm", 5.90, 4.20, "lamp"),
+    (0, "warm", 6.80, 4.96, "fridge, left open"),
     (1, "warm", 6.05, 4.05, "bedside lamp"),
+    (1, "warm", 5.85, 4.70, "mirror light"),
 )
 
 # Windows the moon shines through: storey, x, y of the window centre, and the
 # direction the light travels in plan.
 MOONLIGHT: tuple[tuple[int, float, float, float, float], ...] = (
-    (0, 4.92, 0.0, 0.35, 1.0),
-    (1, 4.92, 0.0, 0.35, 1.0),
-    (1, 1.775, 0.0, 0.35, 1.0),
+    (0, 4.92, 0.0, 0.16, 1.0),
+    (1, 4.92, 0.0, 0.16, 1.0),
+    (1, 1.775, 0.0, 0.16, 1.0),
     (1, 0.0, 4.75, 1.0, 0.35),
 )
 

@@ -17,7 +17,11 @@ from .core import MeshBuilder
 
 SAMPLE = 0.03       # how far in front of a face its surroundings are sampled
 WAINSCOT = 0.95     # height of the wood panelling
-WAINSCOT_ROOMS = ("hall", "living", "landing")
+# Rooms whose walls change material part of the way up: room -> (material, height).
+DADO = {
+    "hall": ("panel_wood", WAINSCOT), "living": ("panel_wood", WAINSCOT), "landing": ("panel_wood", WAINSCOT),
+    "bathroom": ("tile_bathroom", 1.52),
+}
 
 
 def face_material(point, wall, override=None) -> str | None:
@@ -33,8 +37,9 @@ def face_material(point, wall, override=None) -> str | None:
         if override:
             return override
         storey = 1 if z >= plan.FFL[1] else 0
-        panelled = room in WAINSCOT_ROOMS and z - plan.FFL[storey] < WAINSCOT and z < plan.CEILING + plan.FFL[storey]
-        return "panel_wood" if panelled else f"wall_{room}"
+        key, height = DADO.get(room, (None, 0.0))
+        low = key and z - plan.FFL[storey] < height and z < plan.CEILING + plan.FFL[storey]
+        return key if low else f"wall_{room}"
     if not core.inside_house(x, y, z):
         return override or "ext_siding"
     return None                       # inside the floor build-up
@@ -67,7 +72,9 @@ def build_wall(wall: plan.Wall, coll="structure", name=None, zclip=None, overrid
         return Vector((a, c, z)) if along_x else Vector((c, a, z))
 
     # Where the faces must be divided.
-    a_values, z_values = [], [plan.CEILING, plan.FFL[1], WAINSCOT, plan.FFL[1] + WAINSCOT]
+    a_values, z_values = [], [plan.CEILING, plan.FFL[1]]
+    for _, height in DADO.values():
+        z_values += [height, plan.FFL[1] + height]
     for o in wall.openings:
         a_values += [o.start, o.end]
         z_values += [o.sill, o.head]

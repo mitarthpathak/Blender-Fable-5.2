@@ -21,7 +21,8 @@ import plan  # noqa: E402
 importlib.reload(plan)  # Blender keeps modules between runs
 
 BLEND = HERE / "layout.blend"
-RENDER = HERE / "renders" / "01_layout_plan.png"
+# 01_layout_plan.png is the plan as first signed off (through living/dining room, box room).
+RENDER = HERE / "renders" / "08_layout_plan_kitchen_bathroom.png"
 
 # Where each storey's plan sits on the sheet.
 OFFSET = ((0.0, 0.0), (10.6, 0.0))
@@ -35,7 +36,8 @@ COLORS = {
     "living": "#3d4a3a",
     "landing": "#33404d",
     "bedroom": "#493f55",
-    "boxroom": "#54483a",
+    "kitchen": "#4d4a35",
+    "bathroom": "#34504f",
     "void": "#0d0f12",
     "threshold": "#2a333d",
     "window": "#63c2ff",
@@ -358,7 +360,7 @@ def draw_annotations():
 
     # Title and build notes.
     text("01 HOUSE INTERIOR", SHEET[0] + 0.5, SHEET[3] - 0.62, 0.52, align="LEFT")
-    text("floor plan for sign-off   layout phase   real-world scale, metres",
+    text("floor plan, revised: kitchen and bathroom   real-world scale, metres",
          SHEET[0] + 7.0, SHEET[3] - 0.66, 0.22, "dim", align="LEFT")
     notes = (
         f"Floor to floor {plan.FLOOR_TO_FLOOR:.2f} m  =  {plan.RISERS} risers x {plan.RISE:.2f}.  "
@@ -367,7 +369,8 @@ def draw_annotations():
         f"Stair {plan.STAIR_W:.2f} m wide, {plan.STAIR_Y1 - plan.STAIR_Y0:.2f} m run, "
         "with an invisible ramp collider alongside.",
         "The stairwell is open from the hallway up to the first-floor ceiling.",
-        "Moon in the south-west: light comes through the front and stair windows.",
+        "Moon just west of south: light comes through the front and stair windows.",
+        "The wall between living room and kitchen stands under the one upstairs; the outer shell is unchanged.",
     )
     for i, body in enumerate(notes):
         text(body, OFFSET[1][0] - 0.3, -2.75 - i * 0.36, 0.17, "dim", align="LEFT")

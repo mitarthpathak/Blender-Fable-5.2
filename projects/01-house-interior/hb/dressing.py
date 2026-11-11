@@ -58,8 +58,8 @@ WEST = Face("y", 0.0, 1)
 EAST = Face("y", plan.WIDTH, -1)
 HALL_EAST = Face("y", plan.PART_X0, -1)            # the partition, seen from the hall and landing
 ROOM_WEST = Face("y", plan.PART_X1, 1)             # the partition, seen from the rooms
-DIVIDER_S = Face("x", plan.DIVIDER_Y0, -1)         # bedroom side
-DIVIDER_N = Face("x", plan.DIVIDER_Y1, 1)          # box room side
+DIVIDER_S = Face("x", plan.DIVIDER_Y0, -1)         # the front rooms' side: living room, bedroom
+DIVIDER_N = Face("x", plan.DIVIDER_Y1, 1)          # the back rooms' side: kitchen, bathroom
 CHIMNEY = Face("y", 6.95, -1)
 
 

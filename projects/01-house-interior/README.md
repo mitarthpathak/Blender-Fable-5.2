@@ -20,7 +20,7 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | Final | Done | `house_packed.blend`, `house.glb`, three hero shots |
 
 The layout was approved as drawn: real-world scale, a box room upstairs
-and the through living / dining room.
+the living room at the front and the kitchen behind it.
 
 ## Brief
 

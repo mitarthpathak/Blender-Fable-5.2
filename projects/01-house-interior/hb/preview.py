@@ -20,10 +20,11 @@ CENTRE = (plan.WIDTH / 2, plan.DEPTH / 2)
 INTERIOR = {
     "hall": dict(at=(1.82, 0.55, 1.55), to=(0.95, 5.2, 1.25), lens=17),
     "stairs": dict(at=(2.05, 7.25, 1.50), to=(0.55, 3.2, 1.45), lens=17),
-    "living": dict(at=(2.95, 0.55, 1.55), to=(6.3, 5.6, 1.0), lens=17),
+    "living": dict(at=(2.95, 0.45, 1.55), to=(6.3, 3.6, 0.9), lens=17),
     "landing": dict(at=(1.95, 7.55, plan.FFL[1] + 1.55), to=(1.35, 1.0, plan.FFL[1] + 1.15), lens=17),
     "bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.55), to=(5.6, 3.9, plan.FFL[1] + 0.75), lens=17),
-    "boxroom": dict(at=(2.95, 7.6, plan.FFL[1] + 1.55), to=(6.6, 5.0, plan.FFL[1] + 0.8), lens=17),
+    "kitchen": dict(at=(2.95, 4.95, 1.55), to=(6.4, 7.4, 0.95), lens=17),
+    "bathroom": dict(at=(2.95, 4.95, plan.FFL[1] + 1.55), to=(6.3, 7.6, plan.FFL[1] + 0.8), lens=17),
 }
 
 
