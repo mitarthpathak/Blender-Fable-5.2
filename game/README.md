@@ -224,14 +224,21 @@ separate: bake both scenes if you use both.
 Measured on the Low target itself, an Intel HD Graphics 620 (i5-7300U),
 1600x900, with `-- --world=town --town-perf`:
 
-| View | Low (58 % scale) | Low at `main.gd`'s 77 % | High | Draw calls (Low) | Triangles drawn (Low) |
-| --- | --- | --- | --- | --- | --- |
-| Front door, looking out | 32 FPS | 26 FPS | 2 FPS | 304 | 167 k |
-| Junction | 45 FPS | 32 FPS | 4 FPS | 204 | 157 k |
-| Mill Road | 52 FPS | 40 FPS | 6 FPS | 198 | 156 k |
+| View | Low (58 % scale) | High | Draw calls (Low) | Triangles drawn (Low) |
+| --- | --- | --- | --- | --- |
+| Front door, looking out | 36 FPS | 2 FPS | 430 | 193 k |
+| Junction | 45 FPS | 4 FPS | 328 | 176 k |
+| Mill Road | 52 FPS | 6 FPS | 253 | 171 k |
+
+These are after the detail pass (cars, potholes, weeds, street detail, lot
+stories, fog ends). Before it the same views ran at 32, 45 and 52 FPS with
+304, 204 and 198 draw calls: the detail added about 60 000 triangles and 55
+to 125 draw calls and cost no frame rate, because it is merged into 24 m
+sectors that fade out past 46 to 48 m, the trees and weeds are instanced,
+and it reuses the kit's materials.
 
 Draw calls and triangles include the shadow passes. The town model is about
-116,000 triangles in 232 objects (44 unique meshes); with the house hidden
+175,000 triangles in 380 objects (70 unique meshes); with the house hidden
 the main pass is 117 draw calls and 83,000 triangles.
 
 That GPU is limited by pixels, not triangles: an empty scene runs at 70 FPS
@@ -252,6 +259,17 @@ High is not meant for that machine (2 to 6 FPS there); it needs a discrete GPU.
 ![Low: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_low.jpg)
 ![High: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_high.jpg)
 
+#### Night fog on Low
+
+Low has no volumetric fog. Outdoors at night it uses the distance fog from
+Night's **Outdoors** group, a blue-grey that hides houses by about 30 m, and
+`town.gd` draws a soft additive halo round each street light
+(`outdoor_street_halo_low` sets its strength per preset). Colours in the
+`.tres` files are sRGB, as everywhere in Godot: a fog colour of 0.1 is nearly
+black on screen.
+
+![Low after the detail pass: Night and Foggy Overcast Day](screenshots/town/detail_pass_low.jpg)
+
 #### Town checks
 
 ```bash
@@ -260,3 +278,8 @@ godot --path game -- --world=town --town-perf --quality=low      # FPS, draw cal
 godot --path game -- --world=town --preset-shots --views=front_door,junction,side_street --out=res://screenshots/town
 godot --headless --path game --export-release "Halden Ridge Town" build_town/HaldenRidge.exe
 ```
+
+`build_town/` is in `game/.gitignore`: the export is made locally and no
+longer committed. After importing new town textures headless, run
+`python projects/03-town/godot_imports.py` and import again, so they are
+VRAM-compressed.

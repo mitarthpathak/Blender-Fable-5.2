@@ -66,6 +66,24 @@ downpipes; some windows are boarded or broken, as listed in `plan.py`.
 - Manhole covers, a hydrant, mailboxes, trash cans (one knocked over),
   leaf piles, puddles on the road and sidewalks, potholes and patches.
 - Bare trees in the yards.
+- Storm drains, wet leaves banked in the gutters, weeds and moss in every
+  joint, no-parking signs, a bus stop and bench on Ashgrove, uncollected
+  trash, a shopping cart at the junction, a bicycle by the player's fence,
+  tyre marks towards each wreck.
+- Flyers on the poles, all our own: a missing cat (Toby), a town meeting
+  about what happens to the Halden mill, a yard sale at 12 Ashgrove Street.
+
+## What each lot says
+
+| Lot | Story |
+| --- | --- |
+| 14 Ashgrove (player) | A hose by the porch, the paper still on the path. |
+| 12 Ashgrove | The yard sale from the flyer was never cleared away: a collapsed table, boxes, a lamp. |
+| 16 Ashgrove | Lived in: a porch swing, pumpkins on the steps going soft, a sheet ghost left in the tree since Halloween. |
+| 15 Ashgrove | A child lived here: a ball, a wagon, a tricycle and a sandbox lost in the long grass. |
+| 17 Ashgrove | For sale, and nobody is buying; the sedan at the curb has sat on flat tyres for a long time. |
+| 3 Mill Road | An empty dog house, a chain, a bowl, and a BEWARE OF DOG sign on the fence. |
+| 4 Mill Road | The vacant lot: a station wagon on blocks, tyres, pallets, a mattress. |
 
 ## Where the player walks
 
@@ -82,7 +100,9 @@ Back yards and the gaps between houses are closed by tall board fences.
 ## Edges
 
 The town ends where it would naturally be blocked, and an invisible
-collision wall stands on each edge (`plan.WALK`):
+collision wall stands on each edge (`plan.WALK`). Beyond each closed street
+end stand dead trees and a dark line of trees and roofs, so the street fades
+into the fog rather than stopping:
 
 | Edge | What blocks it |
 | --- | --- |

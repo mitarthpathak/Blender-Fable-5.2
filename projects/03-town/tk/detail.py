@@ -123,11 +123,11 @@ def gutters_and_drains(det: Sectors, dec: Sectors, rng):
 
 
 def signs_and_bus_stop(det: Sectors, rng):
-    sign_post(det.at(12.6, -9.0), 12.6, -9.0, SW, math.radians(8), "sign_parking", lean=0.05)
+    sign_post(det.at(14.2, -9.0), 14.2, -9.0, SW, math.radians(8), "sign_parking", lean=0.05)
     sign_post(det.at(-13.5, -19.3), -13.5, -19.3, SW, math.radians(185), "sign_parking", lean=-0.09)
     sign_post(det.at(8.3, -27.5), 8.3, -27.5, SW, math.radians(95), "sign_parking", lean=0.03)
     # bus stop on the north sidewalk, east of the house path
-    sign_post(det.at(9.9, -9.9), 9.9, -9.9, SW, math.radians(0), "sign_bus", w=0.36, h=0.54, height=2.6, lean=0.02)
+    sign_post(det.at(11.6, -9.9), 11.6, -9.9, SW, math.radians(0), "sign_bus", w=0.36, h=0.54, height=2.6, lean=0.02)
     bench = MeshBuilder()
     wood = (0.62, 0.58, 0.52)
     for k in range(4):                                         # seat slats
@@ -143,7 +143,7 @@ def signs_and_bus_stop(det: Sectors, rng):
         bench.box((sx - 0.03, 0.21, 0.0), (sx + 0.03, 0.27, 0.92), "metal_rust")
         bench.box((sx - 0.03, -0.27, 0.38), (sx + 0.03, 0.27, 0.42), "metal_rust")
     o = bench.build("bench_bus_stop", "props")
-    o.location = (8.0, -9.05, SW)
+    o.location = (12.9, -9.05, SW)
     o.rotation_euler.z = math.radians(3)
 
 
