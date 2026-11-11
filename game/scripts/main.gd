@@ -7,6 +7,9 @@ extends Node3D
 
 ## The house model plus its LightmapGI node and reflection probes.
 const WORLD_SCENE := "res://world.tscn"
+## The house in its town (scripts/town.gd). Chosen with `-- --world=town`, or
+## by the "town" feature tag that the Halden Ridge export preset sets.
+const TOWN_SCENE := "res://world_town.tscn"
 const SETTINGS_FILE := "user://settings.cfg"
 
 ## Meshes that should not block the player: flat decals, soft furnishings,
@@ -50,7 +53,7 @@ var _prompt: Label
 func _ready() -> void:
 	_setup_input()
 	var started := Time.get_ticks_msec()
-	var world: Node3D = (load(WORLD_SCENE) as PackedScene).instantiate()
+	var world: Node3D = (load(_world_scene()) as PackedScene).instantiate()
 	add_child(world)
 	house = world.get_node("House")
 	var stats := _setup_collision()
@@ -59,6 +62,7 @@ func _ready() -> void:
 	_setup_hud()
 	_spawn_player()
 	_load_quality()
+	LightingPresets.attach(self)    # time-of-day presets and brightness (F2, F4)
 	print("house ready in %d ms: %d collision bodies, %d doors, %d lights" % [
 		Time.get_ticks_msec() - started, stats, _doors.size(), _lamp_lights.size() + 2])
 
@@ -69,6 +73,14 @@ func _ready() -> void:
 		await _self_test()
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _world_scene() -> String:
+	var world_name := "town" if OS.has_feature("town") else "house"
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--world="):
+			world_name = arg.get_slice("=", 1)
+	return TOWN_SCENE if world_name == "town" else WORLD_SCENE
 
 
 # --- Input ------------------------------------------------------------------
@@ -317,6 +329,8 @@ func set_quality(level: String) -> void:
 	if _hud:
 		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F flashlight   F1 quality: %s   F3 FPS   Esc free mouse" \
 			% level.capitalize()
+	if has_node("LightingPresets"):
+		(get_node("LightingPresets") as LightingPresets).apply()
 
 
 func _load_quality() -> void:
@@ -332,6 +346,7 @@ func _load_quality() -> void:
 
 func _save_quality() -> void:
 	var config := ConfigFile.new()
+	config.load(SETTINGS_FILE)      # keep the other sections (lighting presets)
 	config.set_value("graphics", "quality", quality)
 	config.save(SETTINGS_FILE)
 

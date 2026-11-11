@@ -1,3 +1,6 @@
 # Godot's import cache: rebuilt from the source assets on first open.
 .godot/
 *.translation
+
+# Windows builds are made locally and not committed (the town build is large).
+build_town/
