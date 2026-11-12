@@ -8,9 +8,9 @@ extends Node3D
 ## The house model plus its LightmapGI node and reflection probes.
 const WORLD_SCENE := "res://world.tscn"
 ## The house in its town (scripts/town.gd). Chosen with `-- --world=town`, or
-## by the "town" feature tag that the Halden Ridge export preset sets.
+## by the "town" feature tag that the Halden Ridge export presets set
+## (scripts/build_flavor.gd).
 const TOWN_SCENE := "res://world_town.tscn"
-const SETTINGS_FILE := "user://settings.cfg"
 
 ## Meshes that should not block the player: flat decals, soft furnishings,
 ## wires and small loose things. The stair steps are left out because the
@@ -76,7 +76,7 @@ func _ready() -> void:
 
 
 func _world_scene() -> String:
-	var world_name := "town" if OS.has_feature("town") else "house"
+	var world_name := BuildFlavor.world()      # the export preset's feature tags
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--world="):
 			world_name = arg.get_slice("=", 1)
@@ -335,9 +335,9 @@ func set_quality(level: String) -> void:
 
 func _load_quality() -> void:
 	var config := ConfigFile.new()
-	var level := "high"
-	if config.load(SETTINGS_FILE) == OK:
-		level = config.get_value("graphics", "quality", "high")
+	var level := BuildFlavor.default_quality()
+	if config.load(BuildFlavor.settings_file()) == OK:
+		level = config.get_value("graphics", "quality", level)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--quality="):
 			level = arg.get_slice("=", 1)
@@ -346,9 +346,9 @@ func _load_quality() -> void:
 
 func _save_quality() -> void:
 	var config := ConfigFile.new()
-	config.load(SETTINGS_FILE)      # keep the other sections (lighting presets)
+	config.load(BuildFlavor.settings_file())      # keep the other sections (lighting presets)
 	config.set_value("graphics", "quality", quality)
-	config.save(SETTINGS_FILE)
+	config.save(BuildFlavor.settings_file())
 
 
 # --- Player and HUD ----------------------------------------------------------

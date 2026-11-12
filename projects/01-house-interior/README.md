@@ -183,6 +183,7 @@ Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
 | `renders/06_lighting_hero_*.png` | The first three hero shots, 1920x1080 (before the kitchen and bathroom) |
 | `renders/10_detail_hero_*.png` | Kitchen, bathroom, living room and hallway after the first detail pass |
 | `renders/12_rooms_hero_*.png` | Every room after the second detail pass: the current state |
+| `renders/12_rooms_work_hero_*.png` | Utility cupboard, landing and bathroom under the even work light (they are near black in the night lighting) |
 
 Rebuild everything from the scripts:
 

@@ -345,3 +345,43 @@ godot --path game -- --world=town --town-perf --quality=low      # FPS, draw cal
 godot --path game -- --world=town --preset-shots --views=front_door,junction,side_street --out=res://screenshots/town
 godot --headless --path game --export-release "Halden Ridge Town" build_town/HaldenRidge.exe
 ```
+
+## Halden Ridge Day (free-roam build)
+
+The export preset **Halden Ridge Day** sets the feature tags `town` and
+`dayroam`. `scripts/build_flavor.gd` reads them and gives that build its
+defaults; the other two presets are unchanged.
+
+| | Windows Desktop | Halden Ridge Town | Halden Ridge Day |
+| --- | --- | --- | --- |
+| World | the house alone | the town | the town |
+| Player starts | inside the front door | inside the front door | inside the front door |
+| Look on first start | Night | Night | Foggy Overcast Day |
+| Quality on first start | High | High | Low |
+| Settings file | `user://settings.cfg` | `user://settings.cfg` | `user://settings_day.cfg` |
+
+They are first-start defaults only. F1 (quality), F2 (look) and F4 (settings
+panel) work as in the other builds, and what the player picks is saved. The
+day build keeps its own settings file so a Night or High saved by an older
+build cannot override its first start.
+
+```bash
+godot --path game -- --flavor=day                                  # the day build's defaults, from source
+godot --headless --path game -- --flavor=day --town-selftest
+godot --headless --path game --export-release "Halden Ridge Day" build/day/HaldenRidgeDay.exe
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --selftest         # tests on the export
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --town-selftest
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --world=house --preset-check
+```
+
+`--preset-check` compares Night with the house world's own values, so on
+this build it needs `--world=house`; in the town world the presets use their
+outdoor values and the check lists those differences.
+
+### Builds are not committed
+
+`game/build/` and `game/build_town/` are in `.gitignore`. A build is
+published as a GitHub Release on this repository (tag such as
+`v0.1-dayroam`) with the `.exe` and the `.pck` as release assets; the `.pck`
+must sit beside the `.exe`. The two `HouseInterior` files already tracked in
+`build/` are from before this rule and are out of date.

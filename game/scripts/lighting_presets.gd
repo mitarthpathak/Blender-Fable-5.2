@@ -8,7 +8,9 @@ extends Node
 ## apply() at the end of set_quality(), so a preset survives a quality change.
 ##
 ## Keys: F2 cycles the presets, F4 opens a small settings panel (preset and
-## brightness). Both are kept in user://settings.cfg, section [lighting].
+## brightness). Both are kept in user://settings.cfg, section [lighting] (the
+## day build keeps its own file and starts in Foggy Overcast Day: see
+## scripts/build_flavor.gd).
 ## Command line: --preset=<id> picks one for this run, and --preset-shots
 ## renders the hallway and the porch in every preset, then quits.
 
@@ -18,7 +20,6 @@ const PRESETS := {
 	"dusk": "res://presets/dusk.tres",
 }
 const ORDER := ["night", "foggy_day", "dusk"]
-const SETTINGS_FILE := "user://settings.cfg"
 const SECTION := "lighting"
 const BRIGHTNESS_MIN := 0.5
 const BRIGHTNESS_MAX := 2.0
@@ -66,6 +67,7 @@ func _ready() -> void:
 	_setup_input()
 	_capture_base()
 	outdoor = not get_tree().get_nodes_in_group("outdoor_world").is_empty()
+	current = BuildFlavor.default_preset()
 	_load_settings()
 	_build_ui()
 	var check := "--preset-check" in OS.get_cmdline_user_args()
@@ -74,6 +76,8 @@ func _ready() -> void:
 		current = "night"
 		brightness = 1.0
 	apply()
+	print("look: %s, quality %s, brightness %d%%, %s build" % [
+		current, main.quality, roundi(brightness * 100.0), BuildFlavor.name()])
 	if check:
 		_report_check(before, _snapshot())
 	if "--preset-shots" in OS.get_cmdline_user_args():
@@ -271,7 +275,7 @@ func _all_of(root: Node, type: String) -> Array[Node]:
 
 func _load_settings() -> void:
 	var config := ConfigFile.new()
-	if config.load(SETTINGS_FILE) == OK:
+	if config.load(BuildFlavor.settings_file()) == OK:
 		current = config.get_value(SECTION, "preset", current)
 		brightness = clampf(float(config.get_value(SECTION, "brightness", brightness)), BRIGHTNESS_MIN, BRIGHTNESS_MAX)
 	for arg in OS.get_cmdline_user_args():
@@ -286,10 +290,10 @@ func _load_settings() -> void:
 ## Load what is there first, so the [graphics] section main.gd writes is kept.
 func _save_settings() -> void:
 	var config := ConfigFile.new()
-	config.load(SETTINGS_FILE)
+	config.load(BuildFlavor.settings_file())
 	config.set_value(SECTION, "preset", current)
 	config.set_value(SECTION, "brightness", snappedf(brightness, 0.01))
-	config.save(SETTINGS_FILE)
+	config.save(BuildFlavor.settings_file())
 
 
 # --- Input and UI ------------------------------------------------------------------
