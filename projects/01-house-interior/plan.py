@@ -134,8 +134,14 @@ WALLS: tuple[Wall, ...] = (
     Wall("wall_ext_west", -EXT_T, 0.0, 0.0, DEPTH, 0.0, ROOF_Z, (
         # Tall stair window: its sill sits 0.9 m above the tread below it.
         Opening("win_stair", "window", 4.30, 0.90, 2.90, 4.50),
+        # Over the landing radiator. (Quality pass: the side walls were blank.)
+        Opening("win_landing_side", "window", 0.65, 0.80, _z(1, 0.95), _z(1, 2.25)),
     )),
-    Wall("wall_ext_east", WIDTH, 0.0, WIDTH + EXT_T, DEPTH, 0.0, ROOF_Z),
+    # Two small windows flank the chimney, as they would in a house of this kind.
+    Wall("wall_ext_east", WIDTH, 0.0, WIDTH + EXT_T, DEPTH, 0.0, ROOF_Z, (
+        Opening("win_living_side", "window", 0.40, 0.80, 0.95, 2.25),
+        Opening("win_bedroom_side", "window", 0.40, 0.80, _z(1, 0.95), _z(1, 2.25)),
+    )),
 
     Wall("wall_gf_partition", PART_X0, 0.0, PART_X1, DEPTH, 0.0, CEILING, (
         Opening("door_living", "door", 1.15, DOOR_W, 0.0, DOOR_H, hinge="start", swing="+"),

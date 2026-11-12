@@ -64,6 +64,18 @@ SETS: dict[str, float] = {
     "rounded_square_tiled_wall": 2.0,
     "terry_cloth": 0.37,
     "gingham_check": 0.45,
+    # Quality pass: the outside and the back yard
+    "concrete_block_wall_02": 2.0,
+    "rusty_metal_02": 1.0,
+    "bark_brown_02": 1.0,
+    "rusty_corrugated_iron": 2.0,
+    "brown_mud_leaves_01": 1.3,
+}
+
+# Sets fetched below the usual 2K: things seen from across a yard.
+SET_RES: dict[str, str] = {
+    "concrete_block_wall_02": "1k", "rusty_metal_02": "1k", "bark_brown_02": "1k",
+    "rusty_corrugated_iron": "1k", "brown_mud_leaves_01": "1k",
 }
 
 
@@ -80,6 +92,9 @@ class Surface:
     mono: bool = False          # tint from the grey image: one paint colour, no second hue
     laps: int = 0               # clapboard: this many boards up the image, each shaded under the next
     mould: float = 0.0          # tiles: how far mould has taken the grout, 0 to 1
+    gen: str = ""               # a generator in GENERATORS that draws the maps (see below)
+    tile: float = 0.0           # size of one repeat in metres, when it is not the set's
+    own: bool = False           # the generator makes normal and ARM maps too
 
 
 PLASTER = "painted_plaster_wall"
@@ -89,12 +104,16 @@ SURFACES: dict[str, Surface] = {
     "wall_hall": Surface("decrepit_wallpaper", "#8a8570"),
     "wall_landing": Surface("decrepit_wallpaper", "#8a8570"),
     "wall_living": Surface("decrepit_wallpaper", "#7c7f6a"),
-    "wall_bedroom": Surface("peeling_painted_wall", "#7d877f", mono=True),
+    # Bedroom: a striped paper drawn over the plaster photograph. (It was a
+    # photograph of badly cracked paint, which at wall size read as dried mud.)
+    "wall_bedroom": Surface(PLASTER, "#7f887c", gen="stripes"),
     "wall_kitchen": Surface(PLASTER, "#96937f"),
-    "wall_bathroom": Surface("peeling_painted_wall", "#869089", mono=True),
+    "wall_bathroom": Surface(PLASTER, "#8a958d", rough=0.72),         # gloss paint; the peeling is in decals
     "wall_utility": Surface(PLASTER, "#98958a"),
-    "tile_bathroom": Surface("long_white_tiles", "#a7b0a3", mono=True, mould=0.45),
-    "tile_bathroom_wet": Surface("long_white_tiles", "#a0a99c", mono=True, mould=1.0),   # round the bath
+    # Square glazed tiles, drawn (texgen.py): the photographed set is a modern
+    # stack of long narrow tiles, wrong for the house.
+    "tile_bathroom": Surface(PLASTER, "#a9b3a6", gen="square_tiles", tile=0.864, own=True, mould=0.35),
+    "tile_bathroom_wet": Surface(PLASTER, "#a3ad9f", gen="square_tiles", tile=0.864, own=True, mould=1.0),
     "tile_kitchen": Surface("rounded_square_tiled_wall", "#a89f88", mono=True),
     "panel_wood": Surface("dark_paneled_wood", "#3b2b21"),
     "ceiling": Surface("ceiling_interior", "#a5a297", normal=0.7),
@@ -106,15 +125,23 @@ SURFACES: dict[str, Surface] = {
     "ground_grass": Surface("leafy_grass"),
     "ground_path": Surface("concrete_floor_worn_02"),
     "ground_road": Surface("asphalt_02"),
-    "porch_boards": Surface("wood_floor_worn", "#6b665b"),
-    "floor_hall": Surface("old_linoleum_flooring_01", "#7d6c4c"),
+    "porch_boards": Surface("wood_floor_worn", "#6b665b", mono=True),     # one grey paint, not the pine's orange
+    "ext_foundation": Surface("concrete_floor_worn_02", "#77756c", gen="blocks", tile=2.0, own=True),
+    "ext_brick": Surface("red_brick", "#67483d"),
+    "metal_galv": Surface("rusty_metal_02", "#6f716d", gen="dull_hard"),
+    "metal_painted": Surface("rusty_metal_02", "#8a8676", gen="dull_hard"),
+    "bark": Surface("bark_brown_02", "#4a4338", gen="dull"),
+    "roof_tin": Surface("rusty_corrugated_iron", "#4f4239", gen="dull"),
+    "ground_dirt": Surface("brown_mud_leaves_01", "#3f392c", gen="dull"),
+    "shed_boards": Surface("wood_peeling_paint_weathered", "#5c5b50", mono=True),
+    "floor_hall": Surface("old_linoleum_flooring_01", "#74694f", gen="dull"),
     "floor_living": Surface("old_wooden_floor_02"),
     "floor_landing": Surface("dirty_carpet", "#5c5747"),
     "floor_bedroom": Surface("dirty_carpet", "#5c5747"),
-    "floor_kitchen": Surface("linoleum_brown", "#7d6f52"),
+    "floor_kitchen": Surface("linoleum_brown", gen="vinyl_tiles", tile=1.829, own=True),   # nine-inch tiles
     "floor_bathroom": Surface("checkered_pavement_tiles"),
     "floor_utility": Surface("linoleum_brown", "#6c6757"),
-    "cabinet": Surface("kitchen_wood", "#7c6444"),
+    "cabinet": Surface("kitchen_wood", "#6a573f"),
     "counter": Surface("terrazzo_tiles", "#8b8474", mono=True, rough=0.7),
     "enamel": Surface(PLASTER, "#b4b1a4", rough=0.42, normal=0.06),
     "enamel_almond": Surface(PLASTER, "#b0a688", rough=0.45, normal=0.06),
@@ -138,7 +165,7 @@ SURFACES: dict[str, Surface] = {
     "fabric_pillow": Surface("rough_linen", "#c9c5b8"),
     "leather": Surface("fabric_leather_02"),
     "carpet": Surface("dirty_carpet"),
-    "carpet_runner": Surface("dirty_carpet", "#5a2f2a"),
+    "carpet_runner": Surface("dirty_carpet", "#4a3330"),
 }
 
 # Furniture and props. Unknown ids are skipped with a warning, so the list can
@@ -169,11 +196,13 @@ def model_diffuse_fix(model_id: str) -> Path | None:
 
 def tile_of(key: str) -> float | None:
     surface = SURFACES.get(key)
-    return SETS[surface.set] if surface else None
+    if surface is None:
+        return None
+    return surface.tile or SETS[surface.set]
 
 
 def set_file(set_id: str, kind: str) -> Path:
-    return TEXTURES / set_id / f"{set_id}_{kind}_{SURFACE_RES}.jpg"
+    return TEXTURES / set_id / f"{set_id}_{kind}_{SET_RES.get(set_id, SURFACE_RES)}.jpg"
 
 
 def surface_files(key: str) -> dict[str, Path] | None:
@@ -181,8 +210,11 @@ def surface_files(key: str) -> dict[str, Path] | None:
     surface = SURFACES.get(key)
     if surface is None:
         return None
-    diff = TEXTURES / "derived" / f"{key}_diff.jpg" if surface.tint else set_file(surface.set, "diff")
-    arm = TEXTURES / "derived" / f"{key}_arm.jpg" if surface.rough != 1.0 else set_file(surface.set, "arm")
+    derived = TEXTURES / "derived"
+    if surface.own:
+        return {kind: derived / f"{key}_{kind}.jpg" for kind in ("diff", "nor", "arm")}
+    diff = derived / f"{key}_diff.jpg" if surface.tint or surface.gen else set_file(surface.set, "diff")
+    arm = derived / f"{key}_arm.jpg" if surface.rough != 1.0 else set_file(surface.set, "arm")
     return {"diff": diff, "nor": set_file(surface.set, "nor_gl"), "arm": arm}
 
 
@@ -230,7 +262,7 @@ def fetch_textures():
             if not entry:
                 print(f"  ! {set_id}: no {kind} map")
                 continue
-            if _download(entry[SURFACE_RES]["jpg"]["url"], set_file(set_id, kind)):
+            if _download(entry[SET_RES.get(set_id, SURFACE_RES)]["jpg"]["url"], set_file(set_id, kind)):
                 print(f"  + {set_file(set_id, kind).relative_to(HERE)}")
 
 
@@ -408,13 +440,16 @@ def derive_cabinet_fronts():
 
         if name.endswith("sink"):
             # an old leak: the bottom third stained in tide lines, bleached above them, the veneer lifting
-            line = h * (0.60 + 0.07 * np.sin(xx / 46.0) + 0.05 * (blotches(w, h, 60) - 0.5))
-            below = np.clip((yy - line) / 26.0, 0.0, 1.0)
-            marks_ = np.clip(1.0 - np.abs(yy - line) / 5.0, 0, 1) + 0.6 * np.clip(1.0 - np.abs(yy - line - 60) / 4.0, 0, 1)
-            bleach = np.clip(1.0 - np.abs(yy - line + 40) / 70.0, 0, 1) * 0.25
+            # (the line wanders on noise alone: a sine here read as a stencilled wave)
+            line = h * (0.74 + 0.16 * (blotches(w, h, 150) - 0.5) + 0.07 * (blotches(w, h, 40) - 0.5))
+            below = np.clip((yy - line) / 40.0, 0.0, 1.0) * (0.55 + 0.45 * blotches(w, h, 30))
+            broken = np.clip(blotches(w, h, 18) * 1.8 - 0.5, 0.0, 1.0)
+            marks_ = (np.clip(1.0 - np.abs(yy - line) / 3.0, 0, 1)
+                      + 0.5 * np.clip(1.0 - np.abs(yy - line - 44) / 2.5, 0, 1)) * broken
+            bleach = np.clip(1.0 - np.abs(yy - line + 30) / 50.0, 0, 1) * 0.14
             tile = tile * (1.0 + bleach[..., None])
-            tile = tile * (1.0 - below[..., None] * 0.50) + tide * below[..., None] * 0.50
-            tile = tile * (1.0 - np.clip(marks_, 0, 1)[..., None] * 0.55)
+            tile = tile * (1.0 - below[..., None] * 0.34) + tide * below[..., None] * 0.34
+            tile = tile * (1.0 - np.clip(marks_, 0, 1)[..., None] * 0.40)
             blister = soft((blotches(w, h, 13) > 0.80) * below, 2.0)
             tile = tile * (1.0 - blister[..., None] * 0.55) + bare * 0.9 * blister[..., None] * 0.55
             local_rough = local_rough + 0.30 * below + 0.2 * blister
@@ -473,7 +508,15 @@ def derive():
             _fix_orange_wood(Image.open(source)).save(target, quality=92)
             print(f"  ~ {target.relative_to(HERE)}")
     for key, surface in SURFACES.items():
-        if surface.tint:
+        if surface.gen:
+            import texgen
+            source, target = set_file(surface.set, "diff"), out / f"{key}_diff.jpg"
+            if source.exists() and not target.exists():
+                maps = texgen.GENERATORS[surface.gen](Image.open(source), surface)
+                for kind, image in maps.items():
+                    image.save(out / f"{key}_{kind}.jpg", quality=92)
+                    print(f"  ~ textures/derived/{key}_{kind}.jpg")
+        elif surface.tint:
             source, target = set_file(surface.set, "diff"), out / f"{key}_diff.jpg"
             if source.exists() and not target.exists():
                 image = Image.open(source).convert("RGB")

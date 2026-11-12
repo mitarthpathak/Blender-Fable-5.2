@@ -67,6 +67,17 @@ SPECS: dict[str, Spec] = {
     "ground_path": Spec("#6f6d66", 0.9),
     "ground_road": Spec("#2b2c2e", 0.85),
     "porch_boards": Spec("#6b665b", 0.8, rot=True),
+    # the outside and the back yard
+    "ext_foundation": Spec("#77756c", 0.9),
+    "ext_brick": Spec("#67483d", 0.85),
+    "metal_galv": Spec("#6f716d", 0.5, metallic=0.6),
+    "metal_painted": Spec("#8a8676", 0.6),
+    "bark": Spec("#4a4338", 0.95),
+    "roof_tin": Spec("#4f4239", 0.6, metallic=0.4),
+    "ground_dirt": Spec("#3f392c", 0.95),
+    "shed_boards": Spec("#5c5b50", 0.85),
+    "plastic_hose": Spec("#33492f", 0.5),
+    "tarp": Spec("#3c4a57", 0.6),
     "screen_mesh": Spec("#1a1c1b", 0.6, alpha=0.45),
     "sodium_on": Spec("#ffa040", 0.3, emission=30.0),
     # floors

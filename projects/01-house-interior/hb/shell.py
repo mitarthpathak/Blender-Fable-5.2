@@ -301,7 +301,10 @@ def build_envelope(coll="structure"):
     made = []
 
     mb = MeshBuilder()
-    mb.box((x0 - 0.03, y0 - 0.03, -0.55), (x1 + 0.03, y1 + 0.03, -0.002), "foundation")
+    # The slab's four sides are the plinth the house stands on: concrete block.
+    block = "ext_foundation"
+    mb.box((x0 - 0.03, y0 - 0.03, -0.55), (x1 + 0.03, y1 + 0.03, -0.002),
+           {"-x": block, "+x": block, "-y": block, "+y": block, "-z": "foundation", "+z": "foundation"})
     made.append(mb.build("ground_slab", coll, recalc=True))
 
     # Roof: a deck sealing the wall heads, then a gable roof with its ridge
