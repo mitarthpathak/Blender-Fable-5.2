@@ -2,5 +2,8 @@
 .godot/
 *.translation
 
-# Windows builds are made locally and not committed (the town build is large).
+# Windows builds are never committed: they are published as GitHub Release
+# assets instead. (The two files already in build/ from before this rule
+# stay tracked; nothing new is added there.)
+build/
 build_town/

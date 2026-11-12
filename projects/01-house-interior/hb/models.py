@@ -79,6 +79,14 @@ def _import(model_id: str):
     for coll in list(base.users_collection):
         coll.objects.unlink(base)
     base.data.name = "mesh_" + model_id
+    fixed = assets.model_diffuse_fix(model_id)
+    if fixed and fixed.exists():                       # a corrected colour map (assets.MODEL_FIXES)
+        for slot in base.material_slots:
+            if not slot.material or not slot.material.node_tree:
+                continue
+            for node in slot.material.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and node.image and "_diff_" in node.image.filepath:
+                    node.image = bpy.data.images.load(str(fixed), check_existing=True)
     return base
 
 

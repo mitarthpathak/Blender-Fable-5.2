@@ -204,7 +204,175 @@ def moss(seed=8, size=(1024, 512)):
     return image
 
 
+def mould(seed=11, size=(1024, 1024)):
+    """Black mould: dense speckle spreading out of one corner (top left)."""
+    rng = random.Random(seed)
+    alpha = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(2600):
+        t = rng.random() ** 1.9                                   # most of it close to the corner
+        angle = rng.uniform(0.0, math.pi / 2)
+        r = t * size[0] * 1.05
+        x, y = math.cos(angle) * r + rng.gauss(0, 12), math.sin(angle) * r + rng.gauss(0, 12)
+        dot = rng.uniform(1.5, 9.0) * (1.25 - t)
+        draw.ellipse([x - dot, y - dot, x + dot, y + dot], fill=rng.randint(70, 230))
+    alpha = alpha.filter(ImageFilter.GaussianBlur(1.6))
+    haze = _noise(size, rng, 10).point(lambda v: max(0, v - 120))
+    fall = Image.radial_gradient("L").resize((size[0] * 2, size[1] * 2)).crop((size[0], size[1], size[0] * 2, size[1] * 2))
+    haze = ImageChops.multiply(haze, ImageChops.invert(fall))
+    alpha = ImageChops.lighter(alpha, haze.point(lambda v: min(255, int(v * 1.6))))
+    tone = _noise(size, rng, 24)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b: int(b + (v - 128) * 0.10)) for b in (26, 30, 24)])
+    image.putalpha(alpha)
+    return image
+
+
+def rust_stain(seed=13, size=(512, 1024)):
+    """Rust run down from a fitting: an orange-brown bloom at the top with drips."""
+    rng = random.Random(seed)
+    alpha = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(22):
+        x = size[0] * (0.5 + rng.gauss(0, 0.13))
+        length = rng.uniform(0.25, 0.98) * size[1]
+        width = rng.uniform(4, 22)
+        for k in range(30):
+            y0, y1 = length * k / 30, length * (k + 1) / 30
+            draw.line([(x + math.sin(k * 0.4) * 2, y0), (x + math.sin(k * 0.4) * 2, y1)],
+                      fill=int(rng.randint(90, 200) * (1 - k / 30) ** 1.3), width=int(width * (1 - 0.6 * k / 30)) + 1)
+    draw.ellipse([size[0] * 0.2, -size[1] * 0.06, size[0] * 0.8, size[1] * 0.10], fill=200)
+    alpha = alpha.filter(ImageFilter.GaussianBlur(5))
+    tone = _noise(size, rng, 14)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b, k=k: int(b + (v - 128) * k))
+                                for b, k in ((126, 0.25), (66, 0.18), (30, 0.10))])
+    image.putalpha(alpha)
+    return image
+
+
+def grease(seed=14, size=(1024, 1024)):
+    """Cooking grease: a yellow-brown film, heaviest in the middle, with spatter."""
+    rng = random.Random(seed)
+    film = _noise(size, rng, 6).point(lambda v: max(0, int((v - 90) * 1.5)))
+    centre = ImageChops.invert(Image.radial_gradient("L").resize(size))
+    alpha = ImageChops.multiply(film, centre.point(lambda v: min(255, int(v * 1.5))))
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(420):
+        x, y = rng.gauss(size[0] / 2, size[0] * 0.22), rng.gauss(size[1] / 2, size[1] * 0.22)
+        r = rng.uniform(1.0, 6.5)
+        draw.ellipse([x - r, y - r * rng.uniform(0.8, 1.6), x + r, y + r * rng.uniform(0.8, 1.6)],
+                     fill=rng.randint(120, 235))
+    alpha = alpha.filter(ImageFilter.GaussianBlur(1.2)).point(lambda v: int(v * 0.8))
+    tone = _noise(size, rng, 18)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b, k=k: int(b + (v - 128) * k))
+                                for b, k in ((96, 0.2), (72, 0.16), (34, 0.1))])
+    image.putalpha(alpha)
+    return image
+
+
+def burnt(seed=15, size=(512, 512)):
+    """Spills burnt black onto a hob, round the burners."""
+    rng = random.Random(seed)
+    alpha = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(alpha)
+    for cx, cy in ((0.27, 0.27), (0.73, 0.27), (0.27, 0.73), (0.73, 0.73)):
+        for _ in range(26):
+            a, r = rng.uniform(0, 6.28), size[0] * rng.uniform(0.10, 0.21)
+            x, y = cx * size[0] + math.cos(a) * r, cy * size[1] + math.sin(a) * r
+            blob = rng.uniform(6, 30)
+            draw.ellipse([x - blob, y - blob * 0.7, x + blob, y + blob * 0.7], fill=rng.randint(80, 230))
+    alpha = alpha.filter(ImageFilter.GaussianBlur(4))
+    tone = _noise(size, rng, 12)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b, k=k: int(b + (v - 128) * k))
+                                for b, k in ((58, 0.3), (40, 0.22), (26, 0.12))])
+    image.putalpha(alpha)
+    return image
+
+
+def limescale(seed=16, size=(512, 1024)):
+    """Chalky run-off below a tap: pale, streaked, crusted at the top."""
+    rng = random.Random(seed)
+    alpha = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(30):
+        x = size[0] * (0.5 + rng.gauss(0, 0.16))
+        length = rng.uniform(0.3, 0.95) * size[1]
+        draw.line([(x, 0), (x + rng.uniform(-8, 8), length)], fill=rng.randint(60, 170), width=rng.randint(3, 16))
+    alpha = alpha.filter(ImageFilter.GaussianBlur(6))
+    fall = ImageChops.invert(Image.linear_gradient("L").resize(size))
+    alpha = ImageChops.multiply(alpha, fall.point(lambda v: min(255, int(60 + v * 0.9))))
+    tone = _noise(size, rng, 10)
+    image = Image.merge("RGB", [tone.point(lambda v, b=b: int(b + (v - 128) * 0.12)) for b in (176, 172, 150)])
+    image.putalpha(alpha)
+    return image
+
+
+def stain_rings(seed=17, size=(512, 512)):
+    """Mug rings and a spill on a table or counter."""
+    rng = random.Random(seed)
+    alpha = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(5):
+        x, y, r = rng.uniform(0.2, 0.8) * size[0], rng.uniform(0.2, 0.8) * size[1], rng.uniform(34, 44)
+        draw.ellipse([x - r, y - r, x + r, y + r], outline=rng.randint(110, 200), width=rng.randint(3, 6))
+    spill = _blob(size, rng, points=18, jitter=0.5, radius=0.17).point(lambda v: int(v * 0.42))
+    alpha = ImageChops.lighter(alpha, ImageChops.offset(spill, 60, -40)).filter(ImageFilter.GaussianBlur(1.5))
+    image = Image.new("RGB", size, (58, 40, 26))
+    image.putalpha(alpha)
+    return image
+
+
+def scuffs(seed=18, size=(1024, 128)):
+    """Knocks along a skirting board: dark rubber scuffs, and chips where the
+    paint has gone and the wood shows."""
+    rng = random.Random(seed)
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    for _ in range(46):
+        x, y = rng.uniform(0, size[0]), rng.uniform(size[1] * 0.25, size[1] * 0.95)
+        length, tilt = rng.uniform(18, 110), rng.uniform(-0.12, 0.12)
+        shade = rng.randint(24, 60)
+        draw.line([(x, y), (x + length, y + length * tilt)], fill=(shade, shade, shade - 4, rng.randint(70, 190)),
+                  width=rng.randint(2, 6))
+    for _ in range(16):
+        x, y = rng.uniform(0, size[0]), rng.uniform(size[1] * 0.1, size[1] * 0.9)
+        w, h = rng.uniform(6, 26), rng.uniform(4, 14)
+        draw.polygon([(x, y), (x + w, y + rng.uniform(-3, 3)), (x + w * 0.8, y + h), (x + w * 0.1, y + h * 0.8)],
+                     fill=(126, 100, 72, 235), outline=(60, 50, 40, 255))
+    return image.filter(ImageFilter.GaussianBlur(0.8))
+
+
+def dust(seed=19, size=(512, 512)):
+    """Dust lying on a flat top: a pale film, thicker towards the back, with
+    clean marks where things stood and a finger dragged through it."""
+    rng = random.Random(seed)
+    film = _noise(size, rng, 14).point(lambda v: int(70 + v * 0.45))
+    back = ImageChops.invert(Image.linear_gradient("L").resize(size)).point(lambda v: int(120 + v * 0.53))
+    alpha = ImageChops.multiply(film, back)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(3):
+        x, y, r = rng.uniform(80, 430), rng.uniform(80, 430), rng.uniform(26, 48)
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=18)
+    x, y = rng.uniform(60, 300), rng.uniform(250, 400)
+    draw.rectangle([x, y, x + rng.uniform(70, 130), y + rng.uniform(40, 80)], fill=20)
+    draw.line([(60, 440), (190, 400), (330, 452), (450, 410)], fill=30, width=11, joint="curve")
+    alpha = alpha.filter(ImageFilter.GaussianBlur(2.2))
+    edge = Image.new("L", size, 0)
+    ImageDraw.Draw(edge).rectangle([14, 14, size[0] - 14, size[1] - 14], fill=255)
+    alpha = ImageChops.multiply(alpha, edge.filter(ImageFilter.GaussianBlur(10)))
+    image = Image.new("RGB", size, (150, 146, 136))
+    image.putalpha(alpha.point(lambda v: int(v * 0.62)))
+    return image
+
+
 DECALS = {
+    "scuffs": scuffs,
+    "dust": dust,
+    "mould": mould,
+    "rust_stain": rust_stain,
+    "grease": grease,
+    "burnt": burnt,
+    "limescale": limescale,
+    "stain_rings": stain_rings,
     "moss": moss,
     "grime_streaks": grime_streaks,
     "floor_grime": floor_grime,

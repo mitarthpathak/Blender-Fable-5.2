@@ -19,8 +19,12 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | 6. Lighting | Done | `renders/06_lighting_hero_*.png` |
 | Final | Done | `house_packed.blend`, `house.glb`, three hero shots |
 
-The layout was approved as drawn: real-world scale, a box room upstairs
-and the through living / dining room.
+The layout was approved as drawn (`renders/01_layout_plan.png`) and later
+revised twice (`renders/08_layout_plan_kitchen_bathroom.png`, then
+`renders/11_layout_plan_utility.png`): the through room became a living room
+and a kitchen, the box room became a bathroom, and a corner of that became a
+utility cupboard off the landing. The outer shell, windows and outside doors
+did not change.
 
 ## Brief
 
@@ -63,10 +67,14 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 - Ceilings 2.70 m. Floor to floor 3.06 m, which is 18 risers of 0.17 m.
 - One straight stair along the west wall: 1.05 m wide, 0.28 m treads, 4.76 m
   run, open to the hallway, with a cupboard under its upper half.
-- Ground floor: hallway 2.40 x 8.00 m (1.25 m clear beside the stair) and a
-  through living / dining room 4.76 x 8.00 m with two ways in from the hall.
+- Ground floor: hallway 2.40 x 8.00 m (1.25 m clear beside the stair), a
+  living room 4.76 x 4.40 m at the front and a kitchen 4.76 x 3.46 m at the
+  back. Each has its own way in from the hall, and a cased opening joins
+  them.
 - First floor: landing and corridor around the stairwell, a front bedroom
-  4.76 x 4.40 m and a rear box room / study 4.76 x 3.46 m.
+  4.76 x 4.40 m, an L-shaped rear bathroom (13 m2) and a utility cupboard
+  1.66 x 1.56 m whose door opens onto the landing. The wall between the
+  front and back rooms is in the same place on both floors.
 - Front door 0.95 x 2.10 m in the south wall, opening inwards, street to the
   south. Other doors 0.90 x 2.10 m.
 
@@ -84,7 +92,8 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `house.blend` | The house scene, rebuilt by `build.py` at each later phase |
 | `assets.py` | Manifest of everything taken from Poly Haven; running it downloads and tints |
 | `decals.py` | Generates the grime and damage decal textures |
-| `textures/`, `hdri/`, `models/` | The downloaded assets (CC0), in Git LFS |
+| `labels.py` | Generates the print sheet: packaging, papers, photographs (all original, fictional) |
+| `textures/`, `models/` | The downloaded assets (CC0), in Git LFS |
 
 Build and render headless, which has no time limit:
 
@@ -108,35 +117,79 @@ its roughness for paint, keeping the original stains and wear.
 
 All Poly Haven assets are CC0.
 
+## Kitchen, bathroom and clutter
+
+The kitchen (`hb/kitchen.py`), bathroom (`hb/bathroom.py`) and utility
+cupboard (`hb/utility.py`: hot-water tank, linen shelves, mop, vacuum
+cleaner) are built in code, not imported: cabinets, counters, sink, an electric cooker, a fridge
+whose lower door is its own hinged object (`fridge_door`), a laminate table
+and vinyl chairs; a bath with a shower curtain, a toilet, a pedestal basin
+and a mirror cabinet. `hb/shapes.py` has the lofting and turning helpers
+they are made with, and `hb/clutter.py` the small loose things: tins,
+bottles, cartons, plates, ashtrays, shoes, pillows, packing boxes, framed
+photographs.
+
+Everything printed (cereal boxes, the calendar, the clock face, take-away
+cartons, newspapers, post, photographs, labels) is on one 2K sheet made by
+`labels.py`, used through a single material, `print`. All of it is an
+original design for the fictional Halden Ridge of October 1997: no real
+brand, publication or person appears.
+
+Wear is in three layers: the Poly Haven surfaces themselves; the texture
+variants `assets.py` derives; and decals from `decals.py` (grime, cracks,
+water stains, mould, rust, limescale, grease, burnt-on spills, mug rings,
+skirting scuffs, dust). Two of the derived textures put wear where it
+really is instead of tiling it: the bathroom tiles have mould worked into
+their own grout lines, and every kitchen door and drawer front has its own
+cell of one sheet (`cabinet_fronts_*`) with the finish rubbed through at the
+edges, grease round the handle, kick marks at the bottom and, under the
+sink, the tide lines and lifted veneer of an old leak.
+
+`props.details()` adds a last layer to every room: scuffed skirting, dust
+on the tops of furniture, wallpaper that has let go and hangs from its
+seam, a socket off the wall, extension leads, damp under the windows.
+Curtains fall in uneven pleats, and every book has a spine from a second
+small sheet (`spines.png`).
+
 ## Lighting
 
-- **Moon**: `light_moon`, a cool directional light from the south-west. It
-  comes through the front windows and the tall stair window.
-- **Street**: a night HDRI of a lamp-lit street, kept dim; it is what you see
-  through the glass.
-- **Practicals**: warm lamps on the hall table, the sideboard and the bedside.
-- **Flicker-ready**: `light_hall_flicker` (the hall pendant) and
-  `light_tv_flicker` carry a `flicker` custom property. In Blender the pendant
+- **Moon**: `light_moon`, a cool directional light from just west of south.
+  It comes through the front windows and the tall stair window.
+- **Street**: a sodium streetlight in plain night fog. There is no sky
+  image: the backdrop is the fog colour from `docs/ART_BIBLE.md`.
+- **Practicals**: warm lamps on the hall table, the sideboard and the bedside;
+  the cooker hood and the open fridge in the kitchen; the strip light over
+  the bathroom mirror.
+- **Flicker-ready**: `light_hall_flicker` (the hall pendant),
+  `light_kitchen_flicker` (the kitchen strip light) and `light_tv_flicker`
+  carry a `flicker` custom property. In Blender the pendant
   has a noise modifier on its power; in an engine, drive the energy yourself.
-- **Haze**: `fog_volume` is a render-only box of thin fog that turns the
-  moonlight into beams. It is not exported; use the engine's volumetric fog.
+- **Haze**: `fog_volume` is render-only thin fog, outdoors and in the rooms
+  the moon reaches, that turns the moonlight into beams. The kitchen and
+  bathroom have none: lit by their own lamps, haze there only made the
+  renders blotchy. It is not exported; use the engine's volumetric fog.
 
-Three cameras are saved in the scene: `cam_hero_hallway`, `cam_hero_stairs`
-and `cam_hero_bedroom`.
+Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
+`cam_hero_stairs`, `cam_hero_living`, `cam_hero_kitchen`,
+`cam_hero_landing`, `cam_hero_bathroom`, `cam_hero_utility` and
+`cam_hero_bedroom`.
 
 ## Deliverables
 
 | File | What it is |
 | --- | --- |
-| `house_packed.blend` | The finished scene with every texture and the HDRI packed inside |
+| `house_packed.blend` | The finished scene with every texture packed inside |
 | `house.glb` | For Godot: meshes, materials with textures, point and directional lights, cameras |
-| `renders/06_lighting_hero_*.png` | The three hero shots, 1920x1080 |
+| `renders/06_lighting_hero_*.png` | The first three hero shots, 1920x1080 (before the kitchen and bathroom) |
+| `renders/10_detail_hero_*.png` | Kitchen, bathroom, living room and hallway after the first detail pass |
+| `renders/12_rooms_hero_*.png` | Every room after the second detail pass: the current state |
+| `renders/12_rooms_work_hero_*.png` | Utility cupboard, landing and bathroom under the even work light (they are near black in the night lighting) |
 
 Rebuild everything from the scripts:
 
 ```bash
 cd projects/01-house-interior
-python3 assets.py && python3 decals.py
+python3 assets.py && python3 decals.py && python3 labels.py
 blender -b --python build.py -- --phase lighting
 blender -b house.blend --python render_views.py -- --rig scene --samples 160 --res 1920x1080 \
     --views hero_hallway,hero_stairs,hero_bedroom --prefix 06_lighting

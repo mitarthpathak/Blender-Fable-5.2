@@ -14,8 +14,9 @@ import bpy
 from mathutils import Vector
 
 import assets
+import labels
 import plan
-from . import core
+from . import core, shapes
 from .core import MeshBuilder
 
 
@@ -58,18 +59,28 @@ WEST = Face("y", 0.0, 1)
 EAST = Face("y", plan.WIDTH, -1)
 HALL_EAST = Face("y", plan.PART_X0, -1)            # the partition, seen from the hall and landing
 ROOM_WEST = Face("y", plan.PART_X1, 1)             # the partition, seen from the rooms
-DIVIDER_S = Face("x", plan.DIVIDER_Y0, -1)         # bedroom side
-DIVIDER_N = Face("x", plan.DIVIDER_Y1, 1)          # box room side
+DIVIDER_S = Face("x", plan.DIVIDER_Y0, -1)         # the front rooms' side: living room, bedroom
+DIVIDER_N = Face("x", plan.DIVIDER_Y1, 1)          # the back rooms' side: kitchen, bathroom
 CHIMNEY = Face("y", 6.95, -1)
+UTIL_EAST_IN = Face("y", plan.UTIL_X1, -1)                       # utility cupboard, its east wall
+UTIL_EAST_OUT = Face("y", plan.UTIL_X1 + plan.INT_T, 1)          # the same wall from the bathroom
+UTIL_NORTH_IN = Face("x", plan.UTIL_Y1, -1)
+UTIL_NORTH_OUT = Face("x", plan.UTIL_Y1 + plan.INT_T, 1)
 
 
 # --- Light points -----------------------------------------------------------
 
-def lightpoint(name, location, kind, watts=40.0):
-    """Mark where a lamp's bulb is. The lighting phase turns these into lights."""
+def lightpoint(name, location, kind, watts=40.0, colour=None, haze=True):
+    """Mark where a lamp's bulb is. The lighting phase turns these into lights.
+    `colour` (r, g, b) replaces the warm tungsten default: a fluorescent tube.
+    `haze=False` stops the lamp lighting the render-only haze: a lamp that
+    lights a whole room through it leaves the render blotchy."""
     obj = core.empty("lightpoint_" + name, "lightpoints", location)
     obj["kind"] = kind
     obj["watts"] = watts
+    if colour:
+        obj["colour"] = list(colour)
+    obj["haze"] = bool(haze)
     return obj
 
 
@@ -149,26 +160,36 @@ def broken_floor_lamp(name, foot, direction_deg, coll="lamps"):
 # --- Curtains, rugs, radiators ----------------------------------------------
 
 def curtain(name, face, a0, a1, z_top, z_bot, seed=0, off=0.105, key="fabric_curtain", coll="soft"):
-    """One hanging panel between a0 and a1, gathered into folds."""
+    """One hanging panel between a0 and a1. The cloth is gathered tight at
+    the heading and opens out as it falls: the pleats are uneven in width and
+    depth, wander a little on the way down, and the hem neither hangs level
+    nor in a straight line."""
     rng = random.Random(seed)
     width = a1 - a0
-    cols = max(10, int(width / 0.03))
-    rows = 7
-    folds = max(1.5, width / 0.12)
-    phase = rng.uniform(0, 6.28)
+    cols = max(18, int(width / 0.016))
+    rows = 14
+    folds = max(2.0, width / 0.115)
+    phase, p1, p2, p3, p4 = (rng.uniform(0, 6.28) for _ in range(5))
     tile = core.spec(key).tile
     mb = MeshBuilder()
     grid = []
     for i in range(cols + 1):
-        s = i / cols
+        s_ = i / cols
+        # uneven pleats: some wide, some narrow
+        warped = s_ + 0.045 * math.sin(2 * math.pi * 1.3 * s_ + p1) + 0.022 * math.sin(2 * math.pi * 3.4 * s_ + p2)
+        angle = 2 * math.pi * folds * warped + phase
+        depth = 0.75 + 0.5 * (0.5 + 0.5 * math.sin(2 * math.pi * 0.8 * s_ + p3))       # and some deeper than others
         column = []
-        wobble = rng.uniform(-0.006, 0.006)
         for j in range(rows + 1):
-            t = j / rows                                   # 0 at the top
-            amp = 0.022 + 0.03 * t
-            d = off + amp * math.sin(2 * math.pi * folds * s + phase + 0.6 * math.sin(3 * t + phase)) + wobble * t
-            z = z_top + (z_bot - z_top) * t + (0.012 * math.sin(9 * s + phase) if j == rows else 0)
-            column.append((face.P(a0 + width * s, d, z), (s * width * 1.7 / tile, z / tile)))
+            t = j / rows                                   # 0 at the heading
+            amp = (0.010 + 0.046 * t ** 0.75) * depth
+            twist = 0.9 * t * math.sin(2.2 * t + p4)       # each fold drifts sideways as it falls
+            d = off + amp * math.sin(angle + twist) + 0.014 * t * math.sin(2 * math.pi * 0.6 * s_ + p2)
+            a = a0 + width * s_ + 0.014 * t * math.cos(angle + twist)
+            z = z_top + (z_bot - z_top) * t
+            if j == rows:                                  # the hem
+                z += 0.018 * math.sin(angle * 0.5 + p1) + 0.010 * math.sin(2 * math.pi * 0.5 * s_ + p3)
+            column.append((face.P(a, d, z), (s_ * width * 1.7 / tile, z / tile)))
         grid.append(column)
     for i in range(cols):
         for j in range(rows):
@@ -226,6 +247,16 @@ def socket(mb, face, a, z):
         face.box(mb, a + da - 0.019, a + da + 0.019, 0.009, 0.0095, z - 0.02, z + 0.018, "plastic_black", skip="")
 
 
+def socket_broken(mb, face, a, z):
+    """A socket with its cover hanging off by the wires."""
+    face.box(mb, a - 0.06, a + 0.06, 0.0, 0.004, z - 0.036, z + 0.036, "plastic_black")          # the back box
+    for da, key in ((-0.02, "plastic_red"), (0.015, "plastic_blue")):
+        cable(mb, [face.P(a + da, 0.004, z + 0.01), face.P(a + da * 1.6, 0.04, z - 0.03),
+                   face.P(a + 0.04 + da, 0.03, z - 0.085)], radius=0.002, key=key, steps=5)
+    p, q = face.P(a - 0.02, 0.022, z - 0.16), face.P(a + 0.12, 0.034, z - 0.075)
+    mb.box((min(p.x, q.x), min(p.y, q.y), min(p.z, q.z)), (max(p.x, q.x), max(p.y, q.y), max(p.z, q.z)), "plastic_white")
+
+
 def cable(mb, points, radius=0.004, key="plastic_black", steps=10):
     """A cable through the given points, smoothed, as a thin square tube."""
     pts = [Vector(p) for p in points]
@@ -248,7 +279,33 @@ BOOK_COLORS = ("book_red", "book_green", "book_blue", "book_cream", "book_brown"
 
 
 def book_row(mb, face, a0, a1, d_back, z, rng, fill=0.85, max_h=0.27):
-    """Books standing on a shelf from a0 towards a1, spines facing the room."""
+    """Books standing on a shelf from a0 towards a1, spines facing the room.
+    Every book has a spine from the sheet labels.py draws: a title, bands or a
+    label, its own colour. Heights and depths vary, a few lean, and the row
+    ends with some lying flat."""
+    key = shapes.spines_material()
+    viewer_right = (-face.normal).cross(Vector((0, 0, 1)))
+    forward = face.along.dot(viewer_right) > 0
+
+    def book(b0, b1, d0, d1, z0, z1, lean=0.0):
+        index = rng.randrange(labels.SPINE_COUNT)
+        cover = labels.spine_cover_uv(index)
+
+        def P(a, d, zz):
+            return face.P(a + (zz - z0) * lean, d, zz)
+        left, right = (b0, b1) if forward else (b1, b0)
+        mb.face([P(left, d1, z0), P(right, d1, z0), P(right, d1, z1), P(left, d1, z1)], key, uvs=labels.spine_uv(index))
+        for a in (b0, b1):                                                   # the two covers
+            pts = [P(a, d0, z0), P(a, d1, z0), P(a, d1, z1), P(a, d0, z1)]
+            outward = face.along * (1 if a == b1 else -1)
+            if (pts[1] - pts[0]).cross(pts[2] - pts[0]).dot(outward) < 0:
+                pts = pts[::-1]
+            mb.face(pts, key, uvs=cover)
+        top = [P(b0, d0, z1), P(b1, d0, z1), P(b1, d1 - 0.004, z1), P(b0, d1 - 0.004, z1)]     # the page block
+        if (top[1] - top[0]).cross(top[2] - top[0]).z < 0:
+            top = top[::-1]
+        mb.face(top, "paper")
+
     a = a0
     stop = a0 + (a1 - a0) * fill
     while a < stop:
@@ -257,8 +314,9 @@ def book_row(mb, face, a0, a1, d_back, z, rng, fill=0.85, max_h=0.27):
         depth = rng.uniform(0.13, 0.19)
         if a + w > a1:
             break
-        face.box(mb, a, a + w - 0.001, d_back, d_back + depth, z, z + h, rng.choice(BOOK_COLORS), skip="-z")
-        a += w
+        lean = rng.choice((0.0, 0.0, 0.0, 0.0, 0.05, 0.11)) if a + w + 0.05 < stop else 0.16
+        book(a, a + w - 0.001, d_back, d_back + depth, z, z + h, lean)
+        a += w + (h * lean if lean else 0.0)
     if rng.random() < 0.6 and a + 0.3 < a1:               # a few lying flat at the end
         zz = z
         for _ in range(rng.randint(2, 4)):
@@ -364,10 +422,10 @@ class Decals:
     def __init__(self, name, seed=0):
         self.name, self.mb, self.rng = name, MeshBuilder(), random.Random(seed)
 
-    def wall(self, texture, face, a, z, w, h, flip=None):
+    def wall(self, texture, face, a, z, w, h, flip=None, offset=0.0022):
         key = decal_material(texture)
         flip = self.rng.random() < 0.5 if flip is None else flip
-        d = 0.0022 + self.rng.random() * 0.0006
+        d = offset + self.rng.random() * 0.0006
         corners = [face.P(a - w / 2, d, z - h / 2), face.P(a + w / 2, d, z - h / 2),
                    face.P(a + w / 2, d, z + h / 2), face.P(a - w / 2, d, z + h / 2)]
         uvs = [(0, 0), (1, 0), (1, 1), (0, 1)]

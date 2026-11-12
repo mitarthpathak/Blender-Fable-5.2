@@ -4,8 +4,8 @@ Three kinds of light, in order of strength:
 
 1. Moonlight: a cool sun from the south-west, through the front windows and
    the stair window. This is the key light and the source of the shafts.
-2. The street: a night HDRI of a lamp-lit street, seen through the windows
-   and adding a dim sodium glow near them.
+2. The street: the sodium streetlight outside, in plain night fog. There is
+   no sky image.
 3. Practicals: a warm lamp wherever the props phase left a `lightpoint_*`
    marker, the hall pendant set up to flicker, and a cold flicker from the
    television.
@@ -20,7 +20,6 @@ import math
 import bpy
 from mathutils import Vector
 
-import assets
 import plan
 from . import core
 from .core import MeshBuilder
@@ -29,37 +28,33 @@ WARM = (1.0, 0.63, 0.32)         # an old tungsten bulb
 COOL_TV = (0.55, 0.70, 1.0)
 MOON = (0.42, 0.58, 1.0)
 
-# Light travels this way: from the south-west, coming down at 31 degrees.
-MOON_DIRECTION = Vector((0.30, 0.95, 0.0)).normalized() * math.cos(math.radians(24)) \
+# Light travels this way: from just west of south, coming down at 24 degrees.
+MOON_DIRECTION = Vector((0.15, 0.95, 0.0)).normalized() * math.cos(math.radians(24)) \
     + Vector((0, 0, -math.sin(math.radians(24))))
 
 HERO = {
     "hero_porch": dict(at=(6.4, -7.6, 1.25), to=(1.7, -0.6, 1.75), lens=24),
     "hero_hallway": dict(at=(1.86, 0.42, 1.48), to=(1.02, 5.0, 1.22), lens=18),
     "hero_stairs": dict(at=(1.72, 1.02, 1.30), to=(0.42, 4.75, 2.55), lens=19),
+    "hero_living": dict(at=(2.95, 0.42, 1.50), to=(6.2, 3.4, 0.85), lens=17),
+    "hero_kitchen": dict(at=(2.80, 4.88, 1.52), to=(6.4, 7.2, 0.95), lens=16),
+    "hero_bathroom": dict(at=(2.86, 6.66, plan.FFL[1] + 1.55), to=(6.6, 7.5, plan.FFL[1] + 0.75), lens=15),
+    "hero_utility": dict(at=(2.68, 5.00, plan.FFL[1] + 1.55), to=(4.0, 5.6, plan.FFL[1] + 0.95), lens=14),
+    "hero_landing": dict(at=(1.95, 7.55, plan.FFL[1] + 1.52), to=(1.35, 1.0, plan.FFL[1] + 1.15), lens=17),
     "hero_bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.50), to=(5.55, 3.85, plan.FFL[1] + 0.72), lens=18),
 }
 
 
-def world(strength=0.22, rotation_deg=205.0):
-    w = bpy.data.worlds.new("night_street")
+FOG = (0.044, 0.052, 0.064)       # the night fog, as in the game (docs/ART_BIBLE.md)
+
+
+def world(strength=0.5):
+    """No sky photograph: in thick fog at night there is only the fog."""
+    w = bpy.data.worlds.new("night_fog")
     w.use_nodes = True
-    tree = w.node_tree
-    tree.nodes.clear()
-    out = tree.nodes.new("ShaderNodeOutputWorld")
-    bg = tree.nodes.new("ShaderNodeBackground")
-    env = tree.nodes.new("ShaderNodeTexEnvironment")
-    mapping = tree.nodes.new("ShaderNodeMapping")
-    coords = tree.nodes.new("ShaderNodeTexCoord")
-    path = assets.hdri_file()
-    if path.exists():
-        env.image = bpy.data.images.load(str(path), check_existing=True)
-    mapping.inputs["Rotation"].default_value = (0, 0, math.radians(rotation_deg))
+    bg = next(n for n in w.node_tree.nodes if n.type == "BACKGROUND")
+    bg.inputs["Color"].default_value = (*FOG, 1.0)
     bg.inputs["Strength"].default_value = strength
-    tree.links.new(coords.outputs["Generated"], mapping.inputs["Vector"])
-    tree.links.new(mapping.outputs["Vector"], env.inputs["Vector"])
-    tree.links.new(env.outputs["Color"], bg.inputs["Color"])
-    tree.links.new(bg.outputs["Background"], out.inputs["Surface"])
     bpy.context.scene.world = w
     return w
 
@@ -101,6 +96,8 @@ def practicals():
                 data.color = (1.0, 0.52, 0.16)
                 data.energy = watts * 0.22
                 data.shadow_soft_size = 0.15
+            if "colour" in marker:
+                data.color = tuple(marker["colour"])
             flicker = kind == "flicker"
             obj = bpy.data.objects.new(f"light_{name}_flicker" if flicker else f"light_{name}", data)
             obj.location = marker.location
@@ -108,6 +105,7 @@ def practicals():
                 obj["flicker"] = True
                 _flicker(data, data.energy)
         obj["kind"] = kind
+        obj.visible_volume_scatter = bool(marker.get("haze", True))
         made.append(core.link(obj, "lights"))
     return made
 
@@ -138,10 +136,28 @@ def _flicker(light_data, base):
 
 
 def haze(density=0.012):
-    """Dust in the air: one box of thin, even fog filling the house."""
+    """Dust and fog in the air: thin, even haze outdoors and in the rooms the
+    moon shines into, so its light reads as beams."""
     mb = MeshBuilder()
-    m = 0.05
-    mb.box((-15.0, -17.0, -0.44), (22.0, 16.0, 11.0), "haze")
+    e, m = plan.EXT_T + 0.05, 0.02
+    w, d, top = plan.WIDTH, plan.DEPTH, 11.0
+    f1 = plan.FFL[1]
+    boxes = [
+        # outdoors: four slabs round the house and one over it
+        ((-15.0, -17.0, -0.44), (-e, 16.0, top)), ((w + e, -17.0, -0.44), (22.0, 16.0, top)),
+        ((-e, -17.0, -0.44), (w + e, -e, top)), ((-e, d + e, -0.44), (w + e, 16.0, top)),
+        ((-e, -e, 8.7), (w + e, d + e, top)),
+        # indoors, only where the moon reaches: the front rooms, the hall and the stairwell.
+        # The kitchen and bathroom are lit by their own lamps; haze there adds
+        # nothing but noise that the denoiser turns into blotches.
+        ((plan.PART_X1 + m, m, m), (w - m, plan.DIVIDER_Y0 - m, plan.CEILING - m)),                 # living room
+        ((plan.PART_X1 + m, m, f1 + m), (w - m, plan.DIVIDER_Y0 - m, plan.ROOF_Z - m)),             # bedroom
+        ((m, m, m), (plan.PART_X0 - m, d - m, plan.CEILING - m)),                                   # hall
+        ((m, m, f1 + m), (plan.PART_X0 - m, plan.VOID_Y0 - m, plan.ROOF_Z - m)),                    # front landing
+        ((m, plan.VOID_Y0 + m, plan.CEILING + m), (plan.VOID_X1 - m, plan.VOID_Y1 - m, plan.ROOF_Z - m)),   # stairwell
+    ]
+    for lo, hi in boxes:
+        mb.box(lo, hi, "haze")
     obj = mb.build("fog_volume", "atmosphere", recalc=True)
     mat = core.material("haze")
     tree = mat.node_tree
@@ -180,8 +196,13 @@ def render_settings(samples=220, resolution=(1920, 1080), exposure=3.3):
     c.device = "CPU"
     c.samples = samples
     c.use_adaptive_sampling = True
-    c.adaptive_threshold = 0.025
+    c.adaptive_threshold = 0.012          # dark rooms need the samples: looser than this leaves blotches
     c.use_denoising = True
+    for name, value in (("denoising_prefilter", "ACCURATE"), ("denoising_input_passes", "RGB_ALBEDO_NORMAL")):
+        try:
+            setattr(c, name, value)
+        except (AttributeError, TypeError):
+            pass
     c.max_bounces, c.diffuse_bounces, c.glossy_bounces = 7, 4, 3
     c.transmission_bounces, c.volume_bounces, c.transparent_max_bounces = 4, 0, 12
     c.sample_clamp_indirect = 6.0

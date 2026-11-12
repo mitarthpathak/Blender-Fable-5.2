@@ -16,6 +16,7 @@ Open `game/` in Godot 4.7.2, or run the Windows build in `build/`
 | Mouse | Look (Esc frees the pointer, click recaptures) |
 | E | Open or close the nearest door |
 | F | Flashlight |
+| Right / left mouse | Aim / fire (only once the character is installed, see below) |
 | F1 | Graphics quality: High or Low (remembered) |
 | F3 | FPS counter |
 
@@ -30,42 +31,125 @@ up in code, so a fresh export from Blender needs no hand edits:
   are left out.
 - **Doors**: every door keeps its hinge pivot and swings by the
   `opens_degrees` the model carries.
+- **Player**: `scripts/player.gd`, a capsule on a spring-arm camera. When
+  the Mixamo files are in `assets/character/` (put them in
+  `projects/03-character/mixamo/`, then run `tools/import_character.py` as
+  that folder's README says), `scripts/character.gd` replaces the capsule
+  with the animated human: an AnimationTree blending idle, walk and run by
+  speed, an upper-body aim blend, fire and jump one-shots, and the rifle
+  (`assets/character/rifle.glb`) on the right-hand bone. Without those
+  files the game runs with the capsule exactly as before.
 - **Lighting**: a cool moon, warm lamps, a scripted failing-bulb flicker on
   `light_hall_flicker`, and a television glow added as a light.
-- **Environment**: night-street sky, cool ambient light, AgX tone mapping.
+- **Environment**: plain night fog for a sky, cool ambient light, AgX tone
+  mapping. `scripts/world.gd` thickens and pales the Low preset's fog when
+  the camera is outdoors (`HouseLights.apply_low_fog`).
+- **Exterior**: the clapboard is modelled, one leaning board per course
+  (`clapboard_*`). The boards cast no shadows and the roof casts
+  double-sided ones; both are set in `scripts/house_lights.gd`.
 
 ## Graphics settings
 
 | | High | Low |
 | --- | --- | --- |
-| Volumetric fog | on | off (cheap distance fog) |
+| Volumetric fog | on | off (cheap depth and ground fog, thicker outdoors) |
 | SDFGI, SSR, SSIL | on | off |
 | SSAO, glow, normal maps, decals, mipmaps, probes | on | on |
 | Render scale | 100% | 77% with FSR upscaling |
 | MSAA | 2x | off |
 | Shadows | 4096 atlas, all lamps | 2048 atlas, moon and one lamp |
+| Upstairs fill lights | full | a quarter |
 
 Low is aimed at Intel UHD 620 class graphics. If it is still too slow there,
 start the game with `--rendering-method gl_compatibility`.
 
 ## Baked lighting
 
-`world.tscn` holds the house, a `LightmapGI` node and a reflection probe for
-each room. The model imports with lightmap UVs (`light_baking` set to static
+`world.tscn` holds the house, a `LightmapGI` node, a reflection probe for
+each room (hall, living room, kitchen, landing, bedroom, bathroom, utility
+cupboard) and four
+dim fill lights (`FillLiving`, `FillKitchen`, `FillBedroom`, `FillBathroom`).
+The model imports with lightmap UVs (`light_baking` set to static
 lightmaps), and `scripts/world.gd` is a tool script that configures the
 lights in the editor exactly as the game does.
 
-**The lightmaps are not baked yet.** Godot only bakes from the editor: there
-is no script or command-line bake, and this project was built without one.
-To bake: open `world.tscn`, select `LightmapGI`, press **Bake Lightmaps**,
-and commit the `.lmbake` and texture files it writes. Until then, indirect
-light indoors comes from the per-room reflection probes (both presets) and
-SDFGI (High only).
+**The lightmaps are not baked yet.** Godot only bakes from the editor, on a
+machine with a GPU: there is no script or command-line bake. Until it is
+done, indirect light indoors comes from the probes and fill lights (both
+presets) and SDFGI (High only).
+
+### Baking, step by step
+
+1. Open the `game/` folder in the Godot 4.7.2 editor and wait for the import
+   bar at the bottom to finish.
+2. In the FileSystem dock double-click `world.tscn`.
+3. In the Scene dock click the `LightmapGI` node.
+4. In the toolbar above the 3D view press **Bake Lightmaps**. If it asks
+   where to save, keep the suggested `res://world.lmbake`.
+5. Wait for the progress bar. Do not switch scenes while it runs.
+6. Press Ctrl+S to save `world.tscn` (it now points at the bake).
+7. Run the game with F5 and walk the house on both presets (F1).
+
+What is already set for you, so nothing needs changing first:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Quality | Medium | a balance; see below if it is slow |
+| Bounces | 3 | enough for moonlight to reach the back of a room |
+| Max texture size | 4096 | keeps the result small |
+| Interior | on | the house is closed, so the sky adds nothing indoors |
+| Environment | custom colour, the night ambient | `main.gd` makes its sky at run time, where the baker cannot see it |
+| Probes | subdivision 8 | lights the player and the doors, which move |
+| Moon and lamps | bake mode Dynamic | their direct light and shadows stay live; only the bounce is baked |
+| Flickering hall light, television | not baked | they change |
+| Doors | dynamic, lit by the probes | they move |
+| Decals, glass, lampshades | left out | they have no lightmap |
+
+Once a bake exists, `world.gd` switches the two fill lights off by itself:
+the lightmap does their job.
+
+### What to commit afterwards
+
+```bash
+git add game/world.tscn game/world.lmbake game/world.lmbake.import game/world.exr game/world.exr.import
+git commit -m "Bake the house lightmaps"
+```
+
+Godot writes either a single `world.lmbake` or that plus `world.exr`
+textures, depending on the bake; add whichever of those files exist. Both
+kinds are stored in Git LFS. Then rebuild the Windows export so the `.pck`
+contains the bake.
+
+### If the bake is too slow (Intel UHD 620)
+
+The baker runs on the GPU, and on integrated graphics it can take a very
+long time or run out of memory. In order of how much each helps:
+
+1. Select `LightmapGI` and set **Quality** to **Low**.
+2. Set **Texel Scale** to `0.5` (a quarter of the pixels to compute).
+3. Set **Bounces** to `2` and **Max Texture Size** to `2048`.
+4. Turn **Use Denoiser** off, then on again for the final bake only.
+5. If it still fails, bake on any PC with a dedicated GPU: the bake is saved
+   in the files above and works on every machine afterwards.
+
+To undo a bake, select `LightmapGI`, clear its **Light Data** property in
+the Inspector and save the scene.
 
 The flashlight is a `SpotLight3D` on the player camera, off by default;
 `F` toggles it.
 
 ## Checks
+
+After copying a new `house.glb` into `assets/house/`, import it, apply the
+texture rules (`tools/texture_policy.py`: VRAM compression, mipmaps and a
+size cap per texture; `--clean` also deletes textures the model no longer
+uses) and import again:
+
+```bash
+godot --headless --path game --import
+python3 game/tools/texture_policy.py --clean
+godot --headless --path game --import
+```
 
 ```bash
 godot --headless --path game -- --selftest            # floor, stairs, front door
@@ -170,10 +254,11 @@ code, like `main.gd` does for the house:
 - **Collision.** Trimesh for ground, houses, fences, cars and barriers;
   cylinders for trees, poles, trash cans and the hydrant; none for mailboxes,
   leaf piles, grass, signs, wires or decals. The town model carries
-  collision-only wedges (`-convcolonly` in Blender) for every curb, every
-  flight of porch steps and the house's front-door sill, because the player
-  capsule cannot climb a 13 cm step by itself, and four invisible walls on
-  the edge of the playable area.
+  collision-only wedges (`-convcolonly` in Blender) for every curb and every
+  flight of porch steps, because the player capsule cannot climb a 13 cm
+  step by itself, and four invisible walls on the edge of the playable area.
+  (The two wedges that used to carry the player over a board across the
+  house's front doorway are dropped at load: the house no longer has it.)
 - **Instancing.** 199 repeated props (grass clumps, leaf piles, trees, poles,
   lamp heads, mailboxes, cans, manholes) are folded into 15 `MultiMesh`
   nodes at load. The five houses are one mesh each and share their materials.
@@ -279,7 +364,46 @@ godot --path game -- --world=town --preset-shots --views=front_door,junction,sid
 godot --headless --path game --export-release "Halden Ridge Town" build_town/HaldenRidge.exe
 ```
 
-`build_town/` is in `game/.gitignore`: the export is made locally and no
-longer committed. After importing new town textures headless, run
+After importing new town textures headless, run
 `python projects/03-town/godot_imports.py` and import again, so they are
 VRAM-compressed.
+
+## Halden Ridge Day (free-roam build)
+
+The export preset **Halden Ridge Day** sets the feature tags `town` and
+`dayroam`. `scripts/build_flavor.gd` reads them and gives that build its
+defaults; the other two presets are unchanged.
+
+| | Windows Desktop | Halden Ridge Town | Halden Ridge Day |
+| --- | --- | --- | --- |
+| World | the house alone | the town | the town |
+| Player starts | inside the front door | inside the front door | inside the front door |
+| Look on first start | Night | Night | Foggy Overcast Day |
+| Quality on first start | High | High | Low |
+| Settings file | `user://settings.cfg` | `user://settings.cfg` | `user://settings_day.cfg` |
+
+They are first-start defaults only. F1 (quality), F2 (look) and F4 (settings
+panel) work as in the other builds, and what the player picks is saved. The
+day build keeps its own settings file so a Night or High saved by an older
+build cannot override its first start.
+
+```bash
+godot --path game -- --flavor=day                                  # the day build's defaults, from source
+godot --headless --path game -- --flavor=day --town-selftest
+godot --headless --path game --export-release "Halden Ridge Day" build/day/HaldenRidgeDay.exe
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --selftest         # tests on the export
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --town-selftest
+godot --headless --main-pack game/build/day/HaldenRidgeDay.pck -- --world=house --preset-check
+```
+
+`--preset-check` compares Night with the house world's own values, so on
+this build it needs `--world=house`; in the town world the presets use their
+outdoor values and the check lists those differences.
+
+### Builds are not committed
+
+`game/build/` and `game/build_town/` are in `.gitignore`. A build is
+published as a GitHub Release on this repository (tag such as
+`v0.1-dayroam`) with the `.exe` and the `.pck` as release assets; the `.pck`
+must sit beside the `.exe`. The two `HouseInterior` files already tracked in
+`build/` are from before this rule and are out of date.

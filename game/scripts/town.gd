@@ -25,6 +25,9 @@ extends Node3D
 
 ## The house's own exterior objects that the town replaces (projects/03-town/plan.py).
 const HOUSE_HIDE := ["yard_ground", "yard_paths", "street_road", "fence_picket", "mailbox", "telephone_pole", "street_sodium"]
+## Collision wedges in older town exports that are no longer wanted: the house
+## used to have a board across its front doorway, and now does not.
+const TOWN_DROP := ["door_sill_ramp_in", "door_sill_ramp_out"]
 ## Town meshes that get trimesh collision.
 const TRIMESH_PREFIXES := ["ground_", "house_", "fence_", "car_", "barrier_", "jersey_", "fallen_tree_stump", "sign_road_closed", "bench_"]
 ## Flat or thin things that should not cast shadows.
@@ -287,6 +290,10 @@ func _setup_town(town: Node3D) -> Dictionary:
 	var stats := {"bodies": 0, "meshes": 0, "instanced": 0, "multimeshes": 0}
 	var groups := {}                     # Mesh -> Array of MeshInstance3D
 	for child in town.get_children():
+		if String(child.name) in TOWN_DROP:
+			town.remove_child(child)
+			child.free()
+			continue
 		if child is StaticBody3D:
 			stats["bodies"] += 1         # curb ramps, step ramps, edge walls ("-convcolonly" in Blender)
 			continue

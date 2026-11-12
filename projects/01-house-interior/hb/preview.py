@@ -20,10 +20,16 @@ CENTRE = (plan.WIDTH / 2, plan.DEPTH / 2)
 INTERIOR = {
     "hall": dict(at=(1.82, 0.55, 1.55), to=(0.95, 5.2, 1.25), lens=17),
     "stairs": dict(at=(2.05, 7.25, 1.50), to=(0.55, 3.2, 1.45), lens=17),
-    "living": dict(at=(2.95, 0.55, 1.55), to=(6.3, 5.6, 1.0), lens=17),
+    "living": dict(at=(2.95, 0.45, 1.55), to=(6.3, 3.6, 0.9), lens=17),
     "landing": dict(at=(1.95, 7.55, plan.FFL[1] + 1.55), to=(1.35, 1.0, plan.FFL[1] + 1.15), lens=17),
     "bedroom": dict(at=(3.55, 0.30, plan.FFL[1] + 1.55), to=(5.6, 3.9, plan.FFL[1] + 0.75), lens=17),
-    "boxroom": dict(at=(2.95, 7.6, plan.FFL[1] + 1.55), to=(6.6, 5.0, plan.FFL[1] + 0.8), lens=17),
+    "kitchen": dict(at=(2.80, 4.85, 1.55), to=(6.4, 7.2, 0.95), lens=16),
+    "kitchen_sink": dict(at=(6.35, 5.35, 1.60), to=(4.3, 7.9, 0.85), lens=17),
+    "kitchen_fridge": dict(at=(3.4, 7.2, 1.55), to=(6.9, 5.3, 0.95), lens=18),
+    "bathroom_bath": dict(at=(4.6, 5.0, plan.FFL[1] + 1.6), to=(6.6, 7.7, plan.FFL[1] + 0.6), lens=17),
+    "bathroom_sink": dict(at=(3.4, 7.5, plan.FFL[1] + 1.55), to=(5.9, 4.6, plan.FFL[1] + 1.0), lens=17),
+    "bathroom": dict(at=(2.85, 6.62, plan.FFL[1] + 1.55), to=(6.6, 7.4, plan.FFL[1] + 0.8), lens=16),
+    "utility": dict(at=(2.66, 5.02, plan.FFL[1] + 1.55), to=(4.0, 5.6, plan.FFL[1] + 0.9), lens=14),
 }
 
 

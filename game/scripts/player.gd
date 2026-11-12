@@ -1,12 +1,19 @@
 extends CharacterBody3D
 ## Third-person test player: a capsule, with the camera on a spring arm so it
 ## pulls in instead of clipping through walls in the narrow hallway.
+##
+## If the Mixamo character files are in res://assets/character/ the capsule is
+## replaced by the animated human holding the rifle (scripts/character.gd):
+## hold the right mouse button to aim, click the left to fire. Without those
+## files nothing changes.
 
 const WALK_SPEED := 2.6
 const RUN_SPEED := 4.6
 const JUMP_VELOCITY := 3.6
 const MOUSE_SENSITIVITY := 0.0025
 const ACCELERATION := 12.0
+const ARM_LENGTH := 1.9
+const ARM_LENGTH_AIMING := 1.15
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -15,6 +22,7 @@ var _arm: SpringArm3D
 var _body_mesh: MeshInstance3D
 var camera: Camera3D
 var flashlight: SpotLight3D
+var rig: CharacterRig            # null while the player is a capsule
 
 
 func _ready() -> void:
@@ -43,12 +51,17 @@ func _ready() -> void:
 	_body_mesh.material_override = mat
 	add_child(_body_mesh)
 
+	rig = CharacterRig.create()
+	if rig:
+		add_child(rig)
+		_body_mesh.visible = false
+
 	_pivot = Node3D.new()
 	_pivot.position = Vector3(0.0, 1.5, 0.0)
 	add_child(_pivot)
 
 	_arm = SpringArm3D.new()
-	_arm.spring_length = 1.9
+	_arm.spring_length = ARM_LENGTH
 	_arm.margin = 0.12
 	_arm.collision_mask = 1
 	_arm.position = Vector3(0.32, 0.0, 0.0)   # over the right shoulder
@@ -83,6 +96,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
 		_pivot.rotation.x = clampf(_pivot.rotation.x - event.relative.y * MOUSE_SENSITIVITY, -1.2, 0.9)
 	elif event is InputEventMouseButton and event.pressed:
+		if rig and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and event.button_index == MOUSE_BUTTON_LEFT:
+			rig.fire()
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event.is_action_pressed("flashlight"):
 		flashlight.visible = not flashlight.visible
@@ -95,6 +110,8 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 	elif Input.is_action_just_pressed("jump"):
 		velocity.y = JUMP_VELOCITY
+		if rig:
+			rig.jump()
 
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
@@ -103,3 +120,9 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, target.x, ACCELERATION * delta)
 	velocity.z = move_toward(velocity.z, target.z, ACCELERATION * delta)
 	move_and_slide()
+
+	if rig:
+		rig.aiming = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+		rig.update(velocity, is_on_floor(), delta)
+		var length := ARM_LENGTH_AIMING if rig.aiming else ARM_LENGTH
+		_arm.spring_length = move_toward(_arm.spring_length, length, delta * 4.0)
