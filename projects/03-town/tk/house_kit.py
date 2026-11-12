@@ -19,6 +19,7 @@ from mathutils import Matrix, Vector
 
 import plan
 from .core import MeshBuilder, collection, ground_grime, jitter_color, lerp, light, mul
+from . import facade
 
 GROUND = plan.GROUND
 STOREY = 2.9
@@ -32,7 +33,7 @@ GF_SILL, GF_HEAD = 0.85, 2.25
 FF_SILL, FF_HEAD = STOREY + 0.80, STOREY + 2.15
 DOOR_W, DOOR_H = 0.95, 2.10
 
-DOOR_COLOURS = [(0.10, 0.17, 0.13), (0.30, 0.09, 0.07), (0.12, 0.14, 0.20), (0.24, 0.18, 0.12), (0.30, 0.29, 0.26)]
+DOOR_COLOURS = [(0.10, 0.17, 0.13), (0.30, 0.09, 0.07), (0.12, 0.14, 0.20), (0.24, 0.18, 0.12), (0.16, 0.11, 0.08)]
 
 
 def paint(key):
@@ -134,15 +135,17 @@ def board_on_wall(mb, wf, u0, u1, z0, z1, depth, mat, colour, off0=0.0):
 
 # --- Windows and doors ------------------------------------------------------------
 
-def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, state, rng, lit_light=None):
-    """A double-hung sash window in a board casing, recessed into the wall.
-    state: "ok", "boarded", "broken", "lit"."""
+def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, state, rng, lit_light=None, room_kind=None,
+                shutter=None, wear=0.5):
+    """A double-hung sash window in a board casing, recessed into the wall, with
+    see-through glass and something behind it (tk/facade.py).
+    state: "ok", "boarded", "broken", "lit". room_kind: a lit room to show."""
     u1 = u0 + width
     c = 0.10
     dirt = mul(trim, 0.92)
     # casing, head with drip cap, sill and apron
-    board_on_wall(mb, wf, u0 - c, u0, sill, head + c, 0.025, "trim", trim, BOARD_T)
-    board_on_wall(mb, wf, u1, u1 + c, sill, head + c, 0.025, "trim", trim, BOARD_T)
+    board_on_wall(mb, wf, u0 - c, u0, sill, head, 0.025, "trim", trim, BOARD_T)
+    board_on_wall(mb, wf, u1, u1 + c, sill, head, 0.025, "trim", trim, BOARD_T)
     board_on_wall(mb, wf, u0 - c, u1 + c, head, head + c, 0.025, "trim", trim, BOARD_T)
     board_on_wall(mb, wf, u0 - c - 0.02, u1 + c + 0.02, head + c, head + c + 0.03, 0.045, "trim", trim, BOARD_T)
     board_on_wall(mb, wf, u0 - c - 0.03, u1 + c + 0.03, sill - 0.045, sill, 0.07, "trim", dirt, BOARD_T)
@@ -158,24 +161,14 @@ def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, stat
             "trim", color=mul(trim, 0.7))
     mb.face([wf.at(u0, sill, BOARD_T), wf.at(u1, sill, BOARD_T), wf.at(u1, sill, -depth), wf.at(u0, sill, -depth)],
             "trim", color=dirt)
-    # what is behind the glass
-    back = -depth - 0.35
-    behind = "window_lit" if state == "lit" else "interior_dark"
-    mb.face([wf.at(u0, sill, back), wf.at(u1, sill, back), wf.at(u1, head, back), wf.at(u0, head, back)], behind,
-            color=(1, 1, 1))
-    for uu in (u0, u1):
-        mb.face([wf.at(uu, sill, -depth), wf.at(uu, head, -depth), wf.at(uu, head, back), wf.at(uu, sill, back)]
-                if uu == u1 else
-                [wf.at(uu, sill, back), wf.at(uu, head, back), wf.at(uu, head, -depth), wf.at(uu, sill, -depth)],
-                "interior_dark", color=(1, 1, 1))
-    if state == "lit":
-        # a pulled blind, lit from behind
-        bl = head - (head - sill) * 0.62
-        mb.face([wf.at(u0 + 0.03, bl, back + 0.05), wf.at(u1 - 0.03, bl, back + 0.05),
-                 wf.at(u1 - 0.03, head - 0.02, back + 0.05), wf.at(u0 + 0.03, head - 0.02, back + 0.05)],
-                "window_lit", color=(0.8, 0.75, 0.62))
-        if lit_light is not None:
-            lit_light.append(wf.at((u0 + u1) / 2, (sill + head) / 2, -0.9))
+    # what is behind the glass: curtains, a blind, a sheet, a dark recess, or a lit room
+    if state == "boarded":
+        facade.wquad(mb, wf, u0, u1, sill, head, -depth - 0.2, "interior_dark")
+    else:
+        facade.window_inside(mb, wf, u0, u1, sill, head, depth, state, rng, lit_light if lit_light is not None else [],
+                             room_kind)
+    if shutter is not None and state != "boarded":
+        facade.shutters(mb, wf, u0, u1, sill, head, shutter, rng, wear)
     # two sashes: the upper one outside the lower one
     mid = (sill + head) / 2
     f = 0.055
@@ -192,9 +185,8 @@ def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, stat
                 mb.face([wf.at(su, sz, off + 0.01), wf.at(su + rng.uniform(0.1, 0.25), sz, off + 0.01),
                          wf.at(su + rng.uniform(0.0, 0.1), sz + rng.uniform(0.1, 0.35), off + 0.01)], "glass_dirty")
         elif state != "boarded":
-            mat = "glass_dirty" if rng.random() < 0.5 else "glass"
             mb.face([wf.at(u0 + f, zb + f, off + 0.012), wf.at(u1 - f, zb + f, off + 0.012),
-                     wf.at(u1 - f, zt - f, off + 0.012), wf.at(u0 + f, zt - f, off + 0.012)], mat)
+                     wf.at(u1 - f, zt - f, off + 0.012), wf.at(u0 + f, zt - f, off + 0.012)], "window_glass")
     if state == "boarded":
         n = max(2, int((head - sill) / 0.32))
         for i in range(n):
@@ -212,8 +204,8 @@ def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, stat
 def front_door(mb: MeshBuilder, wf: WallFace, u0, trim, door_col, screen=True, ajar=0.0):
     u1 = u0 + DOOR_W
     c = 0.11
-    board_on_wall(mb, wf, u0 - c, u0, 0.0, DOOR_H + c, 0.025, "trim", trim, BOARD_T)
-    board_on_wall(mb, wf, u1, u1 + c, 0.0, DOOR_H + c, 0.025, "trim", trim, BOARD_T)
+    board_on_wall(mb, wf, u0 - c, u0, 0.0, DOOR_H, 0.025, "trim", trim, BOARD_T)
+    board_on_wall(mb, wf, u1, u1 + c, 0.0, DOOR_H, 0.025, "trim", trim, BOARD_T)
     board_on_wall(mb, wf, u0 - c, u1 + c, DOOR_H, DOOR_H + c, 0.025, "trim", trim, BOARD_T)
     board_on_wall(mb, wf, u0 - c - 0.02, u1 + c + 0.02, DOOR_H + c, DOOR_H + c + 0.03, 0.045, "trim", trim, BOARD_T)
     inset = -0.10
@@ -244,7 +236,7 @@ def front_door(mb: MeshBuilder, wf: WallFace, u0, trim, door_col, screen=True, a
 
 # --- Porches -----------------------------------------------------------------------
 
-def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list):
+def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list, hero=False):
     """Porch on the front (local y < 0). Returns the steps' footprint for the path."""
     deck_z = -0.02
     if h.porch == "entry":
@@ -299,6 +291,8 @@ def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list):
         mb.box((px - 0.08, yf + 0.02, deck_z - dz), (px + 0.08, yf + 0.18, deck_z + 0.18 - dz), "trim",
                color=mul(trim, 0.85), skip="-z")
     mb.box((x0, yf + 0.03, top - sag), (x1, yf + 0.17, top + 0.18), "trim", color=trim)
+    if hero:
+        facade.post_brackets(mb, posts, yf, top, trim)
     for pa, pb in zip(posts, posts[1:]):
         if pa < sx1 and pb > sx0:                 # the gap over the steps
             continue
@@ -336,7 +330,10 @@ def porch(mb: MeshBuilder, h, trim, deck_col, rng, ramps: list):
                               Vector((wall_x, 0, hi)), Vector((wall_x, y1 + ov, hi)))
         mb.face([a2 + t, b2 + t, c2 + t, d2 + t], roof_mat, color=(0.9, 0.9, 0.9))
         mb.face([d2, c2, b2, a2], "trim", color=mul(trim, 0.75))
-    porch_clutter(mb, x0, x1, yf, deck_z, sx0, sx1, rng, h.wear)
+    if hero:
+        facade.porch_furniture(mb, x0, x1, yf, deck_z, sx0, sx1, h.door_at + DOOR_W / 2, rng, h.wear, top)
+    else:
+        porch_clutter(mb, x0, x1, yf, deck_z, sx0, sx1, rng, h.wear)
     return (sx0, sx1, yf - 0.56)
 
 
@@ -534,20 +531,23 @@ def build_house(lot, rng: random.Random):
     faces = wall_faces(w, d)
 
     # openings per wall: (u0, u1, zb, zt, kind, state)
+    rooms = dict(h.rooms)
+    hero = lot.key in facade.HERO
+
     def state(tag):
         if tag in h.boarded:
             return "boarded"
         if tag in h.broken:
             return "broken"
-        if tag == h.lit:
+        if tag == h.lit or tag in rooms:
             return "lit"
         return "ok"
 
     openings = {k: [] for k in faces}
     for i, (u, ww) in enumerate(h.windows_gf):
-        openings["front"].append((u, u + ww, GF_SILL, GF_HEAD, "win", state(f"gf{i}")))
+        openings["front"].append((u, u + ww, GF_SILL, GF_HEAD, "win", state(f"gf{i}"), f"gf{i}"))
     for i, (u, ww) in enumerate(h.windows_ff):
-        openings["front"].append((u, u + ww, FF_SILL, FF_HEAD, "win", state(f"ff{i}")))
+        openings["front"].append((u, u + ww, FF_SILL, FF_HEAD, "win", state(f"ff{i}"), f"ff{i}"))
     openings["front"].append((h.door_at, h.door_at + DOOR_W, 0.0, DOOR_H, "door", "ok"))
     for side in ("left", "right"):
         for frac, sill, head in ((0.3, GF_SILL, GF_HEAD), (0.68, GF_SILL, GF_HEAD), (0.3, FF_SILL, FF_HEAD),
@@ -582,11 +582,20 @@ def build_house(lot, rng: random.Random):
                  wf.at(0, 0.0, 0.0)], "concrete", color=(0.62, 0.6, 0.56))
         for o in openings[key]:
             if o[4] == "win":
-                sash_window(mb, wf, o[0], o[1] - o[0], o[2], o[3], trim, o[5], rng, lit_points)
+                tag = o[6] if len(o) > 6 else None
+                kind = rooms.get(tag) or ("bedroom" if o[5] == "lit" else None)
+                sash_window(mb, wf, o[0], o[1] - o[0], o[2], o[3], trim, o[5], rng, lit_points, room_kind=kind,
+                            shutter=facade.SHUTTERS.get(lot.key) if (key == "front" and tag) else None, wear=wear)
             elif key == "front":
                 front_door(mb, wf, o[0], trim, door_col, screen=h.screen_door)
             else:
                 front_door(mb, wf, o[0], trim, mul(door_col, 0.8), screen=False)
+    # at the front door: number plaque, lantern, kick plate, letter slot
+    facade.door_dressing(mb, faces["front"], h.door_at, DOOR_W, lot.key, trim, rng, lit_points, lit=bool(rooms) and wear < 0.6)
+    if lot.key in facade.EAVE_BRACKETS and "front" not in gable_walls:
+        facade.eave_brackets(mb, faces["front"], trim, EAVE)
+    if "front" in gable_walls:
+        facade.gable_vent(mb, faces["front"], trim, EAVE + faces["front"].length / 2 * math.tan(pitch) * 0.55)
     # corner boards
     for key, wf in faces.items():
         for u0, u1 in ((0.0, 0.12), (wf.length - 0.12, wf.length)):
@@ -598,7 +607,7 @@ def build_house(lot, rng: random.Random):
         chimney(mb, chimney_at, rz, rng)
     ramps: list = []
     mb.grime = None
-    steps = porch(mb, h, trim, deck_col, rng, ramps)
+    steps = porch(mb, h, trim, deck_col, rng, ramps, hero=hero)
     (ox, oy), (ax, ay), (bx, by) = plan.house_frame(h)
     m = Matrix(((ax, bx, 0, ox), (ay, by, 0, oy), (0, 0, 1, 0), (0, 0, 0, 1)))
     return mb, m, ramps, lit_points, steps

@@ -31,7 +31,7 @@ const TOWN_DROP := ["door_sill_ramp_in", "door_sill_ramp_out"]
 ## Town meshes that get trimesh collision.
 const TRIMESH_PREFIXES := ["ground_", "house_", "fence_", "car_", "barrier_", "jersey_", "fallen_tree_stump", "sign_road_closed", "bench_"]
 ## Flat or thin things that should not cast shadows.
-const NO_SHADOW_PREFIXES := ["puddles", "decals_", "detail_", "road_markings", "road_patches", "grass", "weed", "wires", "manhole", "leaf_pile", "ground_", "backdrop"]
+const NO_SHADOW_PREFIXES := ["puddles", "decals_", "detail_", "road_markings", "road_patches", "grass", "weed", "wires", "manhole", "leaf_pile", "leaves_", "ground_", "backdrop"]
 ## Repeated props drawn as MultiMesh instances.
 const INSTANCED_PREFIXES := ["grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "edgetree_", "pole_P", "streetlamp_P"]
 ## Simple cylinder colliders: name prefix -> [radius, height].
@@ -40,7 +40,7 @@ const CYLINDERS := {"tree_": [0.26, 4.0], "pole_P": [0.17, 8.0], "trash_can_": [
 ## Decals and street detail come from Blender in 24 m sectors ("decals_3_7"), so
 ## each sector is culled and faded on its own.
 const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
-	"decals_": 46.0, "detail_": 48.0}
+	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0}
 
 const SODIUM := Color(1.0, 0.55, 0.20)
 const WINDOW_WARM := Color(1.0, 0.62, 0.34)
@@ -54,6 +54,7 @@ const VIEWS := {
 
 var _street_lights: Array[OmniLight3D] = []
 var _halos := {}                    # OmniLight3D -> MeshInstance3D
+var _mill_shape: StandardMaterial3D
 var _flicker: Array[OmniLight3D] = []
 var _flicker_material: StandardMaterial3D
 var _flicker_emission := 1.0
@@ -146,6 +147,20 @@ func _setup_lights(town: Node) -> void:
 			if n.contains("flicker"):
 				lamp.light_bake_mode = Light3D.BAKE_DISABLED   # it changes, so it cannot be baked
 				_flicker.append(lamp)
+		elif n.begins_with("street_tube"):
+			# The fluorescent tube under the gas station's canopy: cold, weak, failing.
+			lamp.light_color = Color(0.72, 0.95, 0.86)
+			lamp.light_energy = 2.4
+			lamp.omni_range = 9.0
+			lamp.omni_attenuation = 1.3
+			lamp.shadow_enabled = false
+			lamp.light_volumetric_fog_energy = 1.5
+			lamp.distance_fade_enabled = true
+			lamp.distance_fade_begin = 45.0
+			lamp.distance_fade_length = 10.0
+			lamp.light_bake_mode = Light3D.BAKE_DISABLED
+			lamp.set_meta("base_energy", 2.4)
+			_flicker.append(lamp)
 		elif n.begins_with("lit_window"):
 			lamp.light_color = WINDOW_WARM
 			lamp.light_energy = 0.35
@@ -163,7 +178,7 @@ func _process(delta: float) -> void:
 	for i in _flicker.size():
 		# A failing lamp: long steady stretches, buzzing dips, the odd blackout.
 		var lamp := _flicker[i]
-		var base: float = lamp.get_meta("preset_energy", 9.0)
+		var base: float = lamp.get_meta("preset_energy", lamp.get_meta("base_energy", 9.0))
 		var slow := _noise.get_noise_2d(_time * 0.9, 300.0 + i * 17.0)
 		var fast := _noise.get_noise_2d(_time * 26.0, 500.0 + i * 31.0)
 		var level := 1.0 - 0.15 * absf(fast)
@@ -172,7 +187,7 @@ func _process(delta: float) -> void:
 		if fast > 0.38 and slow > 0.0:
 			level = 0.03
 		lamp.light_energy = base * level
-		if _flicker_material:
+		if _flicker_material and String(lamp.name).contains("sodium"):
 			_flicker_material.emission_energy_multiplier = _flicker_emission * level * lamp.get_meta("preset_scale", 1.0)
 	# Follow main.gd's quality setting, and keep shadows on the nearest street lights only.
 	var main := get_parent()
@@ -185,6 +200,7 @@ func _process(delta: float) -> void:
 		if _shadow_timer <= 0.0:
 			_shadow_timer = 0.5
 			_update_shadows(main)
+			_update_mill(main)
 		_update_halos()
 
 
@@ -264,6 +280,27 @@ func _update_halos() -> void:
 			(halo.material_override as StandardMaterial3D).albedo_color = c
 
 
+## The mill stands 70 to 110 m past the end of Mill Road. High's volumetric fog
+## leaves a faint shape of it by itself. Low's distance fog would erase it, so
+## in thick fog on Low it is drawn unshaded and unfogged, a little darker than
+## the fog: a silhouette. In thin fog (Clear Day) it is drawn as the building it is.
+func _update_mill(main: Node) -> void:
+	var mill := get_node_or_null("Town/backdrop_mill") as MeshInstance3D
+	if not mill:
+		return
+	var env: Environment = main.world_env.environment
+	if _quality == "low" and env.fog_density > 0.02:
+		if not _mill_shape:
+			_mill_shape = StandardMaterial3D.new()
+			_mill_shape.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_mill_shape.disable_fog = true
+		var fog := env.fog_light_color
+		_mill_shape.albedo_color = Color(fog.r * 0.945, fog.g * 0.945, fog.b * 0.95)      # only just darker than the fog
+		mill.material_override = _mill_shape
+	else:
+		mill.material_override = null
+
+
 func _update_shadows(main: Node) -> void:
 	var eye := Vector3.ZERO
 	var cam := get_viewport().get_camera_3d()
@@ -289,6 +326,11 @@ func _starts(n: String, prefixes: Array) -> bool:
 func _setup_town(town: Node3D) -> Dictionary:
 	var stats := {"bodies": 0, "meshes": 0, "instanced": 0, "multimeshes": 0}
 	var groups := {}                     # Mesh -> Array of MeshInstance3D
+	var flicker_heads: Array[String] = []          # "street_sodium_P5_flicker" -> "streetlamp_P5"
+	for lamp in _flicker:
+		var parts := String(lamp.name).split("_")
+		if parts.size() > 2 and String(lamp.name).contains("sodium"):
+			flicker_heads.append("streetlamp_" + parts[2])
 	for child in town.get_children():
 		if String(child.name) in TOWN_DROP:
 			town.remove_child(child)
@@ -303,6 +345,13 @@ func _setup_town(town: Node3D) -> Dictionary:
 		var n := String(mi.name)
 		if _starts(n, NO_SHADOW_PREFIXES):
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if n.begins_with("decals_") and mi.mesh:
+			# Standing water mirrors the moon straight at a camera looking south; without
+			# screen-space reflections that is a flat white patch. Halve its specular.
+			for surface in mi.mesh.get_surface_count():
+				var water := mi.mesh.surface_get_material(surface) as BaseMaterial3D
+				if water and water.resource_name == "puddle":
+					water.metallic_specular = 0.22
 		if _starts(n, TRIMESH_PREFIXES):
 			mi.create_trimesh_collision()
 			stats["bodies"] += 1
@@ -315,7 +364,7 @@ func _setup_town(town: Node3D) -> Dictionary:
 				mi.visibility_range_end = FADE_PREFIXES[prefix]
 				mi.visibility_range_end_margin = 6.0
 				mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-		if n == "streetlamp_P6":
+		if n in flicker_heads:
 			_make_flicker_lamp(mi)       # its own material, so only this lamp head flickers
 		elif _starts(n, INSTANCED_PREFIXES):
 			if not groups.has(mi.mesh):

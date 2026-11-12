@@ -18,8 +18,9 @@ const PRESETS := {
 	"night": "res://presets/night.tres",
 	"foggy_day": "res://presets/foggy_day.tres",
 	"dusk": "res://presets/dusk.tres",
+	"clear_day": "res://presets/clear_day.tres",
 }
-const ORDER := ["night", "foggy_day", "dusk"]
+const ORDER := ["night", "foggy_day", "dusk", "clear_day"]
 const SECTION := "lighting"
 const BRIGHTNESS_MIN := 0.5
 const BRIGHTNESS_MAX := 2.0
@@ -204,7 +205,7 @@ func apply() -> void:
 	for light in _lamp_base:
 		if not is_instance_valid(light):
 			continue
-		var street := String(light.name).contains("sodium")
+		var street := String(light.name).contains("sodium") or String(light.name).begins_with("street_")
 		var scale := p.street_energy_scale if street else p.lamp_energy_scale
 		var energy: float = _lamp_base[light] * scale
 		light.light_energy = energy
@@ -225,7 +226,7 @@ func apply() -> void:
 	for mat in _emissive_base:
 		var mname := (mat as Resource).resource_name
 		var scale := p.window_glow_scale
-		if mname.contains("sodium"):
+		if mname.contains("sodium") or mname.contains("tube_on"):
 			scale = p.street_energy_scale if p.street_lights_on else 0.0
 		(mat as BaseMaterial3D).emission_energy_multiplier = _emissive_base[mat] * scale
 
@@ -256,7 +257,7 @@ func _capture_base() -> void:
 			var mat := mi.get_active_material(s)
 			if mat is BaseMaterial3D and (mat as BaseMaterial3D).emission_enabled:
 				var n := mat.resource_name
-				if n.contains("sodium") or n.contains("window_lit"):
+				if n.contains("sodium") or n.contains("window_lit") or n.contains("tube_on"):
 					_emissive_base[mat] = (mat as BaseMaterial3D).emission_energy_multiplier
 
 

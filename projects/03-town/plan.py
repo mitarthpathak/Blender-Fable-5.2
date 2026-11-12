@@ -118,6 +118,8 @@ class KitHouse:
     boarded: tuple[str, ...] = ()  # e.g. "gf0", "ff1": storey and index of a boarded window
     broken: tuple[str, ...] = ()   # glass broken, no boards
     lit: str = ""                 # the one dimly lit window, e.g. "ff1"
+    # Lit windows with a real room behind them: (window, "bedroom" or "living").
+    rooms: tuple[tuple[str, str], ...] = ()
     chimney: float = -1.0         # position along the ridge, 0..1; below 0 for none
     screen_door: bool = True
 
@@ -160,13 +162,15 @@ LOTS = (
         "Someone may still live here: one upstairs window glows behind a blind.",
         KitHouse(9.2, 7.8, "s", (15.0, 0.2), "gable_side", "full", "sage",
                  wear=0.45, door_at=3.9, windows_gf=((1.0, 1.4), (6.4, 1.4)),
-                 windows_ff=((1.0, 1.0), (4.1, 1.0), (7.0, 1.0)), lit="ff2", chimney=0.18),
+                 windows_ff=((1.0, 1.0), (4.1, 1.0), (7.0, 1.0)), lit="ff2", chimney=0.18,
+                 rooms=(("ff2", "bedroom"), ("gf1", "living"))),
         lawn="overgrown", fence="picket", gate_at=19.4),
     Lot("L4", "15 Ashgrove Street", (-20.0, -40.0, -1.6, -19.7),
-        "Corner house, hip roof. Closed up; a window broken on the side street.",
+        "Corner house, hip roof. Closed up, a window broken; yet one lamp burns upstairs.",
         KitHouse(8.4, 7.6, "n", (-6.4, -27.0), "hip", "wrap", "putty",
                  wear=0.7, door_at=3.6, windows_gf=((1.0, 1.2), (6.2, 1.2)),
-                 windows_ff=((1.1, 1.0), (6.3, 1.0)), boarded=("gf1",), broken=("ff0",), chimney=0.5),
+                 windows_ff=((1.1, 1.0), (6.3, 1.0)), boarded=("gf1",), broken=("ff0",), chimney=0.5,
+                 rooms=(("ff1", "bedroom"),)),
         lawn="overgrown", fence="none"),
     Lot("L5", "17 Ashgrove Street", (8.6, -40.0, 27.0, -19.7),
         "Corner house, front gable, a faded sale sign. Empty.",
@@ -182,7 +186,7 @@ LOTS = (
                  chimney=0.82),
         lawn="overgrown", fence="picket", gate_at=-49.2),
     Lot("L7", "4 Mill Road", (8.6, -58.0, 27.0, -40.0),
-        "Vacant lot behind a chain-link fence: a dead car on blocks, weeds, leaves.",
+        "Vacant lot behind chain-link (a dead car on blocks, weeds) and, on its south half, the closed Ridge Gas & Grocery.",
         lawn="overgrown", fence="chainlink"),
 )
 
@@ -222,8 +226,8 @@ POLES = (
     Pole("P2", -4.2, -9.5, "on", (0.0, -1.0)),
     Pole("P3", 15.0, -9.5, "on", (0.0, -1.0)),
     Pole("P4", 33.0, -9.5, "broken", (0.0, -1.0)),
-    Pole("P5", -0.8, -20.6, "on", (1.0, 0.0)),        # junction, south-west corner
-    Pole("P6", -0.8, -36.0, "flicker", (1.0, 0.0)),
+    Pole("P5", -0.8, -20.6, "flicker", (1.0, 0.0)),   # junction, south-west corner: the failing lamp
+    Pole("P6", -0.8, -36.0, "on", (1.0, 0.0)),
     Pole("P7", -0.8, -51.5, "on", (1.0, 0.0)),
 )
 # Wires hang between these poles (two or three conductors each, real catenaries).
@@ -234,6 +238,10 @@ SERVICE_DROPS = (
     ("P2", 0.2, -0.3, 5.4),
     ("P1", -15.0, -0.6, 5.2),
     ("P3", 16.0, 0.2, 5.2),
+    ("P5", -7.0, -27.0, 5.2),      # 15 Ashgrove
+    ("P5", 13.4, -26.2, 5.2),      # 17 Ashgrove, across Mill Road
+    ("P7", -6.2, -50.2, 5.2),      # 3 Mill Road
+    ("P7", 16.4, -52.4, 3.3),      # Ridge Gas & Grocery
 )
 
 LAMP_HEIGHT = 6.40 - 0.45      # lamp height above the sidewalk, as on the house pole
@@ -241,7 +249,7 @@ LAMP_HEIGHT = 6.40 - 0.45      # lamp height above the sidewalk, as on the house
 # Abandoned cars: key, x, y, heading in degrees (0 = east, 90 = north), state.
 CARS = (
     ("car_sedan", 18.5, -16.9, 182.0, "abandoned"),   # parked, flat tyres, by L5
-    ("car_wagon", 17.0, -49.0, 63.0, "on_blocks"),    # in the vacant lot
+    ("car_wagon", 15.6, -44.0, 18.0, "on_blocks"),    # in the vacant lot
     ("car_crashed", 2.4, -54.6, 97.0, "crashed"),     # nose into the Mill Road barriers
 )
 
@@ -267,7 +275,7 @@ BLOCKERS = (
 TREES = (
     (-9.0, -5.5, 9.0, 1), (9.5, -5.0, 8.0, 2), (23.0, -4.2, 10.0, 3), (-18.5, 12.0, 11.0, 4),
     (-11.0, -23.0, 9.5, 5), (24.0, -23.5, 8.5, 6), (-16.0, -47.0, 10.0, 7), (20.5, -44.0, 9.0, 8),
-    (12.0, -53.0, 7.5, 9), (5.0, 12.0, 9.5, 10),
+    (25.2, -45.4, 7.5, 9), (5.0, 12.0, 9.5, 10),
 )
 
 MAILBOXES = ((HOUSE_DOOR_X + 1.25, -8.55, 0), (-12.0, -8.55, 180), (20.6, -8.55, 0),

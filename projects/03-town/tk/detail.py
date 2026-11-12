@@ -164,6 +164,18 @@ def trash(det: Sectors, dec: Sectors, rng):
         dec.at(x, y).card((x, y, RD + 0.011), 1.8, 1.4, rng.uniform(0, 3), "decal_litter", flat=True)
 
 
+def _solid_prop(mb: MeshBuilder, name: str, matrix: Matrix, lo, hi):
+    """A prop the player can bump into: its own object (so it casts a shadow)
+    and a convex collision box round it ("-convcolonly": Godot draws none of it)."""
+    obj = mb.build(name, "props")
+    obj.matrix_world = matrix
+    box = MeshBuilder()
+    box.box(lo, hi, "concrete")
+    col = box.build(name + "_col-convcolonly", "collision")
+    col.matrix_world = matrix
+    return obj
+
+
 def cart_and_bike(det: Sectors, rng):
     # a shopping cart on its side at the south-east corner of the junction
     cart = MeshBuilder()
@@ -186,7 +198,8 @@ def cart_and_bike(det: Sectors, rng):
     cart.tube([(-0.34, -0.2, 0.14), (0.36, -0.2, 0.14), (0.36, 0.2, 0.14), (-0.34, 0.2, 0.14), (-0.34, -0.2, 0.14)], 0.012,
               "chrome_dull", segments=4)
     x, y = 9.6, -18.95
-    det.at(x, y).extend(cart, Matrix.Translation((x, y, SW + 0.27)) @ Matrix.Rotation(0.6, 4, "Z") @ Matrix.Rotation(math.pi / 2, 4, "X"))
+    _solid_prop(cart, "prop_cart", Matrix.Translation((x, y, SW + 0.27)) @ Matrix.Rotation(0.6, 4, "Z") @ Matrix.Rotation(math.pi / 2, 4, "X"),
+                (-0.62, -0.27, 0.0), (0.46, 0.27, 1.04))
 
     # a bicycle left lying by the house's fence, its front wheel buckled
     bike = MeshBuilder()
@@ -205,7 +218,8 @@ def cart_and_bike(det: Sectors, rng):
     bike.box((-0.36, -0.05, 0.90), (-0.14, 0.05, 0.94), "plastic_dark")
     bike.cylinder((-0.12, -0.05, 0.33), (0, 0.1, 0), 0.07, "chrome_dull", segments=8)
     x, y = -1.6, -8.05
-    det.at(x, y).extend(bike, Matrix.Translation((x, y, G + 0.06)) @ Matrix.Rotation(0.35, 4, "Z") @ Matrix.Rotation(1.42, 4, "X"))
+    _solid_prop(bike, "prop_bike", Matrix.Translation((x, y, G + 0.06)) @ Matrix.Rotation(0.35, 4, "Z") @ Matrix.Rotation(1.42, 4, "X"),
+                (-0.86, -0.26, 0.0), (0.86, 0.26, 1.0))
 
 
 def posters(det: Sectors):
@@ -359,12 +373,12 @@ def lot_stories(det: Sectors, dec: Sectors, houses, rng):
     det.at(fx, fy).card((fx + 0.035, fy, G + 0.55), 0.30, 0.30, math.pi / 2, "sign_beware")
 
     # L7, the vacant lot: tyres, pallets, a mattress
-    x, y = 12.5, -44.5
+    x, y = 11.2, -42.2
     m = det.at(x, y)
     for k, (tx_, ty_, tz, tilt) in enumerate(((0, 0, 0.11, 0), (0.05, 0.03, 0.33, 0), (0.75, 0.2, 0.11, 0), (0.5, -0.8, 0.30, 1.2))):
         mat = Matrix.Rotation(tilt, 4, "Y") if tilt else Matrix.Identity(4)
         loop(m, (x + tx_, y + ty_, G + tz), 0.26, mat, 0.11, "tyre", segs=12, colour=(0.4, 0.4, 0.4))
-    px, py = 20.5, -51.5
+    px, py = 23.6, -45.6
     m = det.at(px, py)
     for layer in range(3):
         z = G + layer * 0.15
@@ -373,9 +387,100 @@ def lot_stories(det: Sectors, dec: Sectors, houses, rng):
                   color=jitter_color(rng, (0.66, 0.62, 0.55), 0.1))
         for k in range(3):
             m.box((px - 0.6 + k * 0.55, py - 0.5, z), (px - 0.5 + k * 0.55, py + 0.56, z + 0.10), "wood_weathered", color=(0.55, 0.52, 0.47))
-    m = det.at(15.5, -53.0)
-    m.obox((15.5, -53.0, G + 0.10), (1.9, 0.95, 0.2), 0.5, "trim", color=(0.5, 0.48, 0.42))
-    dec.at(15.5, -53.0).card((15.6, -53.1, G + 0.205), 1.2, 0.8, 0.5, "decal_oil", flat=True)
+    m = det.at(20.6, -41.8)
+    m.obox((20.6, -41.8, G + 0.10), (1.9, 0.95, 0.2), 0.5, "trim", color=(0.5, 0.48, 0.42))
+    dec.at(20.6, -41.8).card((20.7, -41.9, G + 0.205), 1.2, 0.8, 0.5, "decal_oil", flat=True)
+
+
+# --- layered leaf litter -------------------------------------------------------------------
+
+LEAF_TONES = [(0.95, 0.80, 0.55), (0.80, 0.62, 0.40), (0.60, 0.48, 0.34), (1.0, 0.9, 0.6), (0.45, 0.38, 0.30)]
+
+
+def _leaf(mb, x, y, z, rng):
+    """One fallen leaf: a small card, curled a little off the ground, from the 2 x 2 leaf sheet."""
+    size = rng.uniform(0.07, 0.13)
+    m = Matrix.Translation((x, y, z + rng.uniform(0.006, 0.025))) @ Matrix.Rotation(rng.uniform(0, 6.283), 4, "Z") \
+        @ Matrix.Rotation(rng.uniform(-0.45, 0.45), 4, "X") @ Matrix.Rotation(rng.uniform(-0.3, 0.3), 4, "Y")
+    pts = [m @ Vector(v) for v in ((-size / 2, -size * 0.6, 0), (size / 2, -size * 0.6, 0), (size / 2, size * 0.6, 0),
+                                   (-size / 2, size * 0.6, 0))]
+    cell = rng.randrange(4)
+    cu, cv = (cell % 2) * 0.5, (cell // 2) * 0.5
+    tone = LEAF_TONES[rng.randrange(len(LEAF_TONES))]
+    wet = rng.uniform(0.55, 1.0)
+    mb.face(pts, "leaf_card", uvs=[(cu, cv), (cu + 0.5, cv), (cu + 0.5, cv + 0.5), (cu, cv + 0.5)], color=mul(tone, wet))
+
+
+def leaf_layers(lv: Sectors, houses, rng):
+    """The top layer of the leaf litter in the hero areas: single leaves over the
+    flat leaf decals, thick where the wind leaves them (gutters, fence lines,
+    steps, porch corners) and thin in the open."""
+    def scatter(n, x0, y0, x1, y1, z=None, bias=None):
+        for _ in range(n):
+            x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+            if bias == "y0":
+                y = y0 + (y1 - y0) * rng.random() ** 2.2
+            elif bias == "y1":
+                y = y1 - (y1 - y0) * rng.random() ** 2.2
+            elif bias == "x0":
+                x = x0 + (x1 - x0) * rng.random() ** 2.2
+            elif bias == "x1":
+                x = x1 - (x1 - x0) * rng.random() ** 2.2
+            _leaf(lv.at(x, y), x, y, sk._surface_z(x, y) if z is None else z, rng)
+
+    dx = plan.HOUSE_DOOR_X
+    # the house lot: the path, the foot of the steps, along the fence, the porch itself
+    scatter(160, dx - 0.9, -8.5, dx + 0.9, -2.9, z=G + 0.025)
+    scatter(120, dx - 1.6, -3.6, dx + 1.6, -2.6, z=G)
+    scatter(220, -4.3, -8.3, 11.3, -7.3, z=G, bias="y0")
+    scatter(70, 0.4, -2.2, 3.6, -0.4, z=-0.005, bias="y1")
+    scatter(150, -4.0, -7.0, 11.0, -3.0, z=G)
+    # the sidewalk and both gutters in front of the house
+    scatter(260, -8.0, -10.2, 14.0, -8.6, bias="y1")
+    scatter(300, -8.0, -11.0, 14.0, -10.2, bias="y1")
+    scatter(260, -8.0, -18.1, 14.0, -17.3, bias="y0")
+    # the junction: corners and the mouth of Mill Road
+    scatter(200, -1.6, -19.7, 0.0, -18.1)
+    scatter(200, 7.0, -19.7, 8.6, -18.1)
+    scatter(220, 0.0, -19.5, 7.0, -10.4)
+    # the first thirty metres of Mill Road: both gutters, both sidewalks, a thin scatter on the road
+    scatter(320, 0.0, -48.0, 0.8, -18.1, bias="x0")
+    scatter(320, 6.2, -48.0, 7.0, -18.1, bias="x1")
+    scatter(200, -1.6, -48.0, 0.0, -19.7, bias="x1")
+    scatter(200, 7.0, -48.0, 8.6, -19.7, bias="x0")
+    scatter(160, 0.8, -48.0, 6.2, -19.5)
+    # neighbours' porches and steps
+    for key, (obj, m, ramps, steps) in houses.items():
+        sx0, sx1, sy = steps
+        for _ in range(60):
+            p = m @ Vector((rng.uniform(sx0 - 1.2, sx1 + 1.2), rng.uniform(-2.2, -0.2), 0))
+            _leaf(lv.at(p.x, p.y), p.x, p.y, -0.02, rng)
+        for _ in range(50):
+            p = m @ Vector((rng.uniform(sx0 - 0.6, sx1 + 0.6), rng.uniform(sy - 1.2, sy + 0.1), 0))
+            _leaf(lv.at(p.x, p.y), p.x, p.y, G, rng)
+
+
+def gate(med: Sectors, rng):
+    """The player's front gate, left open: pickets on two rails, sagging on its hinges."""
+    hx, hy = plan.HOUSE_DOOR_X + 0.85, -8.35
+    leaf = MeshBuilder()
+    col = (0.95, 0.93, 0.88)
+    for zr in (0.25, 0.72):
+        leaf.box((0.0, -0.02, G + zr), (1.55, 0.02, G + zr + 0.06), "trim", color=mul(col, 0.9))
+    leaf.obox((0.78, 0.0, G + 0.5), (1.65, 0.03, 0.05), 0.0, "trim", color=mul(col, 0.85), tilt=(0.0, -0.28))   # diagonal brace
+    x = 0.03
+    while x < 1.5:
+        h = 0.95 + rng.uniform(-0.02, 0.02)
+        leaf.box((x, -0.045, G + 0.06), (x + 0.075, -0.02, G + h), "trim", color=jitter_color(rng, col, 0.08))
+        tip = [Vector((x, -0.045, G + h)), Vector((x + 0.075, -0.045, G + h)), Vector((x + 0.0375, -0.045, G + h + 0.06))]
+        leaf.face(tip, "trim", color=col)
+        leaf.face([Vector((v.x, -0.02, v.z)) for v in reversed(tip)], "trim", color=col)
+        x += 0.135
+    for zr in (0.3, 0.75):                                          # strap hinges
+        leaf.box((-0.03, -0.05, G + zr), (0.22, -0.045, G + zr + 0.04), "metal_rust")
+    leaf.box((1.42, -0.055, G + 0.62), (1.54, -0.045, G + 0.66), "metal_rust")       # latch
+    m = Matrix.Translation((hx, hy, 0)) @ Matrix.Rotation(math.radians(118), 4, "Z") @ Matrix.Rotation(-0.03, 4, "Y")
+    med.at(hx, hy).extend(leaf, m)
 
 
 # --- where the town ends ---------------------------------------------------------------------
@@ -394,14 +499,15 @@ def fog_ends(rng):
     for i, (x, y, h) in enumerate(EDGE_TREES):
         instance(variants[i % 3], f"edgetree_{i}", "trees", (x, y, G), rng.uniform(0, 6.28), scale=h / 9.0)
     mb = MeshBuilder()
+    # (south of Mill Road there is no card: the mill itself stands there, tk/store.py)
     for cx, cy, rot, width in ((-44.0, -14.0, -math.pi / 2, 56.0), (52.0, -14.0, math.pi / 2, 56.0),
-                               (3.5, -70.0, 0.0, 56.0), (-40.0, -44.0, -math.pi / 4 - math.pi / 2, 40.0),
-                               (46.0, -44.0, math.pi / 4 + math.pi / 2, 40.0)):
+                               (-40.0, -52.0, -math.pi / 4 - math.pi / 2, 40.0),
+                               (46.0, -52.0, math.pi / 4 + math.pi / 2, 40.0)):
         mb.card((cx, cy, G - 0.5), width, 15.0, rot, "backdrop", uvs=((0, 0), (width / 60.0, 0), (width / 60.0, 1), (0, 1)))
     mb.build("backdrop_ends", "ground")
     # the ground beyond the fences is bare and dark
     gm = MeshBuilder()
-    for rect in ((-46.0, -30.0, plan.BUILD[0], 4.0), (plan.BUILD[2], -30.0, 54.0, 4.0), (-12.0, -72.0, 20.0, plan.BUILD[1])):
+    for rect in ((-46.0, -30.0, plan.BUILD[0], 4.0), (plan.BUILD[2], -30.0, 54.0, 4.0)):
         x0, y0, x1, y1 = rect
         gm.face([Vector((x0, y0, G)), Vector((x1, y0, G)), Vector((x1, y1, G)), Vector((x0, y1, G))], "lawn_dead",
                 color=(0.3, 0.3, 0.27))
@@ -410,14 +516,30 @@ def fog_ends(rng):
 
 def build(houses):
     rng = random.Random(77)
-    det, dec = Sectors("detail"), Sectors("decals_b")
+    # det: small things, no shadows. med: things big enough to throw one (benches,
+    # bags, signs, yard furniture). dec: flat decals. lv: single leaves.
+    det, med, dec, lv = Sectors("detail"), Sectors("mprop"), Sectors("decals_b"), Sectors("leaves")
     gutters_and_drains(det, dec, rng)
-    signs_and_bus_stop(det, rng)
-    trash(det, dec, rng)
+    signs_and_bus_stop(med, rng)
+    trash(med, dec, rng)
     cart_and_bike(det, rng)
     posters(det)
     road_marks(dec, rng)
-    lot_stories(det, dec, houses, rng)
+    lot_stories(med, dec, houses, rng)
+    gate(med, rng)
+    leaf_layers(lv, houses, random.Random(78))
+    from . import store
+    store.station("houses")
+    store.station_decals(dec, rng)
+    store.mill("ground")
     det.build("props")
+    med.build("props")
     dec.build("ground_detail")
+    lv.build("ground_detail")
+    # the knocked-over trash can is solid too
+    for i, (x, y, rot, state) in enumerate(plan.TRASH_CANS):
+        if state == "fallen":
+            box = MeshBuilder()
+            box.obox((x, y + 0.42, sk._surface_z(x, y) + 0.29), (0.62, 0.95, 0.58), math.radians(rot), "concrete")
+            box.build(f"trash_can_fallen_{i}_col-convcolonly", "collision")
     fog_ends(rng)

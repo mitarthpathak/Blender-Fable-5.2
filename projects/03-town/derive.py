@@ -72,7 +72,16 @@ def noise(size: int, scale: int, octaves: int = 4) -> np.ndarray:
 
 def save_rgba(arr: np.ndarray, name: str):
     DECALS.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(np.clip(arr * 255, 0, 255).astype(np.uint8), "RGBA").save(DECALS / f"{name}.png")
+    img = Image.fromarray(np.clip(arr * 255, 0, 255).astype(np.uint8), "RGBA")
+    for attempt in range(6):                 # Windows sometimes holds a just-read file open for a moment
+        try:
+            img.save(DECALS / f"{name}.png")
+            break
+        except OSError:
+            if attempt == 5:
+                raise
+            import time
+            time.sleep(0.5)
     print("decal", name)
 
 
