@@ -21,10 +21,11 @@ from .core import MeshBuilder, instance, jitter_color, mul
 from . import street_kit as sk
 from .street_kit import G, RD, SW, Sectors
 
-RED = (0.55, 0.10, 0.08)
-GREEN = (0.12, 0.30, 0.14)
-BLUE = (0.14, 0.24, 0.50)
-YELLOW = (0.70, 0.55, 0.10)
+# Sun-faded plastics and paint: nothing here is as bright as the day it was bought.
+RED = (0.40, 0.15, 0.12)
+GREEN = (0.16, 0.26, 0.17)
+BLUE = (0.19, 0.25, 0.36)
+YELLOW = (0.50, 0.42, 0.17)
 
 
 # --- small shapes ----------------------------------------------------------------

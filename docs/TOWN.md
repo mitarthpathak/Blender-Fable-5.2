@@ -51,11 +51,29 @@ the front door opens, lit by the streetlight on pole P5.
 | L4 | 15 Ashgrove Street | Corner house on the south side, hip roof, wrap-around porch, putty grey. Closed up. |
 | L5 | 17 Ashgrove Street | Corner house, front gable, faded mustard, chain-link fence and a sale sign. Empty. An abandoned sedan with flat tyres sits at the curb in front. |
 | L6 | 3 Mill Road | Faces Mill Road. Oxblood paint, side-gable, boarded throughout. |
-| L7 | 4 Mill Road | Vacant lot behind chain-link: a dead station wagon on blocks, weeds, leaves, a bare tree. |
+| L7 | 4 Mill Road | Vacant lot behind chain-link: a dead station wagon on blocks, weeds, leaves, a bare tree. Its south half is the closed **Ridge Gas & Grocery**. |
 
 Only the player's house opens. Every other house has a walkable porch, a
 locked front door (and a screen door), sash windows with casings, gutters and
 downpipes; some windows are boarded or broken, as listed in `plan.py`.
+
+## Two places beyond the houses
+
+**Ridge Gas & Grocery** stands where Mill Road ends, on the south half of the
+vacant lot: a flat-roofed block store with its window boarded and a notice
+in the door ("Closed. Thank you, Halden Ridge. 1964 - 1995"), a canopy over
+two dead pumps, a price sign with digits missing, an ice chest, a pay phone
+with the handset hanging, oil drums and a dumpster. One fluorescent tube
+under the canopy still buzzes. The forecourt is open to the road and can be
+walked on. The brand and the prices are our own.
+
+**The Halden mill** is why the town exists and why it is emptying. It
+stands 70 to 110 m past the end of Mill Road: a long brick weaving shed
+under a sawtooth roof, a four-storey spinning block with a stair tower, a
+water tank and a 46 m stack. It cannot be reached. In fog it is a shape at
+the end of the street; in clear weather it is a building with rows of dark
+windows. The flyer on the poles ("What happens to the Halden mill?") is
+about it.
 
 ## Street furniture
 
@@ -72,6 +90,32 @@ downpipes; some windows are boarded or broken, as listed in `plan.py`.
   tyre marks towards each wreck.
 - Flyers on the poles, all our own: a missing cat (Toby), a town meeting
   about what happens to the Halden mill, a yard sale at 12 Ashgrove Street.
+
+## Close up
+
+The town is also used for film, so the hero areas (the player's lot, the
+junction, the first 30 m of Mill Road) are built to be looked at from a
+metre away, in daylight as well as fog:
+
+- Every window has see-through, dirty glass and something behind it:
+  curtains with folds, a venetian blind half down with a few slats askew, a
+  sheet pinned up, or a bare dark room.
+- Three windows are lit and show a real room (wallpaper, a floor, a lamp
+  with a glowing shade, a bed or an armchair and a bookcase): upstairs and
+  downstairs at 16 Ashgrove, where someone lives, and one bare bedroom at
+  15, which is supposed to be closed up.
+- The houses beside the player's and on the junction have louvred shutters
+  (one hanging), brackets under the eaves and at the porch posts, a gable
+  vent, a number plaque, a lantern by the door (lit at 16), a kick plate and
+  a letter slot.
+- Porches have a rocking chair, a side table with a mug and a paperback, a
+  doormat and a hanging basket of something long dead.
+- Mailboxes have a flag, a door with a latch and a tube for the paper;
+  pickets are pointed and posts capped; the player's gate hangs open.
+- Leaf litter is layered: flat wet leaves, then about 3,500 single curled
+  leaves banked where the wind leaves them (gutters, fence lines, steps,
+  porch corners), then the piles.
+- The cars have interiors behind see-through glass.
 
 ## What each lot says
 
@@ -108,7 +152,7 @@ into the fog rather than stopping:
 | --- | --- |
 | Ashgrove, west (x ≈ -29) | a car crashed into the corner, sawhorse road barriers, a tall fence behind |
 | Ashgrove, east (x ≈ 36) | a fallen tree lying across the road, a tall fence behind |
-| Mill Road, south (y ≈ -56) | concrete jersey barriers, a ROAD CLOSED sign, a car crashed into them, a fence |
+| Mill Road, south (y ≈ -56) | concrete jersey barriers, a ROAD CLOSED sign, a pickup crashed into them, a fence; the mill beyond |
 | Behind the north lots (y ≈ 18.4) | a tall board fence |
 | West and east of the south lots | tall board fences |
 

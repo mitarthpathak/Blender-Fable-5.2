@@ -223,6 +223,14 @@ def material(key: str) -> bpy.types.Material:
         elif spec.get("blend"):
             nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
             mat.surface_render_method = "BLENDED"
+    else:
+        # A plain colour: the black behind a window, an emissive lamp face, the screen-door mesh.
+        mix.inputs[6].default_value = (*spec["color"], 1.0)
+        bsdf.inputs["Roughness"].default_value = spec.get("rough", 0.7)
+        bsdf.inputs["Metallic"].default_value = spec.get("metal", 0.0)
+        if "alpha" in spec:
+            bsdf.inputs["Alpha"].default_value = spec["alpha"]
+            mat.surface_render_method = "BLENDED"
     if "spec" in spec:
         bsdf.inputs["Specular IOR Level"].default_value = spec["spec"]
     if "emit" in spec:

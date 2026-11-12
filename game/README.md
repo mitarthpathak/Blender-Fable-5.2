@@ -172,6 +172,7 @@ Three looks, each a `LightingPreset` resource in `presets/`:
 | `presets/night.tres` | **Night** (default). Exactly the values `main.gd` and `house_lights.gd` used before presets existed. |
 | `presets/foggy_day.tres` | **Foggy Overcast Day**: grey sky, heavy fog, soft shadowless light, street lights off. |
 | `presets/dusk.tres` | **Dusk**: low warm sun from the west, violet fog, street lights just on. |
+| `presets/clear_day.tres` | **Clear Day**: a low late-autumn sun, a blue-grey sky, only a little haze. Added so the town can be checked (and filmed) without fog; F2 reaches it after Dusk. |
 
 Open a `.tres` in the Godot inspector to tweak it: key light (moon or sun)
 colour, energy, softness and angle; sky and ambient colour; room-probe
@@ -311,19 +312,19 @@ Measured on the Low target itself, an Intel HD Graphics 620 (i5-7300U),
 
 | View | Low (58 % scale) | High | Draw calls (Low) | Triangles drawn (Low) |
 | --- | --- | --- | --- | --- |
-| Front door, looking out | 36 FPS | 2 FPS | 430 | 193 k |
-| Junction | 45 FPS | 4 FPS | 328 | 176 k |
-| Mill Road | 52 FPS | 6 FPS | 253 | 171 k |
+| Front door, looking out | 34 FPS | 2 FPS | 655 | 238 k |
+| Junction | 43 FPS | 4 FPS | 483 | 210 k |
+| Mill Road | 50 FPS | 6 FPS | 379 | 197 k |
 
-These are after the detail pass (cars, potholes, weeds, street detail, lot
-stories, fog ends). Before it the same views ran at 32, 45 and 52 FPS with
-304, 204 and 198 draw calls: the detail added about 60 000 triangles and 55
-to 125 draw calls and cost no frame rate, because it is merged into 24 m
-sectors that fade out past 46 to 48 m, the trees and weeds are instanced,
-and it reuses the kit's materials.
+These are after the second detail pass (car interiors, window interiors and
+lit rooms, hero facades, single leaves, the gas station, the mill). Through
+the passes the same views ran at 32 / 45 / 52, then 36 / 45 / 52, now
+34 / 43 / 50 FPS, while draw calls doubled and triangles rose by a quarter:
+this GPU is bound by pixels, and the added detail is small on screen, fades
+with distance and is instanced where it repeats.
 
 Draw calls and triangles include the shadow passes. The town model is about
-175,000 triangles in 380 objects (70 unique meshes); with the house hidden
+209,000 triangles in 372 objects (84 unique meshes); with the house hidden
 the main pass is 117 draw calls and 83,000 triangles.
 
 That GPU is limited by pixels, not triangles: an empty scene runs at 70 FPS
@@ -354,6 +355,13 @@ Night's **Outdoors** group, a blue-grey that hides houses by about 30 m, and
 black on screen.
 
 ![Low after the detail pass: Night and Foggy Overcast Day](screenshots/town/detail_pass_low.jpg)
+
+#### The mill on Low
+
+The mill is 70 to 110 m away. High's volumetric fog leaves a faint shape of
+it by itself; Low's distance fog would erase it, so in thick fog on Low
+`town.gd` draws it unshaded and unfogged, a few percent darker than the fog
+colour. In Clear Day it is drawn with its real materials.
 
 #### Town checks
 

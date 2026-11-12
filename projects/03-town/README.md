@@ -24,7 +24,9 @@ reasoning are in `docs/TOWN.md`; the Godot side is in `game/README.md`.
 | `tk/house_kit.py` | The house kit: clapboard, windows, doors, porches, roofs, gutters, chimneys. |
 | `tk/street_kit.py` | The street kit: ground, roads with real pothole dips, weeds and moss, poles and wires, lights, fences, props, trees, blockers, collision helpers. |
 | `tk/cars.py` | The cars: a lofted sedan, station wagon and pickup. |
-| `tk/detail.py` | Street detail, the story on each lot, and the fog ends. |
+| `tk/detail.py` | Street detail, the story on each lot, single leaves, and the fog ends. |
+| `tk/facade.py` | Close-up dressing: window interiors and lit rooms, shutters, brackets, plaques, lanterns, porch furniture. |
+| `tk/store.py` | Ridge Gas & Grocery at the end of Mill Road, and the Halden mill in the distance. |
 | `detail_maps.py` | Detail-pass decals, flat-material texture sets, and a normal + ORM map for every generated decal (run by `derive.py`). |
 | `godot_imports.py` | Sets VRAM compression on newly imported town textures in `game/`. |
 | `build.py` | Blender entry point: `kit`, `town` and `stills` stages. |
@@ -68,7 +70,7 @@ here. The scripts use nothing newer than 4.5 and `town.blend` opens in 5.2.
 - **Albedo range.** Paints are 11 to 42 % linear; nothing is below 4 % or
   above 80 % except the emissive lamp and window materials.
 
-Numbers: 380 objects, 70 unique meshes, 61 materials, about 175,000
+Numbers: 372 objects, 84 unique meshes, 74 materials, about 209,000
 triangles.
 
 ## Detail pass
@@ -101,6 +103,36 @@ triangles.
 - **Fog ends**: dead trees and a dark tree line beyond each closed street
   end, so the view dissolves instead of stopping at a fence.
 
+## Detail pass 2 (film close-ups)
+
+- **Cars**: interiors (seats with a split seam, dashboard, steering wheel,
+  gear lever, parcel shelf, papers, a cup, a bag; the wagon's radio gone and
+  its wires hanging) behind see-through glass with dust and streaks, and an
+  inner skin so the cabin is closed.
+- **Windows**: see-through glass over curtains with folds, blinds, sheets or
+  a dark recess; three lit windows show a room (`tk/facade.py`).
+- **Hero facades**: shutters, eave and post brackets, gable vents, number
+  plaques, lanterns, kick plates and letter slots; rocking chairs, side
+  tables, doormats and hanging baskets on the porches.
+- **Street**: a transformer with leads on every pole and a service drop to
+  every building; the failing lamp is the one at the junction; pointed
+  pickets, capped posts, the player's gate; detailed mailboxes; galvanised
+  bins; trees rebuilt with a leader, side limbs and drooping twigs.
+- **Leaves** in three layers: flat decals, about 3,500 single leaves, piles.
+- **Ridge Gas & Grocery** and **the Halden mill** (`tk/store.py`).
+- **Daylight**: the backdrop is bark-coloured instead of black, plastics are
+  sun-faded, and `build.py -- stills --light day` renders under a real sky.
+- A fix: since detail pass 1 the plain-colour materials (the dark behind
+  windows, lamp faces, the screen-door mesh) had lost their colour and were
+  mid-grey. They are right again.
+
+Still flat colours on purpose: `interior_dark`, the emissive lamp, tube and
+window materials, and the screen-door mesh.
+
+![Out of the front door, day](renders/04_front_door_day.png)
+![The junction, day](renders/04_junction_day.png)
+![16 Ashgrove's porch at night](renders/03_porch_16.png)
+
 ![Cars](renders/02_kit_cars.png)
 ![Curb detail](renders/03_detail_curb.png)
 
@@ -113,8 +145,10 @@ to the ones in `textures/` here, so LFS stores them once.
 
 ## Known shortfalls
 
-- The cars are mid-poly lofts with no interiors: the glass is dark and opaque.
-- Small props (cart, bike, toys, bags) have no collision and cast no shadows.
+- The cars are mid-poly lofts; the interiors are simple shapes, right for a
+  look through the glass, not for a shot from inside.
+- Lit rooms are three walls, a floor and a few pieces of furniture: sets, not interiors.
+- The mill is distant geometry (about 600 triangles); it cannot be approached.
 - Flyers and signs are legible up close only; their text is 384 px wide.
 - The catalogue renders (`02_kit_houses.png`) show porches and roofs without
   walls under them: it is a parts sheet, not a scene.

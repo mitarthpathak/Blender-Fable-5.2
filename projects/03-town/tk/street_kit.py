@@ -592,7 +592,10 @@ def chainlink_run(mb, a, b, height=1.2):
     for i in range(n + 1):
         p = a.lerp(b, i / n)
         mb.cylinder(p, (0, 0, height + 0.05), 0.03, "metal_rust", segments=6, caps="top")
+        mb.cylinder(p + Vector((0, 0, height + 0.05)), (0, 0, 0.03), 0.038, "metal_rust", segments=6, radius_top=0.012)   # cap
+        mb.box((p.x - 0.036, p.y - 0.036, G + height - 0.06), (p.x + 0.036, p.y + 0.036, G + height - 0.02), "metal_rust")  # rail clamp
     mb.tube([a + Vector((0, 0, height)), b + Vector((0, 0, height))], 0.02, "metal_rust", segments=5)
+    mb.tube([a + Vector((0, 0, 0.06)), b + Vector((0, 0, 0.06))], 0.005, "wire", segments=3)                 # tension wire
     up = Vector((0, 0, height))
     mb.face([a + Vector((0, 0, 0.03)), b + Vector((0, 0, 0.03)), b + up, a + up], "chainlink",
             uvs=[(0, 0), (length, 0), (length, height), (0, height)])

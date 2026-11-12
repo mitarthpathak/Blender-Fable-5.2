@@ -173,7 +173,8 @@ def sash_window(mb: MeshBuilder, wf: WallFace, u0, width, sill, head, trim, stat
     mid = (sill + head) / 2
     f = 0.055
     for (zb, zt, off) in ((sill, mid + 0.02, -0.075), (mid - 0.02, head, -0.045)):
-        for uu0, uu1, zz0, zz1 in ((u0, u0 + f, zb, zt), (u1 - f, u1, zb, zt), (u0, u1, zb, zb + f), (u0, u1, zt - f, zt)):
+        for uu0, uu1, zz0, zz1 in ((u0, u0 + f, zb, zt), (u1 - f, u1, zb, zt), (u0 + f, u1 - f, zb, zb + f),
+                                   (u0 + f, u1 - f, zt - f, zt)):
             board_on_wall(mb, wf, uu0, uu1, zz0, zz1, 0.035, "trim", trim, off)
         mun = (u0 + u1) / 2
         board_on_wall(mb, wf, mun - 0.012, mun + 0.012, zb + f, zt - f, 0.02, "trim", trim, off)    # 2 over 2
@@ -227,7 +228,8 @@ def front_door(mb: MeshBuilder, wf: WallFace, u0, trim, door_col, screen=True, a
         sc = mul(trim, 0.95)
         off = 0.05
         for a0, a1, z0, z1 in ((u0, u0 + 0.07, 0.01, DOOR_H - 0.02), (u1 - 0.07, u1, 0.01, DOOR_H - 0.02),
-                               (u0, u1, 0.01, 0.17), (u0, u1, 0.95, 1.04), (u0, u1, DOOR_H - 0.1, DOOR_H - 0.02)):
+                               (u0 + 0.07, u1 - 0.07, 0.01, 0.17), (u0 + 0.07, u1 - 0.07, 0.95, 1.04),
+                               (u0 + 0.07, u1 - 0.07, DOOR_H - 0.1, DOOR_H - 0.02)):
             board_on_wall(mb, wf, a0, a1, z0, z1, 0.028, "trim", sc, off)
         for z0, z1 in ((0.17, 0.95), (1.04, DOOR_H - 0.1)):
             mb.face([wf.at(u0 + 0.07, z0, off + 0.014), wf.at(u1 - 0.07, z0, off + 0.014),
