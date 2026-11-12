@@ -312,14 +312,14 @@ Measured on the Low target itself, an Intel HD Graphics 620 (i5-7300U),
 
 | View | Low (58 % scale) | High | Draw calls (Low) | Triangles drawn (Low) |
 | --- | --- | --- | --- | --- |
-| Front door, looking out | 34 FPS | 2 FPS | 655 | 238 k |
-| Junction | 43 FPS | 4 FPS | 483 | 210 k |
-| Mill Road | 50 FPS | 6 FPS | 379 | 197 k |
+| Front door, looking out | 35 FPS | 2 FPS | 655 | 238 k |
+| Junction | 44 FPS | 4 FPS | 483 | 210 k |
+| Mill Road | 50 FPS | 5 FPS | 379 | 197 k |
 
 These are after the second detail pass (car interiors, window interiors and
 lit rooms, hero facades, single leaves, the gas station, the mill). Through
 the passes the same views ran at 32 / 45 / 52, then 36 / 45 / 52, now
-34 / 43 / 50 FPS, while draw calls doubled and triangles rose by a quarter:
+35 / 44 / 50 FPS, while draw calls doubled and triangles rose by a quarter:
 this GPU is bound by pixels, and the added detail is small on screen, fades
 with distance and is instanced where it repeats.
 

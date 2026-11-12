@@ -172,6 +172,17 @@ Not touched: `projects/00-hello`, `projects/01-house-interior`,
 `README.md`, `CLAUDE.md`, `.gitattributes`, `.mcp.json`, `scripts/**`,
 `docs/ART_BIBLE.md`, and every existing `.blend`, `.glb` and image.
 
+Detail pass 2 (after merging `claude/sweet-fermat-oxmviq` into `town-v1`)
+changed only town-side files, plus:
+
+| Existing file | Change | Why |
+| --- | --- | --- |
+| `game/README.md` | Merge conflict resolved keeping both sides; the town sections gain the Clear Day preset, the mill on Low and the new FPS table. | Documentation. |
+| `game/scripts/lighting_presets.gd` | `clear_day` added to `PRESETS` and `ORDER`; lights named `street_*` and the `tube_on` material follow the street-light switch. | The fourth look; the gas station's tube goes off by day. |
+
+The door-sill wedges were already removed on the other side (`street_kit.py`),
+and `town.gd` drops them from older exports; nothing of them is left here.
+
 Things a merge should know:
 
 - Opening the project in Godot on Windows rewrites the line endings of the
