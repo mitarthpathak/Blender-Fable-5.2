@@ -178,12 +178,13 @@ def shoe(mb, x, y, z, yaw=0.0, key="leather", length=0.29, tipped=False, boot=Fa
 
 
 def folded(mb, x, y, z, width, depth, key, layers=3, yaw=0.0, thick=0.022, seed=0):
-    """A folded towel, shirt or blanket: a soft stack."""
+    """A folded towel, sheet or shirt: a stack of soft-edged layers."""
     rng = random.Random(seed)
     for k in range(layers):
         shrink = 1.0 - 0.03 * k
-        obox(mb, (x + rng.uniform(-0.006, 0.006), y + rng.uniform(-0.006, 0.006), z + k * thick),
-             (width * shrink, depth * shrink, thick * 0.95), yaw + rng.uniform(-2.5, 2.5), key)
+        pillow(mb, x + rng.uniform(-0.008, 0.008), y + rng.uniform(-0.008, 0.008), z + (k + 0.42) * thick,
+               width * shrink / 2, depth * shrink / 2, thick * 1.15, yaw=yaw + rng.uniform(-3, 3), dent=0.0,
+               seed=seed * 7 + k, key=key, grid=(8, 6), square=9.0, fill=0.22)
 
 
 def book(mb, x, y, z, region=None, yaw=0.0, size=(0.13, 0.19, 0.028), key="book_red"):
@@ -214,7 +215,8 @@ def heap(mb, x, y, z, rx, ry, height, key, seed=0, yaw=0.0, n=20):
     loft(mb, rings, key)
 
 
-def pillow(mb, cx, cy, cz, rx, ry, thick, yaw=0.0, lean=0.0, dent=0.3, seed=0, key="fabric_pillow", grid=(14, 10)):
+def pillow(mb, cx, cy, cz, rx, ry, thick, yaw=0.0, lean=0.0, dent=0.3, seed=0, key="fabric_pillow", grid=(14, 10),
+           square=4.0, fill=0.45):
     """A stuffed pillow or cushion: fat in the middle, pinched to a seam at
     the edge, slept on or sat against. `cz` is the height of its middle;
     `lean` props it up about its long axis."""
@@ -235,7 +237,7 @@ def pillow(mb, cx, cy, cz, rx, ry, thick, yaw=0.0, lean=0.0, dent=0.3, seed=0, k
         u = -1.0 + 2.0 * i / nu
         for j in range(nv + 1):
             v = -1.0 + 2.0 * j / nv
-            puff = max(0.0, (1.0 - abs(u) ** 4) * (1.0 - abs(v) ** 4)) ** 0.45
+            puff = max(0.0, (1.0 - abs(u) ** square) * (1.0 - abs(v) ** square)) ** fill
             x = u * rx * (1.0 - 0.07 * (1.0 - v * v))          # the sides draw in, the corners stay out
             y = v * ry * (1.0 - 0.07 * (1.0 - u * u))
             hollow = dent * math.exp(-((u - du) ** 2 + (v - dv) ** 2) / 0.22)
@@ -417,3 +419,45 @@ def suitcase(mb, soft, x, y, z, yaw=0.0, key="vinyl", seed=0):
 
 def clock_radio(mb, x, y, z, yaw=0.0):
     obox(mb, (x, y, z), (0.20, 0.10, 0.065), yaw, "plastic_black", sides={"front": "oven_glass"})
+
+
+def peel(mb, face, a, z_attach, length, width, key, seed=0, bare="wall_utility"):
+    """Wallpaper come away from the wall: a length that has let go at the top,
+    folded over where it still holds and now hangs down in front of the wall
+    showing its backing, with the bare plaster it left above."""
+    rng = random.Random(seed)
+    lean = rng.uniform(-0.07, 0.07)                   # it never comes off square
+    radius = rng.uniform(0.016, 0.028)
+    # the path of the strip, seen from the side: (out from the wall, height)
+    path = [(0.0025, z_attach - 0.05), (0.0025, z_attach)]
+    for k in range(1, 6):                             # the fold
+        t = math.pi * k / 5
+        path.append((0.0025 + radius * (1.0 - math.cos(t)), z_attach + radius * math.sin(t)))
+    hang = max(0.1, length - math.pi * radius)
+    for k in range(1, 7):                             # and the fall, bowing out and curling at its end
+        t = k / 6
+        path.append((0.0025 + 2 * radius + 0.035 * math.sin(t * math.pi * 0.8) + 0.05 * t ** 3,
+                     z_attach - hang * t * (1.0 - 0.12 * t ** 3)))
+    rows = []
+    for k, (d, z) in enumerate(path):
+        skew = lean * max(0.0, (k - 6) / 6) * 0.5
+        rows.append((face.P(a - width / 2 + skew, d, z), face.P(a + width / 2 + skew, d, z)))
+    for k, ((l0, r0), (l1, r1)) in enumerate(zip(rows, rows[1:])):
+        quad = [l0, r0, r1, l1]
+        mb.face(quad, key if k < 1 else "paper_brown")
+        mb.face(quad[::-1], key)
+    # the plaster behind, with the paste still on it
+    patch = [face.P(a - width / 2, 0.0015, z_attach), face.P(a + width / 2, 0.0015, z_attach),
+             face.P(a + width / 2 + lean * 0.3, 0.0015, z_attach + length), face.P(a - width / 2, 0.0015, z_attach + length)]
+    if (patch[1] - patch[0]).cross(patch[2] - patch[0]).dot(face.normal) < 0:
+        patch = patch[::-1]
+    mb.face(patch, bare)
+
+
+def power_strip(mb, x, y, z, yaw=0.0):
+    obox(mb, (x, y, z), (0.30, 0.055, 0.035), yaw, "c_cream")
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    for k in range(4):
+        px = -0.105 + k * 0.07
+        obox(mb, (x + px * ca, y + px * sa, z + 0.035), (0.04, 0.032, 0.022 if k % 2 == 0 else 0.002), yaw,
+             "plastic_black" if k % 2 == 0 else "plastic_white")

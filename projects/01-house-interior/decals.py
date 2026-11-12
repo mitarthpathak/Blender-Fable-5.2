@@ -321,7 +321,52 @@ def stain_rings(seed=17, size=(512, 512)):
     return image
 
 
+def scuffs(seed=18, size=(1024, 128)):
+    """Knocks along a skirting board: dark rubber scuffs, and chips where the
+    paint has gone and the wood shows."""
+    rng = random.Random(seed)
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    for _ in range(46):
+        x, y = rng.uniform(0, size[0]), rng.uniform(size[1] * 0.25, size[1] * 0.95)
+        length, tilt = rng.uniform(18, 110), rng.uniform(-0.12, 0.12)
+        shade = rng.randint(24, 60)
+        draw.line([(x, y), (x + length, y + length * tilt)], fill=(shade, shade, shade - 4, rng.randint(70, 190)),
+                  width=rng.randint(2, 6))
+    for _ in range(16):
+        x, y = rng.uniform(0, size[0]), rng.uniform(size[1] * 0.1, size[1] * 0.9)
+        w, h = rng.uniform(6, 26), rng.uniform(4, 14)
+        draw.polygon([(x, y), (x + w, y + rng.uniform(-3, 3)), (x + w * 0.8, y + h), (x + w * 0.1, y + h * 0.8)],
+                     fill=(126, 100, 72, 235), outline=(60, 50, 40, 255))
+    return image.filter(ImageFilter.GaussianBlur(0.8))
+
+
+def dust(seed=19, size=(512, 512)):
+    """Dust lying on a flat top: a pale film, thicker towards the back, with
+    clean marks where things stood and a finger dragged through it."""
+    rng = random.Random(seed)
+    film = _noise(size, rng, 14).point(lambda v: int(70 + v * 0.45))
+    back = ImageChops.invert(Image.linear_gradient("L").resize(size)).point(lambda v: int(120 + v * 0.53))
+    alpha = ImageChops.multiply(film, back)
+    draw = ImageDraw.Draw(alpha)
+    for _ in range(3):
+        x, y, r = rng.uniform(80, 430), rng.uniform(80, 430), rng.uniform(26, 48)
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=18)
+    x, y = rng.uniform(60, 300), rng.uniform(250, 400)
+    draw.rectangle([x, y, x + rng.uniform(70, 130), y + rng.uniform(40, 80)], fill=20)
+    draw.line([(60, 440), (190, 400), (330, 452), (450, 410)], fill=30, width=11, joint="curve")
+    alpha = alpha.filter(ImageFilter.GaussianBlur(2.2))
+    edge = Image.new("L", size, 0)
+    ImageDraw.Draw(edge).rectangle([14, 14, size[0] - 14, size[1] - 14], fill=255)
+    alpha = ImageChops.multiply(alpha, edge.filter(ImageFilter.GaussianBlur(10)))
+    image = Image.new("RGB", size, (150, 146, 136))
+    image.putalpha(alpha.point(lambda v: int(v * 0.62)))
+    return image
+
+
 DECALS = {
+    "scuffs": scuffs,
+    "dust": dust,
     "mould": mould,
     "rust_stain": rust_stain,
     "grease": grease,

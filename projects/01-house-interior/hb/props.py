@@ -15,7 +15,7 @@ from mathutils import Vector
 
 import plan
 from . import dressing as dr
-from . import bathroom, joinery, kitchen, models, shapes
+from . import bathroom, joinery, kitchen, models, shapes, utility
 from . import clutter as cl
 from .core import MeshBuilder
 from .dressing import (CHIMNEY, DIVIDER_N, DIVIDER_S, EAST, F1, HALL_EAST, NORTH, ROOM_WEST, SOUTH, WEST,
@@ -331,7 +331,7 @@ def landing():
     put("painted_wooden_chair_01", "landing_chair", 0.42, 0.48, F1, facing=40)
     put("potted_plant_04", "plant_landing", 1.78, -0.02, F1 + 0.90, facing=0, scale=1.2)
     put("hanging_picture_frame_02", "picture_landing", plan.PART_X0, 1.55, F1 + 1.62, facing=180)
-    put("hanging_picture_frame_03", "picture_landing_2", plan.PART_X0, 6.75, F1 + 1.65, facing=180, tilt=(0, -5.0))
+    put("hanging_picture_frame_03", "picture_landing_2", plan.PART_X0, 7.70, F1 + 1.65, facing=180, tilt=(0, -5.0))
     dr.pendant("landing", 1.78, 1.6, plan.ROOF_Z, drop=0.55, kind="off")
     dr.rug("runner_landing", 1.36, 3.25, 2.22, 7.55, F1, key="carpet_runner")
     dr.radiator("radiator_landing", WEST, 0.6, 1.5, F1)
@@ -345,7 +345,7 @@ def landing():
     cl.paper_stack(small, 2.16, 0.60, F1, count=9, yaw=-12, seed=5)
     cl.framed(small, HALL_EAST, 4.05, F1 + 1.62, 0.26, "photo_b", tilt=1.5)
     cl.framed(small, HALL_EAST, 4.45, F1 + 1.56, 0.18, "photo_c", tilt=-4.0, key="wood_mid")
-    cl.framed(small, HALL_EAST, 6.15, F1 + 1.60, 0.20, "photo_d", tilt=0.0, key="metal_brass")
+    cl.framed(small, HALL_EAST, 6.08, F1 + 1.60, 0.20, "photo_d", tilt=0.0, key="metal_brass")
     cl.open_box(small, 1.72, 7.50, F1, size=(0.44, 0.36, 0.28), yaw=-20, flaps=(100.0, 165.0, 130.0, 95.0), seed=6)
     cl.heap(soft, 1.72, 7.50, F1 + 0.10, 0.18, 0.14, 0.17, "fabric_curtain", seed=33, yaw=-20)
     shapes.sheet(small, (1.9, 2.4, F1), 0.21, "magazine_b", yaw=50, lift=0.014)
@@ -360,7 +360,7 @@ def landing():
     d = Decals("decals_landing", seed=23)
     d.wall("floor_grime", HALL_EAST, 1.5, F1 + 0.34, 2.2, 0.36)
     d.wall("grime_streaks", WEST, 4.75, F1 - 0.55, 1.3, 1.3)        # under the stair window
-    d.wall("crack", HALL_EAST, 6.9, F1 + 2.0, 1.1, 1.1)
+    d.wall("crack", HALL_EAST, 7.72, F1 + 2.2, 0.5, 0.5)
     d.wall("plaster_damage", WEST, 7.35, F1 + 1.5, 0.55, 0.55)
     d.wall("smudge", HALL_EAST, 2.85, F1 + 1.2, 0.36, 0.42)
     d.flat("water_stain", 0.75, 5.0, plan.ROOF_Z, 1.4, 1.5, up=False, angle_deg=40)
@@ -439,6 +439,60 @@ def bedroom():
     d.build()
 
 
+def details():
+    """One more layer over every room: knocks along the skirting, dust on
+    the tops of things, wallpaper lifting at its seams, a socket hanging off
+    the wall, extension leads, damp below the windows."""
+    d = Decals("decals_detail", seed=40)
+    skirt = 0.0205                                         # clear of the skirting board's face
+    for face, a, floor in (
+            (HALL_EAST, 0.62, GF), (HALL_EAST, 3.05, GF), (HALL_EAST, 4.9, GF), (WEST, 0.95, GF), (WEST, 7.45, GF),
+            (NORTH, 0.62, GF), (ROOM_WEST, 2.9, GF), (DIVIDER_S, 6.7, GF), (SOUTH, 3.05, GF), (SOUTH, 6.6, GF),
+            (EAST, 0.75, GF), (ROOM_WEST, 5.0, GF), (ROOM_WEST, 7.62, GF), (DIVIDER_N, 4.9, GF),
+            (HALL_EAST, 1.0, F1), (HALL_EAST, 3.9, F1), (HALL_EAST, 6.08, F1), (SOUTH, 0.55, F1), (WEST, 7.45, F1),
+            (DIVIDER_S, 3.3, F1), (DIVIDER_S, 6.9, F1), (SOUTH, 3.05, F1), (EAST, 3.65, F1), (ROOM_WEST, 2.62, F1)):
+        d.wall("scuffs", face, a, floor + 0.085, 1.15, 0.15, offset=skirt)
+    for x, y, z, w, h, turn in (
+            (5.42, 4.12, 0.834, 1.25, 0.50, 0), (6.85, 2.30, 1.1475, 0.22, 1.60, 0), (7.03, 0.80, 0.963, 0.42, 0.46, 20),
+            (7.145, 3.75, 2.012, 0.30, 1.20, 0), (2.18, 2.95, 0.7625, 0.36, 0.36, 40),
+            (6.97, 0.80, F1 + 0.9215, 0.62, 1.10, 0), (2.85, 1.15, F1 + 2.0725, 0.60, 1.74, 0),
+            (3.92, 4.16, F1 + 0.7015, 0.50, 0.38, 0), (6.66, 7.84, 2.1215, 1.25, 0.30, 0), (6.97, 4.96, 1.7015, 0.62, 0.70, 0),
+            (3.57, 7.84, 2.1215, 0.52, 0.30, 0)):
+        d.flat("dust", x, y, z, w, h, angle_deg=turn)
+    # damp below the windows that had none yet, and on the landing sill wall
+    d.wall("grime_streaks", SOUTH, 1.775, F1 + 0.46, 1.0, 0.8)
+    d.wall("water_stain", SOUTH, 1.775, F1 + 0.62, 0.9, 0.5)
+    d.wall("water_stain", SOUTH, 4.9, 0.50, 1.6, 0.42)
+    d.wall("water_stain", SOUTH, 4.9, F1 + 0.58, 1.6, 0.42)
+    d.wall("grime_streaks", WEST, 4.75, 2.55, 0.9, 0.7)
+    d.build()
+
+    paper = MeshBuilder()
+    for face, a, z, length, width, key, seed in (
+            (HALL_EAST, 3.55, 2.02, 0.60, 0.52, "wall_hall", 1), (WEST, 1.55, 2.10, 0.52, 0.52, "wall_hall", 2),
+            (HALL_EAST, 7.45, 2.20, 0.44, 0.40, "wall_hall", 3),
+            (DIVIDER_S, 6.62, 1.95, 0.68, 0.52, "wall_living", 4), (SOUTH, 3.02, 2.00, 0.62, 0.48, "wall_living", 5),
+            (HALL_EAST, 2.2, F1 + 2.02, 0.60, 0.52, "wall_landing", 6), (WEST, 2.2, F1 + 2.10, 0.52, 0.52, "wall_landing", 7),
+            (NORTH, 0.6, F1 + 2.05, 0.56, 0.46, "wall_landing", 8)):
+        cl.peel(paper, face, a, z, length, width, key, seed=seed)
+    obj = paper.build("wallpaper_peels", "soft", smooth=True)
+    obj.visible_shadow = True
+
+    fx = MeshBuilder()
+    dr.socket_broken(fx, EAST, 0.62, 0.32)                                # living room, by the television
+    dr.socket_broken(fx, HALL_EAST, 6.45, F1 + 0.32)                       # landing
+    dr.socket(fx, WEST, 6.9, F1 + 0.32)
+    dr.socket(fx, SOUTH, 6.9, F1 + 0.32)
+    cl.power_strip(fx, 6.62, 0.30, 0.0, yaw=12)
+    dr.cable(fx, [(6.76, 0.30, 0.02), (6.95, 0.22, 0.02), (7.10, 0.40, 0.2), (7.02, 0.66, 0.32)], radius=0.003)
+    dr.cable(fx, [(6.48, 0.29, 0.02), (6.2, 0.2, 0.012), (5.9, 0.10, 0.012), (5.72, 0.012, 0.30)], radius=0.003)
+    # an extension lead across the bedroom floor to the clock radio
+    dr.cable(fx, [(6.9, 0.012, F1 + 0.30), (6.6, 0.3, F1 + 0.012), (6.5, 1.6, F1 + 0.012), (6.75, 3.2, F1 + 0.012),
+                  (6.5, 3.9, F1 + 0.012)], radius=0.0035, key="plastic_white")
+    cl.power_strip(fx, 6.44, 3.98, F1, yaw=70)
+    fx.build("electrics_detail", "fixtures")
+
+
 def build():
     models.reset()
     hall()
@@ -447,3 +501,5 @@ def build():
     landing()
     bedroom()
     bathroom.build()
+    utility.build()
+    details()

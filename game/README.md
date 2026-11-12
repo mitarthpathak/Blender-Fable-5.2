@@ -66,7 +66,8 @@ start the game with `--rendering-method gl_compatibility`.
 ## Baked lighting
 
 `world.tscn` holds the house, a `LightmapGI` node, a reflection probe for
-each room (hall, living room, kitchen, landing, bedroom, bathroom) and four
+each room (hall, living room, kitchen, landing, bedroom, bathroom, utility
+cupboard) and four
 dim fill lights (`FillLiving`, `FillKitchen`, `FillBedroom`, `FillBathroom`).
 The model imports with lightmap UVs (`light_baking` set to static
 lightmaps), and `scripts/world.gd` is a tool script that configures the

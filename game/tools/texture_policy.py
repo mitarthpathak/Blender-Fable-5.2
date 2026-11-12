@@ -28,6 +28,9 @@ from pathlib import Path
 
 HOUSE = Path(__file__).resolve().parents[1] / "assets" / "house"
 
+# Sheets that hold many things at once (every cabinet front, every printed
+# thing, every book spine): always full size, whatever else their name matches.
+SHEETS = ("cabinet_fronts", "prints", "spines")
 # Seen across a room or a street, or covering very little: 1K is plenty.
 MEDIUM = ("asphalt_02", "roof_slates_02", "concrete_floor_worn_02", "dirty_tiles", "painted_plaster_wall",
           "rough_linen", "white_planks_clean", "ext_trim", "porch_boards", "trim_paint", "door_paint",
@@ -50,6 +53,8 @@ def limit_for(name: str) -> int:
     """Largest side in pixels for an extracted texture, by its file name."""
     stem = name.removeprefix("house_")
     data_map = re.search(r"_(arm|rough|metal|ao)(_|\.)", stem) is not None
+    if any(stem.startswith(key) for key in SHEETS):
+        return 2048
     if re.search(r"_(1k|512)(_\d+)?\.(jpg|png)$", stem):                 # a furniture or prop model
         large = any(stem.startswith(model) for model in LARGE_MODELS)
         size = 1024 if large else 512

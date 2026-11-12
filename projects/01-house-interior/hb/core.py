@@ -41,6 +41,7 @@ SPECS: dict[str, Spec] = {
     "wall_bedroom": Spec("#8892a0", 0.85, tile=2.4),
     "wall_kitchen": Spec("#9c9577", 0.85, tile=2.4),
     "wall_bathroom": Spec("#869089", 0.85, tile=2.4),
+    "wall_utility": Spec("#98958a", 0.85, tile=2.4),
     "tile_bathroom": Spec("#a7b0a3", 0.3),
     "tile_bathroom_wet": Spec("#a0a99c", 0.3),
     "mirror": Spec("#b8bcbc", 0.04, metallic=1.0),
@@ -75,6 +76,7 @@ SPECS: dict[str, Spec] = {
     "floor_bedroom": Spec("#5e4630", 0.55, tile=2.0),
     "floor_kitchen": Spec("#7d6f52", 0.5, tile=2.0),
     "floor_bathroom": Spec("#55524a", 0.45, tile=1.5),
+    "floor_utility": Spec("#6c6757", 0.5, tile=2.0),
     # kitchen and bathroom fittings
     "cabinet": Spec("#7c6444", 0.5),
     "counter": Spec("#8b8474", 0.45),

@@ -37,6 +37,10 @@ PART_X0 = HALL_W                # hall / rooms partition
 PART_X1 = PART_X0 + INT_T       # 2.54
 DIVIDER_Y0 = 4.40               # wall between the front and back rooms, on both floors:
 DIVIDER_Y1 = DIVIDER_Y0 + INT_T  # 4.54   living | kitchen below, bedroom | bathroom above
+# The utility cupboard: the south-west corner of the back room upstairs,
+# walled off from the bathroom and entered from the landing.
+UTIL_X1 = 4.20                  # inside face of its east wall
+UTIL_Y1 = 6.10                  # inside face of its north wall
 
 # --- Stair: one straight flight along the west wall, climbing north ----------
 STAIR_W = 1.05
@@ -148,10 +152,14 @@ WALLS: tuple[Wall, ...] = (
     Wall("wall_ff_partition", PART_X0, 0.0, PART_X1, DEPTH, _z(1, 0.0), ROOF_Z, (
         Opening("door_bedroom", "door", 3.25, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
                 hinge="end", swing="+"),
-        Opening("door_bathroom", "door", 4.80, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
+        Opening("door_utility", "door", 4.80, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
+                hinge="start", swing="-", note="opens onto the landing"),
+        Opening("door_bathroom", "door", 6.45, DOOR_W, _z(1, 0.0), _z(1, DOOR_H),
                 hinge="start", swing="+"),
     )),
     Wall("wall_ff_divider", PART_X1, DIVIDER_Y0, WIDTH, DIVIDER_Y1, _z(1, 0.0), ROOF_Z),
+    Wall("wall_ff_utility_east", UTIL_X1, DIVIDER_Y1, UTIL_X1 + INT_T, UTIL_Y1 + INT_T, _z(1, 0.0), ROOF_Z),
+    Wall("wall_ff_utility_north", PART_X1, UTIL_Y1, UTIL_X1, UTIL_Y1 + INT_T, _z(1, 0.0), ROOF_Z),
     Wall("chimney_breast_ff", 6.95, 1.50, WIDTH, 3.10, _z(1, 0.0), ROOF_Z),
 )
 
@@ -166,7 +174,11 @@ ROOMS: tuple[Room, ...] = (
         (0.0, VOID_Y1, VOID_X1, DEPTH),           # head of the stair
     ), (1.20, 1.90)),
     Room("bedroom", "BEDROOM", 1, ((PART_X1, 0.0, WIDTH, DIVIDER_Y0),), (4.92, 1.55)),
-    Room("bathroom", "BATHROOM", 1, ((PART_X1, DIVIDER_Y1, WIDTH, DEPTH),), (4.75, 5.95)),
+    Room("bathroom", "BATHROOM", 1, (
+        (PART_X1, UTIL_Y1 + INT_T, WIDTH, DEPTH),                  # the full width under the window
+        (UTIL_X1 + INT_T, DIVIDER_Y1, WIDTH, UTIL_Y1 + INT_T),     # the arm beside the cupboard, with the basin
+    ), (5.60, 6.95)),
+    Room("utility", "UTILITY", 1, ((PART_X1, DIVIDER_Y1, UTIL_X1, UTIL_Y1),), (3.37, 5.55)),
 )
 
 # The hole in the first floor over the stair.
@@ -201,9 +213,10 @@ FURNITURE: tuple[tuple[int, str, float, float, float, float], ...] = (
     (1, "bed", 4.25, 2.35, 5.85, 4.40),
     (1, "drawers", 6.85, 0.20, 7.30, 1.40),
     (1, "bath", 5.55, 7.22, 7.25, 8.00),
-    (1, "wc", 3.05, 7.28, 3.47, 8.00),
+    (1, "wc", 3.72, 7.28, 4.18, 8.00),
     (1, "basin", 5.55, 4.54, 6.15, 5.00),
-    (1, "shelves", 2.54, 6.60, 2.84, 7.60),
+    (1, "linen", 3.80, 4.60, 4.20, 6.04),
+    (1, "heater", 2.60, 5.74, 3.06, 6.10),
 )
 
 # storey, kind, x, y, label. Kinds: "warm" practical, "flicker", "broken".

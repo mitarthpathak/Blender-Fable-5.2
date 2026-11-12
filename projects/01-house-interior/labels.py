@@ -456,10 +456,68 @@ def draw() -> "Image.Image":
     return s.image
 
 
+# --- Book spines ---------------------------------------------------------------
+
+SPINES = HERE / "textures" / "prints" / "spines.png"
+SPINE_COUNT, SPINE_W, SPINE_H = 16, 64, 512
+SPINE_TITLES = ("ATLAS", "POEMS", "THE RIVER", "GARDENS", "A HISTORY", "BIRDS", "HOME REPAIR", "COOKERY",
+                "NORTH", "WINTER", "LETTERS", "THE MILL", "ROADS", "STARS", "TALES", "ALMANAC 1996")
+SPINE_COLOURS = ((94, 34, 30), (38, 58, 46), (36, 48, 74), (150, 138, 112), (74, 54, 38), (34, 34, 36),
+                 (120, 86, 44), (60, 70, 62), (100, 44, 52), (44, 66, 82), (136, 120, 92), (58, 40, 34),
+                 (82, 92, 70), (48, 42, 60), (122, 62, 38), (70, 72, 76))
+
+
+def spine_uv(index: int):
+    """UVs of spine `index`: bottom-left, bottom-right, top-right, top-left."""
+    u0, u1 = (index * SPINE_W + 1.5) / (SPINE_COUNT * SPINE_W), ((index + 1) * SPINE_W - 1.5) / (SPINE_COUNT * SPINE_W)
+    return [(u0, 0.06), (u1, 0.06), (u1, 0.995), (u0, 0.995)]
+
+
+def spine_cover_uv(index: int):
+    """A patch of the same book's plain cover colour, for its sides."""
+    u = (index + 0.5) * SPINE_W / (SPINE_COUNT * SPINE_W)
+    return [(u - 0.004, 0.01), (u + 0.004, 0.01), (u + 0.004, 0.04), (u - 0.004, 0.04)]
+
+
+def draw_spines():
+    from PIL import Image, ImageDraw
+    font = _fonts()
+    rng = random.Random(51)
+    sheet = Image.new("RGB", (SPINE_COUNT * SPINE_W, SPINE_H), (60, 50, 40))
+    for k in range(SPINE_COUNT):
+        colour = SPINE_COLOURS[k]
+        gold = (188, 160, 96) if sum(colour) < 330 else (40, 34, 28)
+        tile = Image.new("RGB", (SPINE_W, SPINE_H), colour)
+        d = ImageDraw.Draw(tile)
+        style = rng.randrange(3)
+        if style == 0:                                   # bands top and bottom
+            for y in (26, 34, SPINE_H - 96, SPINE_H - 88):
+                d.line([4, y, SPINE_W - 4, y], fill=gold, width=2)
+        elif style == 1:                                 # a label
+            d.rectangle([6, 60, SPINE_W - 6, 300], fill=tuple(min(255, c + 70) for c in colour))
+        else:                                            # a dust jacket with a block of colour
+            d.rectangle([0, SPINE_H - 190, SPINE_W, SPINE_H - 60], fill=tuple(int(c * 0.6) for c in colour))
+        text = Image.new("RGBA", (300, SPINE_W), (0, 0, 0, 0))
+        ImageDraw.Draw(text).text((150, SPINE_W // 2), SPINE_TITLES[k], font=font("serif" if k % 2 else "sans", 22),
+                                  fill=gold if style != 1 else (30, 28, 26), anchor="mm")
+        text = text.rotate(-90, expand=True)
+        tile.paste(text, (0, 40), text)
+        d.ellipse([SPINE_W // 2 - 7, SPINE_H - 74, SPINE_W // 2 + 7, SPINE_H - 60], outline=gold, width=2)
+        # worn head and tail, a faded strip where the sun reached, and the plain patch for the covers
+        d.rectangle([0, 0, SPINE_W, 5], fill=tuple(min(255, c + 46) for c in colour))
+        d.rectangle([0, SPINE_H - 36, SPINE_W, SPINE_H - 31], fill=tuple(min(255, c + 40) for c in colour))
+        d.rectangle([0, SPINE_H - 30, SPINE_W, SPINE_H], fill=colour)
+        tile = Image.blend(tile, Image.effect_noise((SPINE_W, SPINE_H), 30).convert("RGB"), 0.07)
+        sheet.paste(tile, (k * SPINE_W, 0))
+    return sheet
+
+
 def main():
     SHEET.parent.mkdir(parents=True, exist_ok=True)
     draw().save(SHEET, optimize=True)
     print(f"  ~ {SHEET.relative_to(HERE)}")
+    draw_spines().save(SPINES, optimize=True)
+    print(f"  ~ {SPINES.relative_to(HERE)}")
 
 
 if __name__ == "__main__":

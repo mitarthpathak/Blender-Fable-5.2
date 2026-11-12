@@ -139,6 +139,28 @@ def poster(mb, face, a, z, width, region, off=0.004, tilt=0.0):
     printed(mb, corners, region)
 
 
+def image_material(key: str, path, roughness=0.72) -> str:
+    """A material that is one colour image and nothing else."""
+    mat = core.material(key)
+    if mat.get("image_ready") or not path.exists():
+        return key
+    tree = mat.node_tree
+    tree.nodes.clear()
+    out = tree.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = tree.nodes.new("ShaderNodeBsdfPrincipled")
+    tex = tree.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(str(path), check_existing=True)
+    tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    tree.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    bsdf.inputs["Roughness"].default_value = roughness
+    mat["image_ready"] = True
+    return key
+
+
+def spines_material() -> str:
+    return image_material("spines", labels.SPINES, 0.6)
+
+
 def print_material() -> str:
     """The key of the one material every printed thing uses."""
     key = "print"

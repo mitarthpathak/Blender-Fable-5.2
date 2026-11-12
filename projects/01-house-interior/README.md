@@ -20,9 +20,11 @@ AAA tactical-shooter realism: grounded, lived-in, tense.
 | Final | Done | `house_packed.blend`, `house.glb`, three hero shots |
 
 The layout was approved as drawn (`renders/01_layout_plan.png`) and later
-revised (`renders/08_layout_plan_kitchen_bathroom.png`): the through room
-became a living room and a kitchen, and the box room became a bathroom. The
-outer shell, windows and doors did not change.
+revised twice (`renders/08_layout_plan_kitchen_bathroom.png`, then
+`renders/11_layout_plan_utility.png`): the through room became a living room
+and a kitchen, the box room became a bathroom, and a corner of that became a
+utility cupboard off the landing. The outer shell, windows and outside doors
+did not change.
 
 ## Brief
 
@@ -70,7 +72,8 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
   back. Each has its own way in from the hall, and a cased opening joins
   them.
 - First floor: landing and corridor around the stairwell, a front bedroom
-  4.76 x 4.40 m and a rear bathroom 4.76 x 3.46 m. The wall between the
+  4.76 x 4.40 m, an L-shaped rear bathroom (13 m2) and a utility cupboard
+  1.66 x 1.56 m whose door opens onto the landing. The wall between the
   front and back rooms is in the same place on both floors.
 - Front door 0.95 x 2.10 m in the south wall, opening inwards, street to the
   south. Other doors 0.90 x 2.10 m.
@@ -116,8 +119,9 @@ All Poly Haven assets are CC0.
 
 ## Kitchen, bathroom and clutter
 
-The kitchen (`hb/kitchen.py`) and bathroom (`hb/bathroom.py`) are built in
-code, not imported: cabinets, counters, sink, an electric cooker, a fridge
+The kitchen (`hb/kitchen.py`), bathroom (`hb/bathroom.py`) and utility
+cupboard (`hb/utility.py`: hot-water tank, linen shelves, mop, vacuum
+cleaner) are built in code, not imported: cabinets, counters, sink, an electric cooker, a fridge
 whose lower door is its own hinged object (`fridge_door`), a laminate table
 and vinyl chairs; a bath with a shower curtain, a toilet, a pedestal basin
 and a mirror cabinet. `hb/shapes.py` has the lofting and turning helpers
@@ -132,9 +136,20 @@ original design for the fictional Halden Ridge of October 1997: no real
 brand, publication or person appears.
 
 Wear is in three layers: the Poly Haven surfaces themselves; the texture
-variants `assets.py` derives (the bathroom tiles have mould worked into
-their real grout lines); and decals from `decals.py` (grime, cracks, water
-stains, mould, rust, limescale, grease, burnt-on spills, mug rings).
+variants `assets.py` derives; and decals from `decals.py` (grime, cracks,
+water stains, mould, rust, limescale, grease, burnt-on spills, mug rings,
+skirting scuffs, dust). Two of the derived textures put wear where it
+really is instead of tiling it: the bathroom tiles have mould worked into
+their own grout lines, and every kitchen door and drawer front has its own
+cell of one sheet (`cabinet_fronts_*`) with the finish rubbed through at the
+edges, grease round the handle, kick marks at the bottom and, under the
+sink, the tide lines and lifted veneer of an old leak.
+
+`props.details()` adds a last layer to every room: scuffed skirting, dust
+on the tops of furniture, wallpaper that has let go and hangs from its
+seam, a socket off the wall, extension leads, damp under the windows.
+Curtains fall in uneven pleats, and every book has a spine from a second
+small sheet (`spines.png`).
 
 ## Lighting
 
@@ -156,7 +171,8 @@ stains, mould, rust, limescale, grease, burnt-on spills, mug rings).
 
 Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
 `cam_hero_stairs`, `cam_hero_living`, `cam_hero_kitchen`,
-`cam_hero_bathroom` and `cam_hero_bedroom`.
+`cam_hero_landing`, `cam_hero_bathroom`, `cam_hero_utility` and
+`cam_hero_bedroom`.
 
 ## Deliverables
 
@@ -165,7 +181,8 @@ Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
 | `house_packed.blend` | The finished scene with every texture packed inside |
 | `house.glb` | For Godot: meshes, materials with textures, point and directional lights, cameras |
 | `renders/06_lighting_hero_*.png` | The first three hero shots, 1920x1080 (before the kitchen and bathroom) |
-| `renders/10_detail_hero_*.png` | Kitchen, bathroom, living room and hallway after the detail pass |
+| `renders/10_detail_hero_*.png` | Kitchen, bathroom, living room and hallway after the first detail pass |
+| `renders/12_rooms_hero_*.png` | Every room after the second detail pass: the current state |
 
 Rebuild everything from the scripts:
 

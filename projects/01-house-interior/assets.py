@@ -90,8 +90,9 @@ SURFACES: dict[str, Surface] = {
     "wall_landing": Surface("decrepit_wallpaper", "#8a8570"),
     "wall_living": Surface("decrepit_wallpaper", "#7c7f6a"),
     "wall_bedroom": Surface("peeling_painted_wall", "#7d877f", mono=True),
-    "wall_kitchen": Surface(PLASTER, "#9c9577"),
+    "wall_kitchen": Surface(PLASTER, "#96937f"),
     "wall_bathroom": Surface("peeling_painted_wall", "#869089", mono=True),
+    "wall_utility": Surface(PLASTER, "#98958a"),
     "tile_bathroom": Surface("long_white_tiles", "#a7b0a3", mono=True, mould=0.45),
     "tile_bathroom_wet": Surface("long_white_tiles", "#a0a99c", mono=True, mould=1.0),   # round the bath
     "tile_kitchen": Surface("rounded_square_tiled_wall", "#a89f88", mono=True),
@@ -112,6 +113,7 @@ SURFACES: dict[str, Surface] = {
     "floor_bedroom": Surface("dirty_carpet", "#5c5747"),
     "floor_kitchen": Surface("linoleum_brown", "#7d6f52"),
     "floor_bathroom": Surface("checkered_pavement_tiles"),
+    "floor_utility": Surface("linoleum_brown", "#6c6757"),
     "cabinet": Surface("kitchen_wood", "#7c6444"),
     "counter": Surface("terrazzo_tiles", "#8b8474", mono=True, rough=0.7),
     "enamel": Surface(PLASTER, "#b4b1a4", rough=0.42, normal=0.06),
@@ -293,6 +295,157 @@ def _mould_grout(image, amount):
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 
+# --- Cabinet fronts ---------------------------------------------------------------
+# Kitchen doors and drawer fronts do not tile: each is mapped to its own cell
+# of one sheet, so wear can be where wear really is. Cells are (x, y, w, h) in
+# pixels on a 2048 x 1024 sheet. A door's cell has its hinge edge on the left
+# and its handle at the top right.
+FRONTS_SIZE = (2048, 1024)
+FRONT_CELLS = {
+    "door_a": (0, 0, 512, 640), "door_b": (512, 0, 512, 640), "door_c": (1024, 0, 512, 640),
+    "door_sink": (1536, 0, 512, 640),
+    "drawer_a": (0, 640, 512, 160), "drawer_b": (512, 640, 512, 160), "drawer_c": (1024, 640, 512, 160),
+    "drawer_sink": (1536, 640, 512, 160),
+}
+FRONT_RAIL = 60 / 512           # width of a door's frame, as a fraction of the cell
+
+
+def fronts_file(kind: str) -> Path:
+    return TEXTURES / "derived" / f"cabinet_fronts_{kind}.jpg"
+
+
+def front_uv(cell: str, fu: float, fv: float):
+    """UV of a point on a front: fu from the hinge edge, fv up from the bottom, both 0 to 1."""
+    x, y, w, h = FRONT_CELLS[cell]
+    return ((x + 1 + fu * (w - 2)) / FRONTS_SIZE[0], 1.0 - (y + 1 + (1.0 - fv) * (h - 2)) / FRONTS_SIZE[1])
+
+
+def derive_cabinet_fronts():
+    """Draw the sheet: oak-effect rails, stiles and panels with the finish
+    worn off the edges, grease where hands go, kick marks at the bottom, and
+    under the sink the tide marks and lifted veneer of an old leak."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+
+    source = set_file("kitchen_wood", "diff")
+    if not source.exists() or fronts_file("diff").exists():
+        return
+    rng = np.random.default_rng(23)
+    tint = np.array([int(SURFACES["cabinet"].tint.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float32)
+    wood = np.asarray(Image.open(source).convert("RGB").resize((652, 652), Image.LANCZOS), dtype=np.float32)
+    wood *= tint / wood.reshape(-1, 3).mean(axis=0)
+    wood = np.tile(wood, (4, 4, 1))
+
+    def grain(w, h, across=False):
+        """A piece of the wood, grain running up the piece, or along it."""
+        x, y = int(rng.integers(0, 600)), int(rng.integers(0, 600))
+        if across:
+            return np.rot90(wood[y:y + w, x:x + h]).copy()
+        return wood[y:y + h, x:x + w].copy()
+
+    def blotches(w, h, cell):
+        small = (rng.random((h // cell + 2, w // cell + 2)) * 255).astype(np.uint8)
+        return np.asarray(Image.fromarray(small).resize((w, h), Image.BICUBIC), dtype=np.float32) / 255.0
+
+    def soft(mask, radius):
+        image = Image.fromarray((np.clip(mask, 0, 1) * 255).astype(np.uint8))
+        return np.asarray(image.filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32) / 255.0
+
+    W, H = FRONTS_SIZE
+    colour = np.zeros((H, W, 3), dtype=np.float32)
+    colour[:] = wood[:H, :W]
+    rough = np.full((H, W), 0.50, dtype=np.float32)
+    height = np.zeros((H, W), dtype=np.float32)
+    bare = np.array([150.0, 124.0, 92.0], dtype=np.float32)          # finish gone, wood showing
+    grease = np.array([46.0, 38.0, 28.0], dtype=np.float32)
+    tide = np.array([58.0, 46.0, 34.0], dtype=np.float32)
+
+    for name, (x0, y0, w, h) in FRONT_CELLS.items():
+        door = name.startswith("door")
+        rail = 60 if door else 0
+        tile = grain(w, h, across=not door)
+        if door:
+            tile[:rail, rail:w - rail] = grain(w - 2 * rail, rail, across=True)
+            tile[h - rail:, rail:w - rail] = grain(w - 2 * rail, rail, across=True)
+            panel = grain(w - 2 * rail, h - 2 * rail) * 0.92
+            tile[rail:h - rail, rail:w - rail] = panel
+        yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+        edge = np.minimum.reduce([xx, w - 1 - xx, yy, h - 1 - yy])
+        noise = blotches(w, h, 22) * 0.6 + blotches(w, h, 7) * 0.4
+
+        # the finish rubbed through along the edges, most on the handle side and along the bottom
+        reach = 8.0 + 30.0 * noise + 14.0 * (xx / w) + 22.0 * np.clip((yy - h * 0.8) / (h * 0.2), 0, 1)
+        worn = np.clip(1.0 - edge / reach, 0.0, 1.0) ** 1.4
+        if door:                                          # and round the raised edge of the panel
+            inner = np.minimum.reduce([xx - rail, w - rail - 1 - xx, yy - rail, h - rail - 1 - yy])
+            worn = np.maximum(worn, np.clip(1.0 - np.abs(inner + 3.0) / (2.0 + 5.0 * noise), 0, 1) * 0.6)
+        # a few scratches
+        marks = Image.new("L", (w, h), 0)
+        md = ImageDraw.Draw(marks)
+        for _ in range(7):
+            ax, ay = rng.uniform(20, w - 20), rng.uniform(20, h - 20)
+            md.line([ax, ay, ax + rng.uniform(-60, 60), ay + rng.uniform(-30, 30)], fill=int(rng.uniform(90, 200)), width=1)
+        worn = np.maximum(worn, np.asarray(marks, dtype=np.float32) / 255.0 * 0.7)
+
+        # hands: a dark greasy patch round the knob, dragged down from it
+        hx, hy = (w - 38.0, 85.0) if door else (w / 2.0, h / 2.0)
+        spread = np.exp(-(((xx - hx) / (70.0 if door else 120.0)) ** 2 + ((yy - hy - (30.0 if door else 0.0)) / 95.0) ** 2))
+        hands = np.clip(spread * (0.65 + 0.7 * noise) - 0.18, 0.0, 1.0)
+        if name.endswith("_c"):                           # the worst one: drips from the top as well
+            drips = soft((blotches(w, h, 5) > 0.72) * (yy < h * 0.7) * 1.0, 1.0)
+            hands = np.clip(hands + drips * 0.5 * (1.0 - yy / h), 0.0, 1.0)
+        # dirt lying in the corners of the frame, and kicked up along the bottom
+        dirt = np.zeros((h, w), dtype=np.float32)
+        if door:
+            dirt = np.clip(1.0 - np.abs(inner - 4.0) / 5.0, 0, 1) * (0.35 + 0.5 * noise)
+        dirt = np.maximum(dirt, np.clip((yy - h * 0.86) / (h * 0.14), 0, 1) * noise * 0.8)
+
+        tile = tile * (1.0 - dirt[..., None] * 0.55)
+        tile = tile * (1.0 - hands[..., None]) + grease * hands[..., None]
+        tile = tile * (1.0 - worn[..., None] * 0.85) + bare * worn[..., None] * 0.85
+        local_rough = 0.50 + 0.28 * worn - 0.26 * hands + 0.15 * dirt
+        local_height = -0.5 * worn
+
+        if name.endswith("sink"):
+            # an old leak: the bottom third stained in tide lines, bleached above them, the veneer lifting
+            line = h * (0.60 + 0.07 * np.sin(xx / 46.0) + 0.05 * (blotches(w, h, 60) - 0.5))
+            below = np.clip((yy - line) / 26.0, 0.0, 1.0)
+            marks_ = np.clip(1.0 - np.abs(yy - line) / 5.0, 0, 1) + 0.6 * np.clip(1.0 - np.abs(yy - line - 60) / 4.0, 0, 1)
+            bleach = np.clip(1.0 - np.abs(yy - line + 40) / 70.0, 0, 1) * 0.25
+            tile = tile * (1.0 + bleach[..., None])
+            tile = tile * (1.0 - below[..., None] * 0.50) + tide * below[..., None] * 0.50
+            tile = tile * (1.0 - np.clip(marks_, 0, 1)[..., None] * 0.55)
+            blister = soft((blotches(w, h, 13) > 0.80) * below, 2.0)
+            tile = tile * (1.0 - blister[..., None] * 0.55) + bare * 0.9 * blister[..., None] * 0.55
+            local_rough = local_rough + 0.30 * below + 0.2 * blister
+            local_height = local_height + 0.9 * blister - 0.3 * below
+        if door:                                          # the joints where rails meet stiles
+            for jx in (rail, w - rail):
+                tile[:, jx - 1:jx + 1] *= 0.62
+            for jy in (rail, h - rail):
+                tile[jy - 1:jy + 1, rail:w - rail] *= 0.62
+        colour[y0:y0 + h, x0:x0 + w] = tile
+        rough[y0:y0 + h, x0:x0 + w] = local_rough
+        height[y0:y0 + h, x0:x0 + w] = local_height
+
+    out = TEXTURES / "derived"
+    Image.fromarray(np.clip(colour, 0, 255).astype(np.uint8)).save(fronts_file("diff"), quality=93)
+    arm = np.dstack((np.full((H, W), 255.0), np.clip(rough, 0.1, 1.0) * 255.0, np.zeros((H, W))))
+    Image.fromarray(arm.astype(np.uint8)).save(fronts_file("arm"), quality=92)
+    # normal map: the wood's own figure plus the worn and lifted places
+    lum = colour.mean(axis=2) / 255.0
+    fine = lum - np.asarray(Image.fromarray((lum * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2.0)),
+                            dtype=np.float32) / 255.0
+    field = fine * 1.4 + soft(height * 0.5 + 0.5, 1.5) * 0.5
+    dx = (np.roll(field, -1, axis=1) - np.roll(field, 1, axis=1)) * 6.0
+    dy = (np.roll(field, -1, axis=0) - np.roll(field, 1, axis=0)) * 6.0
+    normal = np.dstack((-dx, dy, np.ones_like(field)))
+    normal /= np.linalg.norm(normal, axis=2, keepdims=True)
+    Image.fromarray(((normal * 0.5 + 0.5) * 255.0).astype(np.uint8)).save(fronts_file("nor"), quality=93)
+    for kind in ("diff", "arm", "nor"):
+        print(f"  ~ {fronts_file(kind).relative_to(HERE)}")
+
+
 def _fix_orange_wood(image):
     """Darken and desaturate strongly orange pixels; leave the rest alone."""
     import numpy as np
@@ -312,6 +465,7 @@ def derive():
 
     out = TEXTURES / "derived"
     out.mkdir(parents=True, exist_ok=True)
+    derive_cabinet_fronts()
     for model_id in MODEL_FIXES:
         source = MODELS / model_id / "textures" / f"{model_id}_diff_{MODEL_RES}.jpg"
         target = model_diffuse_fix(model_id)

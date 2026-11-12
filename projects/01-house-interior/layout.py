@@ -22,7 +22,7 @@ importlib.reload(plan)  # Blender keeps modules between runs
 
 BLEND = HERE / "layout.blend"
 # 01_layout_plan.png is the plan as first signed off (through living/dining room, box room).
-RENDER = HERE / "renders" / "08_layout_plan_kitchen_bathroom.png"
+RENDER = HERE / "renders" / "11_layout_plan_utility.png"
 
 # Where each storey's plan sits on the sheet.
 OFFSET = ((0.0, 0.0), (10.6, 0.0))
@@ -38,6 +38,7 @@ COLORS = {
     "bedroom": "#493f55",
     "kitchen": "#4d4a35",
     "bathroom": "#34504f",
+    "utility": "#4a4338",
     "void": "#0d0f12",
     "threshold": "#2a333d",
     "window": "#63c2ff",
@@ -360,7 +361,7 @@ def draw_annotations():
 
     # Title and build notes.
     text("01 HOUSE INTERIOR", SHEET[0] + 0.5, SHEET[3] - 0.62, 0.52, align="LEFT")
-    text("floor plan, revised: kitchen and bathroom   real-world scale, metres",
+    text("floor plan, revised: kitchen, bathroom and utility cupboard   real-world scale, metres",
          SHEET[0] + 7.0, SHEET[3] - 0.66, 0.22, "dim", align="LEFT")
     notes = (
         f"Floor to floor {plan.FLOOR_TO_FLOOR:.2f} m  =  {plan.RISERS} risers x {plan.RISE:.2f}.  "

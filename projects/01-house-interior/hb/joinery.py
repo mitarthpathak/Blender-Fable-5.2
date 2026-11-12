@@ -15,7 +15,7 @@ from .core import MeshBuilder
 # How far each door stands open, in degrees. The front door is shut: the
 # player opens it.
 DOOR_ANGLE = {"door_front": 0.0, "door_back": 0.0, "door_living": 64.0,
-              "door_bedroom": 22.0, "door_bathroom": 38.0}
+              "door_bedroom": 22.0, "door_bathroom": 38.0, "door_utility": 26.0}
 DOOR_STYLE = {"door_front": "front", "door_back": "half_glazed"}
 DOOR_PAINT = {"door_front": "front_door_paint", "door_back": "door_worn"}
 

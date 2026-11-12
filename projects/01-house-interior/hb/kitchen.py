@@ -15,11 +15,14 @@ import random
 
 from mathutils import Vector
 
+import bpy
+
+import assets
 import labels
 import plan
 from . import clutter as cl
+from . import core, shapes
 from . import dressing as dr
-from . import joinery, shapes
 from .core import MeshBuilder
 from .dressing import DIVIDER_N, EAST, NORTH, ROOM_WEST, Decals, Face
 
@@ -33,20 +36,92 @@ TUBE = (0.74, 0.90, 0.86)      # an old cool-white fluorescent tube: pale, sligh
 
 # --- Cabinets -----------------------------------------------------------------
 
-def _door(mb, face, a0, a1, z0, z1, depth, ajar=0.0, hinge_low=True, key="cabinet"):
-    """A framed cabinet door closing against the carcass at `depth`."""
+def fronts_material() -> str:
+    """The one material all door and drawer fronts share: the wear sheet
+    assets.py draws, mapped a cell to a front instead of tiled."""
+    key = "cabinet_fronts"
+    mat = core.material(key)
+    if mat.get("fronts_ready") or not assets.fronts_file("diff").exists():
+        return key
+    tree = mat.node_tree
+    tree.nodes.clear()
+    out = tree.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = tree.nodes.new("ShaderNodeBsdfPrincipled")
+    tree.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+
+    def image(kind, colour):
+        node = tree.nodes.new("ShaderNodeTexImage")
+        node.image = bpy.data.images.load(str(assets.fronts_file(kind)), check_existing=True)
+        if not colour:
+            node.image.colorspace_settings.name = "Non-Color"
+        return node
+
+    tree.links.new(image("diff", True).outputs["Color"], bsdf.inputs["Base Color"])
+    split = tree.nodes.new("ShaderNodeSeparateColor")
+    tree.links.new(image("arm", False).outputs["Color"], split.inputs["Color"])
+    tree.links.new(split.outputs["Green"], bsdf.inputs["Roughness"])
+    bump = tree.nodes.new("ShaderNodeNormalMap")
+    tree.links.new(image("nor", False).outputs["Color"], bump.inputs["Color"])
+    tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    mat["fronts_ready"] = True
+    return key
+
+
+def _door(mb, face, a0, a1, z0, z1, depth, ajar=0.0, hinge_low=True, cell="door_a"):
+    """A framed cabinet door closing against the carcass at `depth`. Its
+    front is one cell of the wear sheet: hinge edge to the cell's left,
+    handle to its top right (upside down on a wall unit, whose knob is low)."""
     w, h = a1 - a0 - 0.006, z1 - z0
     theta = math.radians(ajar)
     hinge = a0 + 0.003 if hinge_low else a1 - 0.003
     s = 1.0 if hinge_low else -1.0
+    low_unit = z0 < 1.0
+    key = fronts_material()
 
-    def to_world(u, d, v):
-        out = DOOR_T - d
+    def P(u, out, v):
         return face.P(hinge + s * u * math.cos(theta), depth + u * math.sin(theta) + out, z0 + v)
 
-    joinery.build_leaf(mb, to_world, w, h, DOOR_T, [(0.055, 0.055, w - 0.055, h - 0.055, False)], key)
-    pull = to_world(w - 0.035, 0.0, h - 0.08 if z0 < 1.0 else 0.08)         # a knob at the free corner
+    def uv(u, v):
+        return assets.front_uv(cell, u / w, v / h if low_unit else 1.0 - v / h)
+
+    def quad(points, out):
+        pts = [P(u, out[k] if isinstance(out, (list, tuple)) else out, v) for k, (u, v) in enumerate(points)]
+        mb.face(pts, key, uvs=[uv(u, v) for u, v in points])
+
+    f = assets.FRONT_RAIL * w            # frame width
+    bevel, sink = 0.012, 0.007
+    t = DOOR_T
+    quad([(0, 0), (f, 0), (f, h), (0, h)], t)                                   # hinge stile
+    quad([(w - f, 0), (w, 0), (w, h), (w - f, h)], t)                           # handle stile
+    quad([(f, 0), (w - f, 0), (w - f, f), (f, f)], t)                           # bottom rail
+    quad([(f, h - f), (w - f, h - f), (w - f, h), (f, h)], t)                   # top rail
+    inner = [(f + bevel, f + bevel), (w - f - bevel, f + bevel), (w - f - bevel, h - f - bevel), (f + bevel, h - f - bevel)]
+    outer = [(f, f), (w - f, f), (w - f, h - f), (f, h - f)]
+    for k in range(4):
+        m = (k + 1) % 4
+        quad([outer[k], outer[m], inner[m], inner[k]], [t, t, t - sink, t - sink])
+    quad(inner, t - sink)                                                       # the panel
+    # edges and back: plain wood, tiled
+    back = [P(0, 0, 0), P(w, 0, 0), P(w, 0, h), P(0, 0, h)]
+    front = [P(0, t, 0), P(w, t, 0), P(w, t, h), P(0, t, h)]
+    mb.face(back[::-1], "cabinet")
+    for k in range(4):
+        m = (k + 1) % 4
+        mb.face([back[k], back[m], front[m], front[k]], "cabinet")
+    pull = P(w - 0.035, t, h - 0.08 if low_unit else 0.08)                      # a knob at the free corner
     mb.cylinder(pull, face.normal * 0.022, 0.007, "metal_brass", segments=6)
+
+
+def _drawer_front(mb, face, a0, a1, z0, z1, depth, cell):
+    """A drawer front: a slab with its face from the wear sheet."""
+    key = fronts_material()
+    face.box(mb, a0, a1, depth, depth + DOOR_T, z0, z1, "cabinet")
+    right = (-face.normal).cross(Vector((0, 0, 1)))
+    left_a, right_a = (a0, a1) if face.along.dot(right) > 0 else (a1, a0)
+    out = depth + DOOR_T + 0.0007
+    mb.face([face.P(left_a, out, z0), face.P(right_a, out, z0), face.P(right_a, out, z1), face.P(left_a, out, z1)], key,
+            uvs=[assets.front_uv(cell, 0, 0), assets.front_uv(cell, 1, 0), assets.front_uv(cell, 1, 1),
+                 assets.front_uv(cell, 0, 1)])
 
 
 def base_units(mb, face, a0, a1, sink=None, open_door=None, missing=None):
@@ -64,14 +139,15 @@ def base_units(mb, face, a0, a1, sink=None, open_door=None, missing=None):
             face.box(mb, ua, ub, CARCASS - 0.018, CARCASS, GF + 0.69, GF + 0.86, "cabinet")
         else:
             face.box(mb, ua, ub, 0.0, CARCASS, GF + 0.10, GF + 0.86, "cabinet")
-        face.box(mb, ua + 0.003, ub - 0.003, CARCASS, CARCASS + DOOR_T, GF + 0.725, GF + 0.855, "cabinet")
+        variant = "sink" if over_sink else "abcab"[(k + int(a0 * 10)) % 5]
+        _drawer_front(mb, face, ua + 0.003, ub - 0.003, GF + 0.725, GF + 0.855, CARCASS, "drawer_" + variant)
         if not over_sink:                                              # under the sink the drawer front is false
             p = face.P((ua + ub) / 2, CARCASS + DOOR_T, GF + 0.79)
             mb.cylinder(p - face.along * 0.045, face.along * 0.09, 0.006, "metal_brass", segments=6)
         if k == missing:
             continue
         _door(mb, face, ua, ub, GF + 0.115, GF + 0.715, CARCASS, ajar=38.0 if k == open_door else 0.0,
-              hinge_low=k % 2 == 0)
+              hinge_low=k % 2 == 0, cell="door_" + variant)
 
 
 def counter(mb, face, a0, a1, sink=None):
@@ -108,7 +184,7 @@ def wall_units(mb, face, a0, a1, z0=WALL_Z0, z1=WALL_Z1, open_door=None, missing
             face.box(mb, ua, ub, 0.0, WALL_D, z0, z1, "cabinet")
         if k != missing:
             _door(mb, face, ua, ub, z0 + 0.004, z1 - 0.004, WALL_D, ajar=62.0 if k == open_door else 0.0,
-                  hinge_low=k % 2 == 0)
+                  hinge_low=k % 2 == 0, cell="door_" + "abcba"[(k + int(a0 * 10)) % 5])
 
 
 def cabinets():
@@ -291,7 +367,9 @@ def fridge(small):
     out = xf - thick - 0.0015
     for region, cy, cz, w, tilt in (("drawing", y0 + 0.24, GF + 0.92, 0.19, 4.0), ("note", y0 + 0.50, GF + 1.00, 0.11, -6.0),
                                     ("coupon", y0 + 0.47, GF + 0.80, 0.12, 3.0), ("polaroid", y0 + 0.20, GF + 0.62, 0.085, -8.0),
-                                    ("menu", y0 + 0.50, GF + 0.50, 0.13, 2.0)):
+                                    ("menu", y0 + 0.50, GF + 0.50, 0.13, 2.0), ("calendar", y0 + 0.26, GF + 0.36, 0.16, -2.0),
+                                    ("sticky", y0 + 0.34, GF + 1.10, 0.06, 9.0), ("sticky", y0 + 0.40, GF + 0.66, 0.06, -5.0),
+                                    ("receipt", y0 + 0.58, GF + 0.66, 0.11, 4.0)):
         h = w / labels.aspect(region)
         t = math.tan(math.radians(tilt)) * w / 2
         # seen from the west, the picture's left is to the north
