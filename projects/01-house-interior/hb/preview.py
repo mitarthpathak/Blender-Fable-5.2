@@ -30,7 +30,25 @@ INTERIOR = {
     "bathroom_sink": dict(at=(3.4, 7.5, plan.FFL[1] + 1.55), to=(5.9, 4.6, plan.FFL[1] + 1.0), lens=17),
     "bathroom": dict(at=(2.85, 6.62, plan.FFL[1] + 1.55), to=(6.6, 7.4, plan.FFL[1] + 0.8), lens=16),
     "utility": dict(at=(2.66, 5.02, plan.FFL[1] + 1.55), to=(4.0, 5.6, plan.FFL[1] + 0.9), lens=14),
+    # the same rooms from the far end, so every corner is in one view or the other
+    "hall_back": dict(at=(1.60, 7.55, 1.55), to=(1.75, 0.5, 1.15), lens=17),
+    "living_back": dict(at=(6.85, 4.10, 1.55), to=(3.4, 0.6, 0.95), lens=17),
+    "bedroom_back": dict(at=(6.90, 4.05, plan.FFL[1] + 1.55), to=(3.0, 0.8, plan.FFL[1] + 0.9), lens=17),
 }
+
+
+# The outside, from head height in the yard and the street: one view square on
+# to each side, the porch, and the back corner the town sees most.
+EXTERIOR = {
+    "ext_front": dict(at=(3.65, -8.0, 1.6), to=(3.65, 0.0, 3.4), lens=19),
+    "ext_back": dict(at=(3.65, 21.2, 1.6), to=(3.65, 8.0, 3.3), lens=26),
+    "ext_east": dict(at=(20.6, 4.0, 1.6), to=(7.6, 4.0, 3.5), lens=26),
+    "ext_west": dict(at=(-13.4, 4.0, 1.6), to=(-0.3, 4.0, 3.5), lens=26),
+    "ext_porch": dict(at=(5.9, -6.4, 1.55), to=(1.9, -0.6, 1.5), lens=24),
+    "ext_back_corner": dict(at=(15.5, 17.5, 1.6), to=(5.2, 7.0, 2.8), lens=24),
+    "ext_back_door": dict(at=(3.4, 12.6, 1.55), to=(2.2, 8.3, 1.1), lens=22),
+}
+INTERIOR.update(EXTERIOR)
 
 
 def look_at(obj, target):
@@ -139,11 +157,41 @@ def setup_cycles(samples=48, resolution=(1600, 900)):
     scene.render.film_transparent = False
 
 
+def day_lights(coll="preview"):
+    """An overcast day for judging the outside: a big soft sun from the
+    south-west over an even grey sky, so all four sides can be read."""
+    data = bpy.data.lights.new("preview_day_sun", "SUN")
+    data.energy, data.angle = 1.6, math.radians(40)
+    data.color = (1.0, 0.97, 0.93)
+    sun = bpy.data.objects.new("preview_day_sun", data)
+    sun.rotation_euler = (math.radians(42), 0, math.radians(-35))
+    core.link(sun, coll)
+    return [sun]
+
+
+def _mute_scene(names=("fog_volume", "light_moon")):
+    """Hide the night haze and the moon for a neutral render. Returns the undo."""
+    hidden = []
+    for obj in bpy.data.objects:
+        if obj.name in names or (obj.type == "LIGHT" and obj.get("kind") == "sodium"):
+            if not obj.hide_render:
+                obj.hide_render = True
+                hidden.append(obj)
+
+    def undo():
+        for obj in hidden:
+            obj.hide_render = False
+    return undo
+
+
 def render(view, path, rig="work", samples=48, resolution=(1600, 900), exposure=None):
     """Render one named view to `path`. `rig` is "work" for neutral preview
-    lighting or "scene" to use whatever lighting the scene has."""
+    lighting indoors, "day" for an overcast day outdoors, or "scene" to use
+    whatever lighting the scene has."""
     scene = bpy.context.scene
-    if rig == "work":
+    unmute = None
+    if rig in ("work", "day"):
+        unmute = _mute_scene()
         setup_cycles(samples, resolution)
     else:                                      # keep the scene's own render settings
         scene.cycles.samples = samples
@@ -170,6 +218,10 @@ def render(view, path, rig="work", samples=48, resolution=(1600, 900), exposure=
         if not view.startswith("axon_"):
             lights[0].data.energy = 1.0              # sun only matters outside the windows
         scene.view_settings.exposure = 0.0
+    elif rig == "day":
+        scene.world = work_world(1.0, (0.80, 0.84, 0.90))
+        temp += day_lights()
+        scene.view_settings.exposure = 0.0
     scene.camera = cam
     if exposure is not None:
         scene.view_settings.exposure = exposure
@@ -178,6 +230,8 @@ def render(view, path, rig="work", samples=48, resolution=(1600, 900), exposure=
 
     if undo:
         undo()
+    if unmute:
+        unmute()
     for obj in temp:
         data = obj.data
         bpy.data.objects.remove(obj, do_unlink=True)
