@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_preset")
-display_name = "Night"
+display_name = "03:00 Foggy"
 key_color = Color(0.5, 0.66, 1, 1)
 key_energy = 1.6
 key_angular_distance = 0.6
@@ -51,3 +51,10 @@ lamp_energy_scale = 1.0
 street_lights_on = true
 street_energy_scale = 1.0
 window_glow_scale = 1.0
+time_hours = 3.0
+weather = "foggy"
+sky_gradient = false
+porch_lights_on = true
+porch_energy_scale = 1.0
+sky_top_color = Color(0.035, 0.045, 0.06, 1)
+sky_horizon_color = Color(0.035, 0.045, 0.06, 1)

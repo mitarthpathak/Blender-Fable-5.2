@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1_preset")
-display_name = "Clear Day"
+display_name = "10:00 Clear"
 key_color = Color(1, 0.95, 0.86, 1)
 key_energy = 1.6
 key_angular_distance = 1.0
 key_shadows = true
 key_volumetric_fog_energy = 0.5
 use_model_angle = false
-key_elevation_deg = 24.0
-key_azimuth_deg = 200.0
+key_elevation_deg = 27.0
+key_azimuth_deg = 138.0
 background_color = Color(0.55, 0.66, 0.8, 1)
 ambient_color = Color(0.62, 0.68, 0.78, 1)
 ambient_energy = 0.8
@@ -47,7 +47,14 @@ outdoor_exposure_high = 1.0
 outdoor_exposure_low = 0.9
 outdoor_street_fog_energy = 1.0
 outdoor_street_halo_low = 0.0
-lamp_energy_scale = 0.5
+lamp_energy_scale = 0.0
 street_lights_on = false
 street_energy_scale = 1.0
-window_glow_scale = 0.15
+window_glow_scale = 0.1
+time_hours = 10.0
+weather = "clear"
+porch_lights_on = false
+porch_energy_scale = 0.0
+sky_gradient = true
+sky_top_color = Color(0.22, 0.38, 0.66, 1)
+sky_horizon_color = Color(0.62, 0.7, 0.8, 1)

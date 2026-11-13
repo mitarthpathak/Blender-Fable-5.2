@@ -6,10 +6,13 @@ extends Resource
 ## so each look can be tweaked by hand in the Godot inspector.
 ##
 ## LightingPresets (scripts/lighting_presets.gd) applies a preset on top of
-## what main.gd sets up. The Night preset holds exactly the values main.gd and
-## house_lights.gd used before presets existed, so it changes nothing.
+## what main.gd sets up. "03:00 Foggy" holds exactly the values main.gd and
+## house_lights.gd use by themselves, so it changes nothing.
 
-@export var display_name := "Night"
+@export var display_name := "03:00 Foggy"
+## Which cell of the time / weather matrix this is (docs/TIME_WEATHER.md).
+@export_range(0.0, 24.0, 0.25) var time_hours := 3.0
+@export_enum("clear", "foggy") var weather := "foggy"
 
 @export_group("Key light (moon or sun)")
 @export var key_color := Color(0.50, 0.66, 1.0)
@@ -34,6 +37,12 @@ extends Resource
 ## Ambient colour the room reflection probes add indoors (world.tscn probes).
 @export var probe_ambient_color := Color(0.105, 0.13, 0.175)
 @export_range(0.0, 4.0, 0.01) var probe_ambient_energy := 1.0
+
+## A gradient sky (clear weather). Off: the sky is the flat background colour,
+## which is what thick fog looks like.
+@export var sky_gradient := false
+@export var sky_top_color := Color(0.035, 0.045, 0.060)
+@export var sky_horizon_color := Color(0.035, 0.045, 0.060)
 
 @export_group("Fog")
 ## High quality: volumetric fog.
@@ -85,6 +94,9 @@ extends Resource
 @export_group("Practical lights")
 ## Multiplier on the indoor lamps (table lamps, porch light, flicker bulb, TV).
 @export_range(0.0, 4.0, 0.01) var lamp_energy_scale := 1.0
+## Porch lights (any light whose name contains "porch").
+@export var porch_lights_on := true
+@export_range(0.0, 4.0, 0.01) var porch_energy_scale := 1.0
 ## Street lights (any light whose name contains "sodium").
 @export var street_lights_on := true
 @export_range(0.0, 4.0, 0.01) var street_energy_scale := 1.0
