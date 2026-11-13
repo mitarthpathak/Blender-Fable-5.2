@@ -3,7 +3,7 @@ class_name BuildFlavor
 ##
 ## The "Halden Ridge Day" export preset sets the feature tags "town" and
 ## "dayroam". That build starts in the town world with the player inside the
-## house, in the Foggy Overcast Day look, on Low quality. They are defaults
+## house, at 10:00 in clear weather, on Low quality. They are defaults
 ## only: F1, F2 and F4 still change them, and what the player picks is kept in
 ## the day build's own settings file, so an older build's saved Night or High
 ## cannot override the first start.
@@ -30,7 +30,7 @@ static func default_quality() -> String:
 
 
 static func default_preset() -> String:
-	return "foggy_day" if is_day() else "night"
+	return "1000_clear" if is_day() else "0300_foggy"      # ids from scripts/lighting_presets.gd
 
 
 static func name() -> String:

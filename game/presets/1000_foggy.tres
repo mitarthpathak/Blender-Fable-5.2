@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1_preset")
-display_name = "Foggy Overcast Day"
+display_name = "10:00 Foggy"
 key_color = Color(0.86, 0.88, 0.9, 1)
 key_energy = 0.55
 key_angular_distance = 12.0
 key_shadows = false
 key_volumetric_fog_energy = 1.0
 use_model_angle = false
-key_elevation_deg = 55.0
-key_azimuth_deg = 190.0
+key_elevation_deg = 27.0
+key_azimuth_deg = 138.0
 background_color = Color(0.5, 0.53, 0.55, 1)
 ambient_color = Color(0.6, 0.63, 0.66, 1)
 ambient_energy = 0.9
@@ -46,7 +46,15 @@ outdoor_distance_fog_density = 0.075
 outdoor_exposure_high = 1.0
 outdoor_exposure_low = 0.85
 outdoor_street_fog_energy = 1.0
-lamp_energy_scale = 0.6
+outdoor_street_halo_low = 0.0
+lamp_energy_scale = 0.0
 street_lights_on = false
 street_energy_scale = 1.0
-window_glow_scale = 0.2
+window_glow_scale = 0.1
+time_hours = 10.0
+weather = "foggy"
+sky_gradient = false
+porch_lights_on = false
+porch_energy_scale = 0.0
+sky_top_color = Color(0.5, 0.53, 0.55, 1)
+sky_horizon_color = Color(0.5, 0.53, 0.55, 1)

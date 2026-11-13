@@ -61,7 +61,16 @@ def normal_from_height(h: np.ndarray, strength: float) -> np.ndarray:
 def save(arr: np.ndarray, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     mode = "RGBA" if arr.shape[2] == 4 else "RGB"
-    Image.fromarray(np.clip(arr * 255, 0, 255).astype(np.uint8), mode).save(path)
+    img = Image.fromarray(np.clip(arr * 255, 0, 255).astype(np.uint8), mode)
+    for attempt in range(6):                 # Windows sometimes holds a just-read file open for a moment
+        try:
+            img.save(path)
+            break
+        except OSError:
+            if attempt == 5:
+                raise
+            import time
+            time.sleep(0.5)
 
 
 def orm(rough: np.ndarray, metal: float | np.ndarray = 0.0, ao: float | np.ndarray = 1.0) -> np.ndarray:
@@ -249,15 +258,13 @@ def backdrop():
             d.line([(bx, by), (bx + np.cos(a) * length, by + np.sin(a) * length * 0.9)], fill=255,
                    width=int(rng.uniform(1, 3)))
         x += rng.uniform(34, 90)
-    for _ in range(5):                                          # a few roofs
-        rx = rng.uniform(40, w - 160)
-        rw, rh = rng.uniform(80, 130), rng.uniform(50, 80)
-        base = h * 0.74
-        d.rectangle([rx, base - rh, rx + rw, base], fill=255)
-        d.polygon([(rx - 8, base - rh), (rx + rw / 2, base - rh - rw * 0.32), (rx + rw + 8, base - rh)], fill=255)
     alpha = np.asarray(img.filter(ImageFilter.GaussianBlur(0.8)), np.float32) / 255.0
-    col = np.ones((h, w, 3), np.float32) * np.array([0.035, 0.04, 0.045])
-    save(np.dstack([col, alpha]), DECALS / "backdrop_trees.png")
+    # natural, not black: wet bark and old shingles, lighter towards the top where the twigs thin out
+    yy = np.linspace(0, 1, h)[:, None]
+    tone = 0.75 + 0.5 * noise(1024, 10)[:h, :w]
+    col = np.ones((h, w, 3), np.float32) * np.array([0.16, 0.14, 0.12]) * tone[..., None]
+    col *= (1.25 - 0.45 * yy)[..., None]
+    save(np.dstack([col.astype(np.float32), alpha]), DECALS / "backdrop_trees.png")
 
 
 def halo():
@@ -270,7 +277,133 @@ def halo():
     save(np.dstack([col, a.astype(np.float32)]), DECALS / "halo.png")
 
 
+def glass_alpha(name, tint, base_alpha, dirt_alpha, seed):
+    """See-through glass: mostly clear, with dust, rain streaks and a film of dirt
+    that is more opaque and rougher. Alpha carries how much you can see through it."""
+    s = 256
+    rng = np.random.default_rng(seed)
+    n1 = noise(s, 4, 4, rng)
+    cols = noise(s, 40, 2, rng)[:1, :].repeat(s, axis=0)
+    streaks = blur(cols * noise(s, 3, 2, rng), 1.5)
+    streaks = (streaks - streaks.min()) / max(np.ptp(streaks), 1e-6)
+    dirt = np.clip((n1 - 0.42) * 2.0, 0, 1) * 0.6 + streaks * 0.4
+    yy = np.linspace(0, 1, s)[:, None]
+    dirt = np.clip(dirt + 0.25 * yy ** 3, 0, 1)                 # grime gathers along the bottom
+    alpha = base_alpha + dirt_alpha * dirt
+    dust = np.array([0.30, 0.29, 0.26], np.float32)
+    col = np.array(tint, np.float32) * (1 - dirt[..., None]) + dust * dirt[..., None]
+    save(np.dstack([col, alpha]).astype(np.float32), DECALS / f"{name}.png")
+    save(normal_from_height(dirt.astype(np.float32), 0.6), DECALS / f"{name}_nor.png")
+    save(orm((0.06 + 0.5 * dirt).astype(np.float32)), DECALS / f"{name}_orm.png")
+
+
+def house_numbers():
+    """The street numbers of the kit houses on one sheet: 3 columns by 2 rows."""
+    cw, ch = 128, 96
+    img = Image.new("RGB", (cw * 3, ch * 2), (26, 36, 30))
+    d = ImageDraw.Draw(img)
+    f = font(64)
+    for i, text in enumerate(("12", "16", "15", "17", "3", "4")):
+        cx, cy = (i % 3) * cw, (i // 3) * ch
+        d.rounded_rectangle([cx + 6, cy + 6, cx + cw - 7, cy + ch - 7], radius=8, outline=(150, 140, 110), width=3)
+        d.text((cx + (cw - d.textlength(text, font=f)) / 2, cy + 12), text, fill=(196, 186, 150), font=f)
+    a = np.asarray(img, np.float32) / 255.0
+    a *= (0.7 + 0.3 * noise(512, 6)[: ch * 2, : cw * 3])[..., None]
+    save(np.dstack([a, np.ones(a.shape[:2], np.float32)]), DECALS / "house_numbers.png")
+
+
+def leaf_sheet():
+    """Four fallen leaves on one sheet (2 x 2), for the single leaves lying on the ground."""
+    s = 256
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rng = np.random.default_rng(31)
+    tones = [(128, 86, 40), (112, 96, 44), (96, 60, 34), (140, 112, 56)]
+    for k in range(4):
+        cx, cy = (k % 2) * 128 + 64, (k // 2) * 128 + 64
+        col = tones[k]
+        if k == 0:                                             # maple: five points
+            pts = []
+            for i in range(10):
+                a = i * np.pi / 5 - np.pi / 2
+                r = 54 if i % 2 == 0 else 26
+                pts.append((cx + np.cos(a) * r, cy + np.sin(a) * r))
+        elif k == 1:                                           # elm: an oval with a point
+            pts = [(cx + np.cos(a) * 34, cy + np.sin(a) * 54 * (1.0 if np.sin(a) > 0 else 0.92)) for a in np.linspace(0, 2 * np.pi, 18)]
+        elif k == 2:                                           # oak: lobed
+            pts = []
+            for i in range(24):
+                a = i * np.pi / 12
+                r = 50 + 12 * np.sin(a * 6)
+                pts.append((cx + np.cos(a) * r * 0.6, cy + np.sin(a) * r))
+        else:                                                  # willow: long and narrow
+            pts = [(cx + np.cos(a) * 16, cy + np.sin(a) * 58) for a in np.linspace(0, 2 * np.pi, 14)]
+        d.polygon(pts, fill=col + (255,))
+        d.line([(cx, cy - 50), (cx, cy + 56)], fill=tuple(int(c * 0.6) for c in col) + (255,), width=2)
+        for i in range(-3, 4):
+            d.line([(cx, cy + i * 12), (cx + 26, cy + i * 12 - 14)], fill=tuple(int(c * 0.7) for c in col) + (255,), width=1)
+            d.line([(cx, cy + i * 12), (cx - 26, cy + i * 12 - 14)], fill=tuple(int(c * 0.7) for c in col) + (255,), width=1)
+    a = np.asarray(img, np.float32) / 255.0
+    spots = noise(s, 20, 3)
+    a[..., :3] *= (0.75 + 0.35 * spots)[..., None]
+    save(a, DECALS / "leaf_sheet.png")
+
+
+def station_signs():
+    w, h = 1024, 256
+    img = Image.new("RGB", (w, h), (30, 62, 44))
+    d = ImageDraw.Draw(img)
+    cream = (214, 206, 176)
+    d.rectangle([10, 10, w - 11, h - 11], outline=cream, width=6)
+    f = font(72)
+    left = "RIDGE GAS"
+    d.text(((w * 0.42 - d.textlength(left, font=f)) / 2, 88), left, fill=cream, font=f)
+    d.line([(w * 0.42, 30), (w * 0.42, h - 30)], fill=cream, width=4)
+    f2 = font(72)
+    right = "& GROCERY"
+    d.text((w * 0.42 + (w * 0.58 - d.textlength(right, font=f2)) / 2, 88), right, fill=cream, font=f2)
+    a = np.asarray(img, np.float32) / 255.0
+    fade = noise(1024, 4)[:h, :w]
+    rust = noise(1024, 18, 3)[:h, :w]
+    a = a * (0.55 + 0.4 * fade)[..., None] + 0.06
+    rmask = np.clip((rust - 0.66) * 6, 0, 1)[..., None]
+    a = a * (1 - rmask) + np.array([0.24, 0.12, 0.06]) * rmask
+    save(np.dstack([a, np.ones((h, w), np.float32)]), DECALS / "sign_station.png")
+
+    w, h = 512, 384
+    img = Image.new("RGB", (w, h), (206, 204, 196))
+    d = ImageDraw.Draw(img)
+    f = font(54)
+    fs = font(30)
+    for i, (grade, price) in enumerate((("REGULAR", "1.09"), ("PLUS", "1.1 "), ("DIESEL", " .05"))):
+        y = 26 + i * 118
+        d.rectangle([14, y, w - 15, y + 100], outline=(30, 30, 30), width=4)
+        d.text((30, y + 34), grade, fill=(30, 30, 30), font=fs)
+        d.text((250, y + 18), price, fill=(150, 26, 20), font=f)
+        d.text((430, y + 14), "9", fill=(150, 26, 20), font=fs)
+    a = np.asarray(img, np.float32) / 255.0
+    a *= (0.6 + 0.4 * noise(512, 5)[:h, :w])[..., None]
+    save(np.dstack([a, np.ones((h, w), np.float32)]), DECALS / "sign_prices.png")
+
+    w, h = 512, 256
+    img = Image.new("RGB", (w, h), (214, 218, 222))
+    d = ImageDraw.Draw(img)
+    f = font(170)
+    d.text(((w - d.textlength("ICE", font=f)) / 2, 30), "ICE", fill=(40, 78, 140), font=f)
+    a = np.asarray(img, np.float32) / 255.0
+    a *= (0.62 + 0.38 * noise(512, 6)[:h, :w])[..., None]
+    save(np.dstack([a, np.ones((h, w), np.float32)]), DECALS / "sign_ice.png")
+
+
 def new_decals():
+    glass_alpha("car_glass", (0.045, 0.055, 0.058), 0.30, 0.55, 3)
+    glass_alpha("window_glass", (0.050, 0.060, 0.066), 0.22, 0.45, 4)
+    house_numbers()
+    leaf_sheet()
+    station_signs()
+    poster("sign_closed_store", (214, 208, 190), (34, 32, 30), [
+        ("CLOSED", 76, True), ("", 20, False), ("Thank you,", 34, False), ("Halden Ridge", 40, True), ("", 16, False),
+        ("1964 - 1995", 40, False)], tear=False)
     weed_tuft()
     tyre_marks()
     moss_strip()
@@ -340,6 +473,10 @@ def flat_sets():
     flat_set("bag_plastic", (0.045, 0.045, 0.05), 0.32, 0.12, 5.0, colour_var=0.2)
     flat_set("pumpkin", (0.52, 0.22, 0.05), 0.55, 0.10, 4.0, pits=0.8, colour_var=0.25)
     flat_set("toy_plastic", (0.80, 0.80, 0.78), 0.40, 0.10, 2.0, pits=0.6, colour_var=0.12)
+    flat_set("car_interior", (0.105, 0.10, 0.095), 0.82, 0.08, 4.0, pits=0.4, colour_var=0.14)
+    flat_set("car_seat", (0.20, 0.155, 0.12), 0.62, 0.12, 5.0, pits=0.8, streaks=0.3, colour_var=0.18)
+    flat_set("fabric", (0.78, 0.76, 0.72), 0.9, 0.05, 5.0, streaks=0.5, colour_var=0.10)
+    flat_set("room_wall", (0.74, 0.72, 0.66), 0.85, 0.05, 2.0, streaks=0.35, colour_var=0.08)
 
 
 # --- normal and ORM maps for every decal --------------------------------------------------
@@ -358,7 +495,7 @@ DECAL_RULES = {
     "grime_streaks": ("flat", 0.0, 0.88, 0.0, 0.0),
     "moss": ("luma", 5.0, 0.95, 0.0, 0.0),
     "moss_strip": ("alpha_soft", 5.0, 0.95, 0.0, 0.0),
-    "tyre_marks": ("flat", 0.0, 0.5, 0.0, 0.0),
+    "tyre_marks": ("flat", 0.0, 0.92, 0.0, 0.0),
     "litter": ("alpha_soft", 3.0, 0.7, 0.0, 0.0),
     "glass_shards": ("alpha", 6.0, 0.08, 0.0, 0.0),
     "sign_road_closed": ("luma", 1.5, 0.55, 0.0, 0.0),
@@ -370,6 +507,12 @@ DECAL_RULES = {
     "poster_meeting": ("paper", 2.5, 0.8, 0.0, 0.0),
     "poster_yardsale": ("paper", 2.5, 0.8, 0.0, 0.0),
     "backdrop_trees": ("flat", 0.0, 1.0, 0.0, 0.0),
+    "house_numbers": ("luma", 2.0, 0.45, 0.4, 0.0),
+    "leaf_sheet": ("luma", 4.0, 0.7, 0.0, 0.0),
+    "sign_station": ("luma", 1.5, 0.5, 0.5, 0.0),
+    "sign_prices": ("luma", 1.5, 0.5, 0.3, 0.0),
+    "sign_ice": ("luma", 1.5, 0.45, 0.3, 0.0),
+    "sign_closed_store": ("paper", 2.5, 0.8, 0.0, 0.0),
 }
 
 
@@ -398,7 +541,7 @@ def decal_maps():
             height = np.full_like(alpha, 0.5)
         r = np.full_like(alpha, rough)
         if name == "puddle":
-            r = 0.04 + 0.5 * np.clip(1 - alpha / max(alpha.max(), 1e-6), 0, 1) ** 2     # still water, damp rim
+            r = 0.13 + 0.45 * np.clip(1 - alpha / max(alpha.max(), 1e-6), 0, 1) ** 2    # still water, damp rim
         elif name == "chainlink":
             rust = noise(max(h, w), 5)[:h, :w]
             r = 0.4 + 0.35 * rust

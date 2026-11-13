@@ -75,7 +75,7 @@ MATS: dict[str, dict] = {
     "paint_white": dict(diff_png="marking_white", tile=1.0, clip=True, rough=0.7),
     "chainlink": dict(diff_png="chainlink", tile=1.0, clip=True, rough=0.5, metal=0.6),
     "grass_card": dict(diff_png="grass_tuft", tile=1.0, clip=True, rough=0.9, two_sided=True),
-    "puddle": dict(diff_png="puddle", tile=1.0, blend=True, rough=0.02, spec=0.9),
+    "puddle": dict(diff_png="puddle", tile=1.0, blend=True),
     "decal_grime": dict(diff_png="grime_streaks", tile=1.0, blend=True, rough=0.9),
     "decal_moss": dict(diff_png="moss", tile=1.0, blend=True, rough=0.95),
     "decal_crack": dict(diff_png="crack", tile=1.0, blend=True, rough=0.9),
@@ -95,6 +95,21 @@ MATS: dict[str, dict] = {
     "decal_litter": dict(diff_png="litter", tile=1.0, clip=True),
     "decal_shards": dict(diff_png="glass_shards", tile=1.0, clip=True),
     "backdrop": dict(diff_png="backdrop_trees", tile=1.0, clip=True, two_sided=True),
+    # detail pass 2
+    "car_glass": dict(diff_png="car_glass", tile=1.0, blend=True, two_sided=True),
+    "window_glass": dict(diff_png="window_glass", tile=1.0, blend=True),
+    "car_interior": dict(flat="car_interior", tile=0.5),
+    "car_seat": dict(flat="car_seat", tile=0.5),
+    "fabric": dict(flat="fabric", tile=0.6, two_sided=True),
+    "room_wall": dict(flat="room_wall", tile=1.2),
+    "house_numbers": dict(diff_png="house_numbers", tile=1.0),
+    "leaf_card": dict(diff_png="leaf_sheet", tile=1.0, clip=True, two_sided=True),
+    "sign_station": dict(diff_png="sign_station", tile=1.0),
+    "sign_prices": dict(diff_png="sign_prices", tile=1.0),
+    "sign_ice": dict(diff_png="sign_ice", tile=1.0),
+    "sign_closed_store": dict(diff_png="sign_closed_store", tile=1.0),
+    "tube_on": dict(color=(0.80, 0.95, 0.90), rough=0.3, emit=(0.75, 1.0, 0.9), emit_strength=5.0),
+    "window_lit_lamp": dict(color=(0.85, 0.72, 0.5), rough=0.8, emit=(1.0, 0.7, 0.4), emit_strength=2.5),
 }
 
 _cache: dict[str, bpy.types.Material] = {}
@@ -207,6 +222,14 @@ def material(key: str) -> bpy.types.Material:
             mat.surface_render_method = "DITHERED"
         elif spec.get("blend"):
             nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
+            mat.surface_render_method = "BLENDED"
+    else:
+        # A plain colour: the black behind a window, an emissive lamp face, the screen-door mesh.
+        mix.inputs[6].default_value = (*spec["color"], 1.0)
+        bsdf.inputs["Roughness"].default_value = spec.get("rough", 0.7)
+        bsdf.inputs["Metallic"].default_value = spec.get("metal", 0.0)
+        if "alpha" in spec:
+            bsdf.inputs["Alpha"].default_value = spec["alpha"]
             mat.surface_render_method = "BLENDED"
     if "spec" in spec:
         bsdf.inputs["Specular IOR Level"].default_value = spec["spec"]

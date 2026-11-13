@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="LightingPreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/lighting_preset.gd" id="1_preset"]
+
+[resource]
+script = ExtResource("1_preset")
+display_name = "06:00 Clear"
+key_color = Color(0.6, 0.7, 0.95, 1)
+key_energy = 0.6
+key_angular_distance = 8.0
+key_shadows = false
+key_volumetric_fog_energy = 0.6
+use_model_angle = false
+key_elevation_deg = 10.0
+key_azimuth_deg = 95.0
+background_color = Color(0.14, 0.2, 0.34, 1)
+ambient_color = Color(0.34, 0.4, 0.5, 1)
+ambient_energy = 0.7
+probe_ambient_color = Color(0.14, 0.17, 0.22, 1)
+probe_ambient_energy = 1.0
+volumetric_fog_density = 0.006
+volumetric_fog_albedo = Color(0.8, 0.84, 0.9, 1)
+volumetric_fog_emission = Color(0.04, 0.05, 0.065, 1)
+volumetric_fog_anisotropy = 0.45
+volumetric_fog_length = 48.0
+volumetric_fog_gi_inject = 0.6
+distance_fog_color = Color(0.2, 0.26, 0.38, 1)
+distance_fog_density = 0.006
+distance_fog_sky_affect = 0.2
+exposure_high = 1.4
+exposure_low = 1.2
+tonemap_white = 6.0
+glow_intensity = 0.5
+glow_bloom = 0.05
+saturation = 0.92
+contrast = 1.06
+sdfgi_energy = 1.0
+sdfgi_read_sky_light = false
+outdoor_key_energy = 0.6
+outdoor_key_volumetric_fog_energy = 0.6
+outdoor_ambient_energy = 0.7
+outdoor_volumetric_fog_density = 0.005
+outdoor_volumetric_fog_emission = Color(0.006, 0.008, 0.012, 1)
+outdoor_distance_fog_color = Color(0.2, 0.26, 0.38, 1)
+outdoor_distance_fog_density = 0.006
+outdoor_exposure_high = 1.0
+outdoor_exposure_low = 1.2
+outdoor_street_fog_energy = 1.0
+outdoor_street_halo_low = 0.15
+lamp_energy_scale = 1.0
+street_lights_on = true
+street_energy_scale = 1.0
+window_glow_scale = 1.0
+time_hours = 6.0
+weather = "clear"
+porch_lights_on = true
+porch_energy_scale = 1.0
+sky_gradient = true
+sky_top_color = Color(0.05, 0.09, 0.22, 1)
+sky_horizon_color = Color(0.36, 0.34, 0.38, 1)
