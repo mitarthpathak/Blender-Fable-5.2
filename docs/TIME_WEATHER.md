@@ -117,6 +117,39 @@ ambient colour, the room probes' ambient and, on High, SDFGI carry the
 difference. A lightmap per time would fix it at four times the memory and a
 swap on every change; it is not done.
 
+## Frame rate
+
+Low, Intel HD Graphics 620, 1600x900, town world (`--town-perf --preset=<id>`):
+
+| Look | Front door | Junction | Mill Road |
+| --- | --- | --- | --- |
+| 03:00 Clear | 34 | 43 | 45 |
+| 03:00 Foggy | 34 | 37 | 46 |
+| 06:00 Clear | 34 | 43 | 50 |
+| 06:00 Foggy | 38 | 46 | 51 |
+| 10:00 Clear | 33 | 40 | 49 |
+| 10:00 Foggy | 39 | 51 | 61 |
+| 17:00 Clear | 33 | 38 | 46 |
+| 17:00 Foggy | 33 | 41 | 49 |
+
+All eight hold 30 FPS or more. Clear weather costs a few frames (the
+whole street is visible and nothing fades into fog); 10:00 Foggy is the
+cheapest because every lamp is off.
+
+## The build
+
+`Halden Ridge Day` (feature tags `town,dayroam`) starts at 10:00 Clear on
+Low, through `scripts/build_flavor.gd`. Builds are made locally and not
+committed:
+
+```bash
+godot --headless --path game --export-release "Halden Ridge Day" build_town/HaldenRidgeDay.exe
+game/build_town/HaldenRidgeDay.exe --headless -- --selftest
+game/build_town/HaldenRidgeDay.exe --headless -- --town-selftest
+game/build_town/HaldenRidgeDay.exe --headless -- --world=house --preset-check
+game/build_town/HaldenRidgeDay.exe --headless -- --look-selftest
+```
+
 ## Tuning a look
 
 Open the `.tres` in the inspector, change a value, run the game with
