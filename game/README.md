@@ -161,53 +161,45 @@ godot --headless --path game --export-release "Windows Desktop" build/HouseInter
 
 Added on the `town-v1` branch. Everything above still works as before.
 
-### Lighting presets
+### Time of day and weather
 
-![Presets: Night, Foggy Overcast Day, Dusk (rows: hallway and porch, High then Low)](screenshots/presets/contact_sheet.jpg)
+![All eight looks on Low: front door, junction, living room](screenshots/time_weather/sheet_all.jpg)
 
-Three looks, each a `LightingPreset` resource in `presets/`:
+Four times (03:00, 06:00, 10:00, 17:00) by two weathers (Clear, Foggy):
+eight looks, each a `LightingPreset` resource in `presets/`
+(`0300_clear.tres` ... `1700_foggy.tres`). **`docs/TIME_WEATHER.md`**
+describes each one, the sun and moon angles, which lights are on, and how
+to tune them. `0300_foggy` is the old Night, exactly; the old Foggy
+Overcast Day, Dusk and Clear Day are now `1000_foggy`, `1700_foggy` and
+`1000_clear`.
 
-| File | Look |
-| --- | --- |
-| `presets/night.tres` | **Night** (default). Exactly the values `main.gd` and `house_lights.gd` used before presets existed. |
-| `presets/foggy_day.tres` | **Foggy Overcast Day**: grey sky, heavy fog, soft shadowless light, street lights off. |
-| `presets/dusk.tres` | **Dusk**: low warm sun from the west, violet fog, street lights just on. |
-| `presets/clear_day.tres` | **Clear Day**: a low late-autumn sun, a blue-grey sky, only a little haze. Added so the town can be checked (and filmed) without fog; F2 reaches it after Dusk. |
-
-Open a `.tres` in the Godot inspector to tweak it: key light (moon or sun)
-colour, energy, softness and angle; sky and ambient colour; room-probe
-ambient; volumetric fog (High) and distance fog (Low); exposure for High and
-Low; glow and grade; and multipliers for the lamps, street lights and lit
-windows. `scripts/lighting_preset.gd` documents every field.
-
-`scripts/lighting_presets.gd` applies the preset on top of what `main.gd`
-sets up. `main.gd` only gained three hooks: it attaches the node after
-loading the quality setting, re-applies the preset at the end of
-`set_quality()`, and `_save_quality()` now loads `settings.cfg` before
-writing so it keeps other sections.
+`scripts/lighting_presets.gd` applies the look on top of what `main.gd`
+sets up, cross-fades over 4 seconds when it changes, and can run a clock
+(one game hour in two real minutes). `main.gd`'s three hooks are unchanged.
 
 | Key | Action |
 | --- | --- |
-| F2 | Cycle Night, Foggy Overcast Day, Dusk |
-| F4 | Settings panel: preset dropdown and brightness slider (50 to 200 %) |
+| F2 | Next time of day |
+| F4 | World menu: time, weather, FREEZE TIME, brightness, graphics Low / High |
+| F6 | Free camera (noclip) for screenshots and film framing; F6 again returns to the player |
 
-Both are saved in `user://settings.cfg` under a new `[lighting]` section
-(`preset`, `brightness`); the `[graphics] quality` key is unchanged.
-Brightness multiplies the preset's exposure, so 100 % is the preset as
-authored.
+Time, weather, frozen and brightness are saved under `[lighting]` in the
+build's settings file; `[graphics] quality` is unchanged. Brightness
+multiplies the look's exposure, so 100 % is the look as authored.
 
-Command line: `--preset=night|foggy_day|dusk`, `--brightness=1.2`,
-`--preset-check` (applies Night over the original setup and lists any value
-that changed; it reports 45 values, all identical, on High and Low), and
-`--preset-shots [--quality=low] [--views=hallway,porch]`, which wrote the
-screenshots above. `--env=prop:value,...` overrides Environment properties
-for experiments.
+Command line: `--preset=1000_clear` (or `--time=10 --weather=clear`),
+`--clock`, `--brightness=1.2`, `--preset-check` (applies 03:00 Foggy over
+the original setup and lists any value that changed: 64 values, all
+identical, on High and Low), `--look-selftest` (fades through all eight,
+runs the clock, toggles the camera and the menu), and `--preset-shots
+[--quality=low] [--views=...] [--presets=...]`. `--env=prop:value,...`
+overrides Environment properties for experiments.
 
 **SDFGI sky light.** On High, SDFGI adds the background colour as light
 wherever it sees the sky. Indoors that is right; outdoors it floods the
 yard (the porch row of the Night column shows it: that is the original
-game's look, kept on purpose). Foggy Day and Dusk turn
-`sdfgi_read_sky_light` off; Night keeps it on to stay identical. The town
+game's look, kept on purpose). Every look but 03:00 Foggy turns
+`sdfgi_read_sky_light` off; 03:00 Foggy keeps it on to stay identical. The town
 world turns it off for every preset, because there the player is outdoors.
 
 ### Presets and baked lightmaps
@@ -386,7 +378,7 @@ defaults; the other two presets are unchanged.
 | --- | --- | --- | --- |
 | World | the house alone | the town | the town |
 | Player starts | inside the front door | inside the front door | inside the front door |
-| Look on first start | Night | Night | Foggy Overcast Day |
+| Look on first start | 03:00 Foggy | 03:00 Foggy | 10:00 Clear |
 | Quality on first start | High | High | Low |
 | Settings file | `user://settings.cfg` | `user://settings.cfg` | `user://settings_day.cfg` |
 
