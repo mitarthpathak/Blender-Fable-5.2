@@ -12,6 +12,7 @@ import math
 from mathutils import Vector
 
 import plan
+from . import joinery
 from .core import MeshBuilder, empty
 
 X0, X1 = plan.STAIR_X0, plan.STAIR_X1        # treads span the west wall to here
@@ -224,20 +225,85 @@ def build_balustrades(coll):
     return made
 
 
-def build_cupboard_door(coll, angle_deg=14.0):
-    """The cupboard door under the stair, hinged on its north edge and left ajar."""
+def build_spandrel(coll):
+    """The hall side of the stair, finished like the wall opposite it: a
+    skirting along the floor, a string board under the nosings, and between
+    them matchboarding in the dark wood of the hall's panelling, each board
+    cut to the rake. The cupboard door gets an architrave. All of it is
+    planted on the plain face the strings are built with."""
     d0, d1, dh = CUPBOARD_DOOR
-    width, t = d1 - d0 - 0.006, 0.028
-    hinge = (EDGE, d1 - 0.003, 0.0)
+    x = EDGE
+    paint, wood = "trim_paint", "panel_wood"
+    skirt_h, string_d, arch = 0.16, 0.25, 0.062
+
+    def top(y):
+        return min(string_top(y), plan.CEILING) if y >= plan.VOID_Y0 - 1e-6 else string_top(y)
+
+    def under(y):
+        return max(top(y) - string_d, 0.0)
+
     mb = MeshBuilder()
-    # Built closed, in world position; the origin is moved to the hinge.
-    mb.box((EDGE - t, d1 - 0.003 - width, 0.004), (EDGE, d1 - 0.003, dh - 0.004), "trim_paint")
-    # Three ledges on the back, and a turn button on the front.
-    for z in (0.18, dh / 2, dh - 0.18):
-        mb.box((EDGE - t - 0.018, d1 - width + 0.03, z - 0.045), (EDGE - t, d1 - 0.03, z + 0.045), "trim_paint",
-               skip="+x")
-    mb.cylinder((EDGE, d0 + 0.06, dh * 0.55), (0.022, 0, 0), 0.016, "metal_brass", segments=10)
-    obj = mb.build("door_understair", coll, origin=hinge)
+
+    def plant(y_a, y_b, lo_a, lo_b, hi_a, hi_b, thick, key):
+        if y_b - y_a < 1e-4 or max(hi_a - lo_a, hi_b - lo_b) < 0.012:
+            return
+        mb.prism([(y_a, lo_a), (y_b, lo_b), (y_b, max(hi_b, lo_b)), (y_a, max(hi_a, lo_a))], (x, 0, 0),
+                 (0, 1, 0), (0, 0, 1), (1, 0, 0), thick, key)
+
+    y_clip = Y0 + (plan.CEILING - RISE - 0.05) / SLOPE       # where the string reaches the ceiling
+    for y_a, y_b in ((Y0, y_clip), (y_clip, Y1)):             # the string board
+        plant(y_a, y_b, under(y_a), under(y_b), top(y_a), top(y_b), 0.016, paint)
+    y_skirt = Y0 + (skirt_h + string_d - RISE - 0.05) / SLOPE  # where the string has climbed clear of the skirting
+    for y_a, y_b in ((y_skirt, d0 - arch), (d1 + arch, Y1)):
+        plant(y_a, y_b, 0.0, 0.0, skirt_h, skirt_h, 0.018, paint)
+        plant(y_a, y_b, skirt_h - 0.02, skirt_h - 0.02, skirt_h, skirt_h, 0.024, paint)
+    # the boards: 12 cm wide, alternately a hair proud so every joint shows
+    width, k, y = 0.12, 0, y_skirt
+    while y < Y1 - 1e-4:
+        y_b = min(y + width, Y1)
+        over_door = y_b > d0 - arch and y < d1 + arch
+        lo = dh + arch if over_door else skirt_h
+        if over_door:                                         # trim the board to the architrave
+            if y < d0 - arch < y_b:
+                plant(y, d0 - arch, skirt_h, skirt_h, under(y), under(d0 - arch), 0.009 + 0.002 * (k % 2), wood)
+            if y < d1 + arch < y_b:
+                plant(d1 + arch, y_b, skirt_h, skirt_h, under(d1 + arch), under(y_b), 0.009 + 0.002 * (k % 2), wood)
+        plant(y, y_b, lo, lo, under(y), under(y_b), 0.009 + 0.002 * (k % 2), wood)
+        y, k = y_b, k + 1
+    # architrave round the cupboard door
+    for y_a, y_b, z_a, z_b in ((d0 - arch, d0, 0.0, dh + arch), (d1, d1 + arch, 0.0, dh + arch), (d0, d1, dh, dh + arch)):
+        mb.box((x, y_a, z_a), (x + 0.02, y_b, z_b), paint, skip="-x")
+    # a raised band round its outer edge
+    mb.box((x, d0 - arch, 0.0), (x + 0.027, d0 - arch + 0.016, dh + arch), paint, skip="-x")
+    mb.box((x, d1 + arch - 0.016, 0.0), (x + 0.027, d1 + arch, dh + arch), paint, skip="-x")
+    mb.box((x, d0 - arch, dh + arch - 0.016), (x + 0.027, d1 + arch, dh + arch), paint, skip="-x")
+    return mb.build("stairs_panelling", coll, recalc=True)
+
+
+def build_cupboard_door(coll, angle_deg=14.0):
+    """The cupboard door under the stair: a framed door of two panels, hung
+    on its north edge on three butts, with a thumb latch, left ajar."""
+    d0, d1, dh = CUPBOARD_DOOR
+    width, height, t = d1 - d0 - 0.006, dh - 0.008, 0.03
+    hinge = (EDGE, d1 - 0.003, 0.0)
+
+    def to_world(u, d, v):
+        return Vector((EDGE - d, d1 - 0.003 - u, 0.004 + v))
+
+    mb = MeshBuilder()
+    panels = [(0.075, 0.10, width - 0.075, height * 0.5 - 0.035, False),
+              (0.075, height * 0.5 + 0.035, width - 0.075, height - 0.085, False)]
+    joinery.build_leaf(mb, to_world, width, height, t, panels, "door_paint")
+    for v in (0.16, height / 2, height - 0.16):                # butt hinges
+        joinery.leaf_box(mb, to_world, -0.005, 0.006, -0.007, 0.004, v - 0.04, v + 0.04, "metal_brass")
+    # a thumb latch: backplate, thumb piece, and the bar across the back
+    u, v = width - 0.045, 0.66
+    joinery.leaf_box(mb, to_world, u - 0.014, u + 0.014, -0.004, 0.0, v - 0.075, v + 0.075, "metal_dark")
+    joinery.leaf_box(mb, to_world, u - 0.010, u + 0.010, -0.03, -0.004, v + 0.01, v + 0.022, "metal_dark")
+    joinery.leaf_box(mb, to_world, u - 0.008, u + 0.008, -0.036, -0.004, v - 0.06, v - 0.045, "metal_dark")
+    joinery.leaf_box(mb, to_world, u - 0.008, u + 0.008, -0.036, -0.028, v - 0.06, v + 0.012, "metal_dark")
+    joinery.leaf_box(mb, to_world, width - 0.16, width + 0.01, t, t + 0.006, v - 0.012, v + 0.012, "metal_dark")
+    obj = mb.build("door_understair", coll, origin=hinge, recalc=True)
     obj.rotation_euler = (0, 0, math.radians(angle_deg))
     return obj
 
@@ -268,6 +334,7 @@ def build(detail=True, override=None, coll="stairs"):
     made = [build_steps(coll, detail, override), build_strings(coll, detail, override)]
     if detail:
         made += build_balustrades(coll)
+        made.append(build_spandrel(coll))
         made.append(build_cupboard_door(coll))
     made.append(build_collider("colliders"))
     return made

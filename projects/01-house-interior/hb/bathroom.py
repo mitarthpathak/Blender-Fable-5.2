@@ -188,36 +188,43 @@ def furnishings(small, soft):
     NORTH.box(fx, 4.36, 4.38, 0.0, 0.06, F1 + 0.66, F1 + 0.72, "metal_chrome")
     fx.cylinder(NORTH.P(4.38, 0.05, F1 + 0.69), NORTH.along * 0.13, 0.008, "metal_chrome", segments=6)
     fx.cylinder(NORTH.P(4.395, 0.05, F1 + 0.69), NORTH.along * 0.10, 0.045, "paper", segments=12)
-    # roller blind, half down, with its cord
-    NORTH.box(fx, 4.08, 5.76, 0.012, 0.02, F1 + 1.58, F1 + 2.30, "fabric_curtain")
-    NORTH.box(fx, 4.07, 5.77, 0.008, 0.026, F1 + 1.56, F1 + 1.585, "wood_mid")
-    fx.cylinder(NORTH.P(4.07, 0.03, F1 + 2.29), NORTH.along * 1.70, 0.018, "plastic_white", segments=8)
-    fx.cylinder(NORTH.P(5.72, 0.035, F1 + 1.30), (0, 0, 0.98), 0.0015, "plastic_white", segments=4, caps="none")
     # the light pull inside the door
     fx.cylinder((2.76, 7.50, F1 + 1.35), (0, 0, plan.CEILING - 1.35), 0.0012, "plastic_white", segments=4, caps="none")
     fx.cylinder((2.76, 7.50, F1 + 1.31), (0, 0, 0.045), 0.008, "plastic_white", segments=6)
     fx.build("bathroom_fittings", "fixtures")
 
     dr.curtain("towel_bathroom", UTIL_EAST_OUT, 5.04, 5.46, F1 + 1.142, F1 + 0.60, seed=21, off=0.078, key="towel")
-    dr.rug("bathmat", 6.02, 6.50, 6.86, 7.06, F1, key="towel")
+    dr.rug("bathmat", 6.02, 6.50, 6.86, 7.06, F1, key="towel", thick=0.02, fringe=False, lift=0.02)
     dr.radiator("radiator_bathroom", NORTH, 4.62, 5.52, F1)
-    dr.pendant("bathroom", 5.2, 7.0, plan.ROOF_Z, drop=0.40, kind="off")
+    dr.pendant("bathroom", 5.2, 7.0, plan.ROOF_Z, drop=0.32, kind="off", style="globe")
+    # a roller blind in the window reveal, half down and not level
+    dr.roller_blind("blind_bathroom", NORTH, 4.135, 5.705, F1 + 2.243, F1 + 1.52, off=-0.055, seed=3)
 
-    # open shelves against the cupboard's north wall, behind the door
+    # open shelves against the cupboard's north wall, behind the door: a
+    # painted steel frame with slatted shelves, the kind sold flat in a box
     unit = MeshBuilder()
     a0, a1, depth, height = 3.52, 4.14, 0.26, 1.10
     face = UTIL_NORTH_OUT
-    face.box(unit, a0, a0 + 0.018, 0.0, depth, F1, F1 + height, "enamel")
-    face.box(unit, a1 - 0.018, a1, 0.0, depth, F1, F1 + height, "enamel")
+    post = 0.022
+    for a in (a0, a1 - post):
+        for d in (0.012, depth - post):
+            face.box(unit, a, a + post, d, d + post, F1, F1 + height + 0.06, "enamel")
     for z in (0.06, 0.40, 0.74, height - 0.018):
-        face.box(unit, a0 + 0.018, a1 - 0.018, 0.0, depth, F1 + z, F1 + z + 0.018, "enamel")
+        for d in (0.012, depth - post):                       # a rail front and back, slats between
+            face.box(unit, a0 + post, a1 - post, d + 0.004, d + post - 0.004, F1 + z - 0.012, F1 + z + 0.012, "enamel")
+        for k in range(7):
+            a = a0 + 0.035 + k * (a1 - a0 - 0.07 - 0.05) / 6
+            face.box(unit, a, a + 0.05, 0.02, depth - 0.008, F1 + z + 0.006, F1 + z + 0.018, "enamel")
+    for a in (a0 + 0.004, a1 - 0.012):                        # a cross stay at each end
+        face.box(unit, a, a + 0.008, 0.03, depth - 0.03, F1 + 0.20, F1 + 0.215, "enamel")
+        face.box(unit, a, a + 0.008, 0.03, depth - 0.03, F1 + 0.92, F1 + 0.935, "enamel")
     unit.build("bathroom_shelves", "furniture")
     sy = plan.UTIL_Y1 + plan.INT_T + 0.13
     cl.folded(small, 3.68, sy, F1 + 0.418, 0.30, 0.20, "towel", layers=4, yaw=3, seed=2)
     cl.folded(small, 3.98, sy, F1 + 0.418, 0.22, 0.20, "fabric_pillow", layers=2, yaw=-4, seed=3)
-    for x in (3.62, 3.74, 3.86):
-        small.cylinder((x, sy, F1 + 0.758), (0, 0, 0.10), 0.052, "paper", segments=12)
-    small.cylinder((3.74, sy + 0.01, F1 + 0.858), (0, 0, 0.10), 0.052, "paper", segments=12)
+    for x, dy in ((3.615, 0.0), (3.725, 0.012), (3.835, -0.008)):
+        cl.roll(small, x, sy + dy, F1 + 0.758)
+    cl.roll(small, 3.73, sy + 0.012, F1 + 0.858, squash=0.94)
     cl.plastic_bottle(small, 4.02, sy, F1 + 0.758, "bleach", yaw=2, size=(0.085, 0.05, 0.22))
     shapes.obox(small, (3.80, sy, F1 + 1.10), (0.24, 0.12, 0.085), -2, "c_teal", prints={"front": "tissues"})
     cl.plastic_bottle(small, 3.62, sy, F1 + 1.10, "shampoo", yaw=-10)
@@ -232,7 +239,7 @@ def furnishings(small, soft):
     cl.heap(soft, 6.55, 5.30, F1, 0.24, 0.18, 0.08, "fabric_curtain", seed=8, yaw=-25)                 # clothes by the basin
     # a chair by the bath with clothes left on it, and a stool
     models.place("painted_wooden_chair_01", "bathroom_chair", (5.22, 7.56, F1), facing=-25)
-    cl.heap(soft, 5.22, 7.54, F1 + 0.46, 0.17, 0.15, 0.09, "fabric_plaid", seed=12)
+    cl.heap(soft, 5.22, 7.54, F1 + 0.46, 0.17, 0.15, 0.09, "fabric_plaid", seed=12, spread=0.15)
     models.place("wooden_stool_01", "bathroom_stool", (4.72, 5.02, F1), facing=30)
     # scales, a bin, the toilet brush and a plunger
     shapes.obox(small, (5.05, 5.60, F1), (0.30, 0.30, 0.045), 12, "c_grey")
@@ -251,11 +258,11 @@ def decals():
     d = Decals("decals_bathroom", seed=28)
     tile = 0.0095                                             # clear of the tile panels round the bath
     # cracked tiles
-    d.wall("crack", NORTH, 6.55, F1 + 1.35, 1.0, 1.0, offset=tile)
-    d.wall("crack", EAST, 7.55, F1 + 1.05, 0.8, 0.8, offset=tile)
-    d.wall("crack", EAST, 5.60, F1 + 0.95, 0.9, 0.9)
-    d.wall("crack", DIVIDER_N, 6.75, F1 + 0.85, 0.9, 0.9)
-    d.wall("crack", UTIL_NORTH_OUT, 3.0, F1 + 0.9, 0.8, 0.8)
+    # (the tiles have their own crazing and chips drawn in; a crack decal across
+    # them read as a hair, so the cracks are in the plaster above the dado only)
+    d.wall("crack", EAST, 5.60, F1 + 2.08, 0.9, 0.9)
+    d.wall("crack", DIVIDER_N, 6.75, F1 + 2.02, 0.8, 0.8)
+    d.wall("crack", UTIL_NORTH_OUT, 3.0, F1 + 2.05, 0.7, 0.7)
     d.wall("plaster_damage", NORTH, 3.25, F1 + 1.18, 0.42, 0.42)                      # tiles gone, wall showing
     # mould: in the wet corner, along the ceiling line, behind the toilet
     d.wall("mould", NORTH, 6.80, F1 + 2.24, 1.0, 0.92, flip=True)
@@ -292,6 +299,7 @@ def decals():
     d.flat("mould", 3.09, 7.45, plan.ROOF_Z, 1.1, 1.1, up=False, angle_deg=180)
     d.flat("mould", 6.75, 5.09, plan.ROOF_Z, 1.0, 1.0, up=False, angle_deg=0)
     d.flat("plaster_damage", 6.35, 7.15, plan.ROOF_Z, 0.7, 0.7, up=False, angle_deg=35)
+    d.flat("nicotine", 4.4, 6.9, plan.ROOF_Z, 1.9, 1.5, up=False, angle_deg=70)          # steam, years of it
     d.build()
 
 

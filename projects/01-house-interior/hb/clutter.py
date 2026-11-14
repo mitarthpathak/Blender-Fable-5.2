@@ -33,10 +33,35 @@ def bottle(mb, x, y, z, key="glass_bottle", height=0.24, radius=0.032, cap="meta
     lathe(mb, x, y, [(radius * 0.46, z + height * 0.95), (radius * 0.46, z + height)], cap, 8)
 
 
-def plastic_bottle(mb, x, y, z, region, yaw=0.0, size=(0.07, 0.04, 0.19), cap="plastic_white"):
-    """A shampoo or cleaner bottle: a flat-sided body with a label, and a cap."""
-    obox(mb, (x, y, z), size, yaw, "c_cream", prints={"front": region})
-    lathe(mb, x, y, [(0.014, z + size[2]), (0.014, z + size[2] + 0.028)], cap, 8)
+def plastic_bottle(mb, x, y, z, region, yaw=0.0, size=(0.07, 0.04, 0.19), cap="plastic_white", key="plastic_cream"):
+    """A shampoo or cleaner bottle: a moulded body with rounded sides and a
+    shoulder, a paper label on its front, a neck and a cap. A `size` under
+    6 cm tall is the same bottle lying on its side."""
+    w, d, h = size
+    if h < 0.06:                                           # on its side
+        obox(mb, (x, y, z), size, yaw, "c_cream", prints={"front": region})
+        lathe(mb, x, y, [(0.014, z + h * 0.2), (0.014, z + h * 0.8)], cap, 8)
+        return
+    rings = [ring(x, y, z + zz * h, w / 2 * sc, d / 2 * sc, 16, 4.0, yaw)
+             for zz, sc in ((0.0, 0.90), (0.05, 1.0), (0.66, 1.0), (0.78, 0.86), (0.86, 0.50))]
+    loft(mb, rings, key, cap_first=True, cap_last=True)
+    lathe(mb, x, y, [(min(w, d) * 0.24, z + h * 0.86), (min(w, d) * 0.24, z + h * 0.90)], key, 8, cap_first=False)
+    lathe(mb, x, y, [(min(w, d) * 0.30, z + h * 0.90), (min(w, d) * 0.30, z + h), (min(w, d) * 0.22, z + h * 1.01)], cap, 10)
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+
+    def P(px, py, pz):
+        return Vector((x + px * ca - py * sa, y + px * sa + py * ca, z + pz))
+
+    lw, out = w * 0.37, d / 2 + 0.0008                     # the label, on the flat of the front
+    printed(mb, [P(-lw, -out, h * 0.14), P(lw, -out, h * 0.14), P(lw, -out, h * 0.60), P(-lw, -out, h * 0.60)], region)
+
+
+def roll(mb, x, y, z, radius=0.052, height=0.10, squash=1.0):
+    """A toilet roll standing on end: paper round a cardboard tube."""
+    n = 14
+    loft(mb, [ring(x, y, z, radius, radius * squash, n), ring(x, y, z + height, radius, radius * squash, n),
+              ring(x, y, z + height, 0.021, 0.021, n), ring(x, y, z, 0.021, 0.021, n)], "paper")
+    loft(mb, [ring(x, y, z + height - 0.001, 0.0205, 0.0205, n), ring(x, y, z + 0.001, 0.0205, 0.0205, n)], "paper_brown")
 
 
 def plate(mb, x, y, z, radius=0.125, key="ceramic"):
@@ -194,24 +219,48 @@ def book(mb, x, y, z, region=None, yaw=0.0, size=(0.13, 0.19, 0.028), key="book_
         obox(mb, (x, y, z), size, yaw, key)
 
 
-def heap(mb, x, y, z, rx, ry, height, key, seed=0, yaw=0.0, n=20):
+def heap(mb, x, y, z, rx, ry, height, key, seed=0, yaw=0.0, n=28, spread=1.0):
     """A pile of cloth: dropped clothes, a towel on the floor, washing in a
-    basket. A low, soft mound with a few folds, never the same twice. Build
-    it into a mesh that is shaded fully smooth."""
+    basket, a tied rubbish bag. Cloth that has been dropped, not a pebble:
+    its outline has corners and tongues where a sleeve or a hem lies out
+    flat, its edge is thin and lifts off the floor in places, and creases run
+    in from the edge to a high point that is never in the middle. `spread`
+    is how far the tongues reach: 0 for a pile held in by a box, a basket or
+    a chair seat. Build it into a mesh that is shaded smooth."""
     rng = random.Random(seed)
-    folds = [(rng.uniform(0, 6.28), rng.randint(2, 4), rng.uniform(0.05, 0.12)) for _ in range(3)]
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    lobes = [(rng.uniform(0, 6.28), k, rng.uniform(0.05, 0.14) * (0.4 + 0.6 * spread)) for k in (2, 3, 5)]
+    tongues = [(rng.uniform(0, 6.28), rng.uniform(0.25, 0.6) * spread, rng.uniform(0.2, 0.36))
+               for _ in range(rng.randint(2, 3))]
+    creases = [(rng.uniform(0, 6.28), rng.randint(3, 6)) for _ in range(3)]
+    px, py = rng.uniform(-0.28, 0.28), rng.uniform(-0.28, 0.28)        # where the high point is
+    hem = rng.uniform(0, 6.28)
+
+    def outline(a):
+        r = 1.0 + sum(amp * math.sin(a * k + phase) for phase, k, amp in lobes)
+        for at, reach, half in tongues:
+            off = abs((a - at + math.pi) % (2.0 * math.pi) - math.pi)
+            if off < half:
+                r += reach * (1.0 - off / half) ** 1.5
+        return r
+
     rings = []
-    for t in (0.0, 0.12, 0.3, 0.5, 0.7, 0.88):
-        scale = 1.0 - 0.9 * t ** 1.5
-        loop = ring(x, y, 0.0, rx * scale, ry * scale, n, 2.2, yaw)
-        for k, p in enumerate(loop):
+    for t in (0.0, 0.05, 0.16, 0.32, 0.50, 0.68, 0.84, 0.95):
+        loop = []
+        for k in range(n):
             a = 2.0 * math.pi * k / n
-            wave = sum(amp * math.sin(a * lobes + phase) for phase, lobes, amp in folds)
-            p.x = x + (p.x - x) * (1.0 + wave * (0.4 + t))
-            p.y = y + (p.y - y) * (1.0 + wave * (0.4 + t))
-            p.z = z + height * (1.0 - (1.0 - t) ** 1.7) * (1.0 + 0.5 * wave)
+            shape = 1.0 + (outline(a) - 1.0) * (1.0 - t) ** 1.6       # the tongues are only at the edge
+            lx = px * rx * t + math.cos(a) * rx * (1.0 - t) * shape
+            ly = py * ry * t + math.sin(a) * ry * (1.0 - t) * shape
+            fold = sum(1.0 - abs(math.sin(a * lobes_ * 0.5 + phase + 2.5 * t)) for phase, lobes_ in creases) / 3.0
+            h = height * (1.0 - (1.0 - t) ** 2.2) * (0.55 + 0.75 * fold)
+            if t == 0.0:
+                h = 0.0
+            elif t <= 0.05:                               # the hem: a thin edge, off the floor here and there
+                h = min(h, 0.010) + 0.012 * max(0.0, math.sin(a * 3.0 + hem))
+            loop.append(Vector((x + lx * ca - ly * sa, y + lx * sa + ly * ca, z + h)))
         rings.append(loop)
-    rings.append([Vector((x, y, z + height))])
+    rings.append([Vector((x + (px * rx) * ca - (py * ry) * sa, y + (px * rx) * sa + (py * ry) * ca, z + height * 0.95))])
     loft(mb, rings, key)
 
 
@@ -405,53 +454,108 @@ def vhs_stack(mb, x, y, z, count=4, yaw=0.0, seed=0):
              yaw + rng.uniform(-6, 6), "c_black", prints={"front": "vhs"})
 
 
-def suitcase(mb, soft, x, y, z, yaw=0.0, key="vinyl", seed=0):
-    """A suitcase open on the floor, half packed. The clothes go into `soft`."""
-    obox(mb, (x, y, z), (0.62, 0.42, 0.11), yaw, key)
+def suitcase(mb, soft, x, y, z, yaw=0.0, key="vinyl", seed=0, lining="fabric_plaid"):
+    """A suitcase lying open, half packed: two moulded shells with rounded
+    corners, hinged along the back, piped round their rims and lined; a
+    handle and two catches on the front. The clothes go into `soft`."""
+    W, D, H = 0.62, 0.42, 0.105
+    n = 24
     ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
-    obox(mb, (x - 0.24 * sa, y + 0.24 * ca, z + 0.11), (0.62, 0.09, 0.42), yaw, key, lean=-14.0)     # the lid, up
-    for sx in (-1, 1):                                         # the catches
-        obox(mb, (x + sx * 0.18 * ca + 0.212 * sa, y + sx * 0.18 * sa - 0.212 * ca, z + 0.06), (0.04, 0.008, 0.03), yaw,
-             "metal_brass")
-    heap(soft, x, y, z + 0.10, 0.27, 0.17, 0.09, "fabric_curtain", seed=seed)
-    heap(soft, x + 0.12 * ca, y + 0.12 * sa, z + 0.13, 0.13, 0.10, 0.06, "fabric_plaid", seed=seed + 1)
+    open_by = math.radians(104.0)
+    co, so = math.cos(open_by), math.sin(open_by)
+
+    def base(px, py, pz):
+        return Vector((x + px * ca - py * sa, y + px * sa + py * ca, z + pz))
+
+    def lid(px, py, pz):
+        """The lid, hinged on the back edge of the base and thrown open."""
+        ry, rz = py - D / 2, H - pz
+        return base(px, D / 2 + ry * co + rz * so, H - ry * so + rz * co)
+
+    def loop(place, scale, pz):
+        points = []
+        for k in range(n):
+            t = 2.0 * math.pi * k / n
+            c, s_ = math.cos(t), math.sin(t)
+            points.append(place(W / 2 * scale * math.copysign(abs(c) ** 0.4, c), D / 2 * scale * math.copysign(abs(s_) ** 0.4, s_),
+                                pz))
+        return points
+
+    for place in (base, lid):
+        loft(mb, [loop(place, 0.93, 0.0), loop(place, 1.0, 0.02), loop(place, 1.0, H - 0.004)], key, cap_first=True)
+        loft(mb, [loop(place, 1.0, H - 0.004), loop(place, 1.014, H - 0.002), loop(place, 1.014, H + 0.004),
+                  loop(place, 0.972, H + 0.004)], "rubber")                                 # the piping round the rim
+        loft(mb, [loop(place, 0.972, H + 0.004), loop(place, 0.955, 0.016)], lining, cap_last=True)
+    for sx in (-1, 1):                                         # the catches, and the handle between them
+        c = base(sx * 0.19, -D / 2 - 0.004, H * 0.45)
+        obox(mb, tuple(c), (0.045, 0.008, 0.035), yaw, "metal_brass")
+    grip = [base(-0.075, -D / 2 - 0.002, H * 0.55), base(-0.06, -D / 2 - 0.03, H * 0.62), base(0.06, -D / 2 - 0.03, H * 0.62),
+            base(0.075, -D / 2 - 0.002, H * 0.55)]
+    shapes.tube(mb, grip, 0.009, "rubber", segments=6)
+    heap(soft, x, y, z + 0.022, 0.26, 0.165, 0.11, "fabric_curtain", seed=seed, yaw=yaw, spread=0.0)
+    c = base(0.13, 0.02, 0.07)
+    heap(soft, c.x, c.y, c.z, 0.13, 0.10, 0.07, "fabric_plaid", seed=seed + 1, yaw=yaw, spread=0.0)
+    c = base(-0.17, -0.04, 0.075)
+    folded(soft, c.x, c.y, c.z, 0.20, 0.24, "fabric_pillow", layers=2, yaw=yaw + 4, seed=seed + 2)
 
 
 def clock_radio(mb, x, y, z, yaw=0.0):
     obox(mb, (x, y, z), (0.20, 0.10, 0.065), yaw, "plastic_black", sides={"front": "oven_glass"})
 
 
-def peel(mb, face, a, z_attach, length, width, key, seed=0, bare="wall_utility"):
-    """Wallpaper come away from the wall: a length that has let go at the top,
-    folded over where it still holds and now hangs down in front of the wall
-    showing its backing, with the bare plaster it left above."""
+def peel(mb, face, a, z_attach, length, width, key, seed=0, bare="wall_kitchen"):
+    """Wallpaper that has let go of the wall. `z_attach` is the foot of the
+    loose length: below it the paper still holds; above it the top has come
+    away and slumped forward, a tongue of the room's own paper leaning out
+    into the room with its torn top edge rolling over, and behind it the
+    bare plaster it left. Only a strip of a drop ever lets go, never square
+    and never the same shape twice. The back of the paper is its brown
+    backing; it is a second skin a hair behind the first."""
     rng = random.Random(seed)
-    lean = rng.uniform(-0.07, 0.07)                   # it never comes off square
-    radius = rng.uniform(0.016, 0.028)
-    # the path of the strip, seen from the side: (out from the wall, height)
-    path = [(0.0025, z_attach - 0.05), (0.0025, z_attach)]
-    for k in range(1, 6):                             # the fold
-        t = math.pi * k / 5
-        path.append((0.0025 + radius * (1.0 - math.cos(t)), z_attach + radius * math.sin(t)))
-    hang = max(0.1, length - math.pi * radius)
-    for k in range(1, 7):                             # and the fall, bowing out and curling at its end
-        t = k / 6
-        path.append((0.0025 + 2 * radius + 0.035 * math.sin(t * math.pi * 0.8) + 0.05 * t ** 3,
-                     z_attach - hang * t * (1.0 - 0.12 * t ** 3)))
-    rows = []
-    for k, (d, z) in enumerate(path):
-        skew = lean * max(0.0, (k - 6) / 6) * 0.5
-        rows.append((face.P(a - width / 2 + skew, d, z), face.P(a + width / 2 + skew, d, z)))
-    for k, ((l0, r0), (l1, r1)) in enumerate(zip(rows, rows[1:])):
+    w0 = width * rng.uniform(0.32, 0.58)
+    lean = rng.uniform(-0.14, 0.14)                    # it comes away to one side
+    bow = rng.uniform(0.03, 0.075)                     # how far the top stands off the wall
+    slump = rng.uniform(0.22, 0.45)                    # and how far it has dropped
+    curl = rng.uniform(0.018, 0.04)
+    taper_l, taper_r = rng.uniform(0.0, 0.28), rng.uniform(0.0, 0.28)
+    tear = rng.uniform(-0.05, 0.05)                    # the top edge is torn at a slant
+    rows = 9
+    strip = []
+    for k in range(rows + 1):
+        t = k / rows
+        d = 0.0026 + bow * t ** 1.8
+        z = z_attach + length * (t - slump * t ** 2.4)
+        if k > rows - 2:                               # the last of it rolls over towards the room
+            over = (k - (rows - 2)) / 2.0
+            d += curl * over
+            z -= curl * 1.3 * over ** 2
+        skew = lean * length * t ** 2
+        left = a - w0 / 2 + w0 * taper_l * t + skew + rng.uniform(-0.006, 0.006) * (t > 0)
+        right = a + w0 / 2 - w0 * taper_r * t + skew + rng.uniform(-0.006, 0.006) * (t > 0)
+        dz = tear * t ** 3
+        strip.append((face.P(left, d, z + dz), face.P(right, d, z - dz)))
+    back = face.normal * -0.0012
+    for (l0, r0), (l1, r1) in zip(strip, strip[1:]):
         quad = [l0, r0, r1, l1]
-        mb.face(quad, key if k < 1 else "paper_brown")
-        mb.face(quad[::-1], key)
-    # the plaster behind, with the paste still on it
-    patch = [face.P(a - width / 2, 0.0015, z_attach), face.P(a + width / 2, 0.0015, z_attach),
-             face.P(a + width / 2 + lean * 0.3, 0.0015, z_attach + length), face.P(a - width / 2, 0.0015, z_attach + length)]
-    if (patch[1] - patch[0]).cross(patch[2] - patch[0]).dot(face.normal) < 0:
-        patch = patch[::-1]
-    mb.face(patch, bare)
+        if (quad[1] - quad[0]).cross(quad[2] - quad[0]).dot(face.normal) < 0:
+            quad = quad[::-1]
+        mb.face(quad, key)                             # the pattern, facing the room
+        mb.face([q + back for q in quad][::-1], "paper_brown")
+    # the plaster behind: a ragged shape a little wider than the strip, with old paste on it
+    n = 6
+    edge_l, edge_r = [], []
+    for k in range(n + 1):
+        t = k / n
+        z = z_attach + (length + 0.01) * t
+        grow = 0.012 + 0.02 * math.sin(t * math.pi)
+        edge_l.append(face.P(a - w0 / 2 - grow + rng.uniform(-0.007, 0.007) + lean * 0.3 * t * length, 0.0014, z))
+        edge_r.append(face.P(a + w0 / 2 + grow + rng.uniform(-0.007, 0.007) + lean * 0.3 * t * length, 0.0014,
+                             z + (0.03 * rng.uniform(-1, 1) if k == n else 0.0)))
+    for k in range(n):
+        quad = [edge_l[k], edge_r[k], edge_r[k + 1], edge_l[k + 1]]
+        if (quad[1] - quad[0]).cross(quad[2] - quad[0]).dot(face.normal) < 0:
+            quad = quad[::-1]
+        mb.face(quad, bare)
 
 
 def power_strip(mb, x, y, z, yaw=0.0):

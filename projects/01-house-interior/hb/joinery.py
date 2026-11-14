@@ -19,6 +19,10 @@ DOOR_ANGLE = {"door_front": 0.0, "door_back": 0.0, "door_living": 64.0,
 DOOR_STYLE = {"door_front": "front", "door_back": "half_glazed"}
 DOOR_PAINT = {"door_front": "front_door_paint", "door_back": "door_worn"}
 
+# Sash windows whose lower sash is pushed up, and by how much: the bedroom's
+# side window has an air conditioner sitting in it (yard.ac_unit).
+RAISED = {"win_bedroom_side": 0.40}
+
 LINING = 0.03           # door lining thickness
 LEAF_T = 0.04
 ARCH_W, ARCH_T = 0.07, 0.016
@@ -246,8 +250,9 @@ def build_window(wall, o, coll="windows"):
         mid = (zb + zt) / 2
         sw = 0.045
         # (depth range, bottom, top, bottom rail height): the top sash is the outer one
+        up = min(RAISED.get(o.name, 0.0), zt - (mid + 0.02))
         for (sa, sb), s_lo, s_hi, rail in (((q0 + 0.008, q0 + 0.048), mid - 0.02, zt, sw),
-                                           ((q0 + 0.052, q0 + 0.092), zb, mid + 0.02, 0.065)):
+                                           ((q0 + 0.052, q0 + 0.092), zb + up, mid + 0.02 + up, 0.065)):
             bar(a0, a0 + sw, sa, sb, s_lo, s_hi)
             bar(a1 - sw, a1, sa, sb, s_lo, s_hi)
             bar(a0 + sw, a1 - sw, sa, sb, s_hi - sw, s_hi)

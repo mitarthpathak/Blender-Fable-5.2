@@ -54,4 +54,41 @@ table, worktop clutter and fridge door; the printed graphics.
 
 ## Outcome
 
-Filled in after the fixes: see the end of this file.
+The "after" stills are `renders/14_after_*.png`, from the same cameras as
+`renders/13_before_*.png` (40 samples; two new views, `ext_yard` and
+`ext_chimney`, have no "before" because there was nothing there).
+
+| # | State | What was done, or why not |
+| --- | --- | --- |
+| 1 | Fixed | Three side windows (`win_living_side`, `win_bedroom_side`, `win_landing_side`: openings only, the shell is where it was) with casings, sashes, curtains or a blind. A brick chimney stack on the east wall over the chimney breast, with shoulders, a crown, two pots and lead where it comes through the verge. |
+| 2 | Fixed | Back steps with rails (three 15 cm risers), a bulkhead lamp, the meter and its conduit, a dryer vent, a cooker-hood louvre, a tap with a hose, two trash cans and bags, a window air conditioner in the bedroom's side window. Moss, mud and rain marks now skip every door and window. The lamp's bulb is dead on purpose: a new light would be a game change. |
+| 3 | Fixed | Block plinth (texture), a mud splash band carried over the plinth and the bottom boards, air bricks in every side, a strip of bare earth under the walls, weed tufts and leaf litter. In the yard: a board-and-batten shed with a tin roof, a woodpile under a tarp, a chopping block, a clothesline. |
+| 4 | Fixed | In the textures (earlier commit): striped bedroom paper, drawn bathroom tiles. |
+| 5 | Mostly | Cloth heaps are rebuilt: an outline with corners and tongues, a thin hem, creases. They read as cloth at a glance but are still a mound, not simulated fabric. The vacuum cleaner, hot-water tank (32 sides, quilted jacket, lacing), suitcase (two lined shells) and bottles (moulded, with shoulders) have real shapes; toilet rolls have a hole. |
+| 6 | Fixed | Square tiles (texture); a thin roller blind on a roller inside the reveal; a slatted steel shelf unit; crack decals taken off the tiles, and the crack image itself redrawn in straight broken runs. |
+| 7 | Fixed | The living-room curtain is drawn back clear of the radiator; the bedroom curtains stop at the sill. |
+| 8 | Fixed | A peel is now a narrow, ragged tongue of the room's own paper leaning off the wall, brown only on its back, with ragged bare plaster behind. |
+| 9 | Fixed | Verges with rake boards on both gables, a ridge roll, a vent pipe, the chimney. Porch: rafters, ledger, fascia, barge boards, knee braces; a chair, a crate of empties, a plant, a mat, boots, newspapers, leaves on the deck. |
+| 10 | Mostly | Moss in clumps of every size and spacing, most on the north wall; eaves grime replaced by soft-edged run-off, only under real eaves and sills. Not fixed: the evenly sprinkled paint flecks, which are in the clapboard photograph itself. |
+| 11 | Fixed | The stair's hall side has a string board, skirting and dark matchboarding cut to the rake; the cupboard has an architrave and a two-panel door with butts and a thumb latch. |
+| 12 | Fixed | Kitchen vinyl tiles and duller hall lino (textures); a contact-dirt decal along every skirting and a fan of dirt in every inside corner. Not done: dirt under individual pieces of furniture. |
+| 13 | Fixed | In the cabinet-front sheet (earlier commit). |
+| 14 | Fixed | Bedroom: a hamper and boxes in the north-east corner, a dressing mirror on the west wall. Kitchen: a sideboard, a shelf of tins and an apron on the bare wall. Front landing: a low bookcase, a lamp, a rug. Porch: see 9. The black frame over the sofa is replaced by a framed print (the model's own canvas is black). |
+| 15 | Fixed | Rugs have a pile that rolls over at the edge, rucks, a lifted corner and a fringe. Five different pendant shades and two bare bulbs. Nicotine, water and mould stains added to every ceiling. |
+
+### Cost
+
+- About 241,600 triangles in 301 meshes (was 187,700 in 250).
+- `house.glb` 316 MB (was 296), `house_packed.blend` 303 MB (was 286).
+- `game/tools/texture_policy.py` was not edited. The new surface textures
+  (`ext_foundation`, `metal_galv`, `metal_painted`, `bark`, `roof_tin`,
+  `ground_dirt`, `shed_boards`, `ext_brick`) match none of its rules and fall
+  to the 2048 cap; all but the brick are 1K at source, so the cap changes
+  nothing. Naming them in its MEDIUM list would halve the brick only.
+- Godot: import clean; `--selftest`, `--preset-check` and
+  `--world=town --town-selftest` pass.
+
+### Built on this machine
+
+This pass was built and rendered with Blender 4.5 LTS (the only Blender on
+the machine it was finished on), not 5.2. The scripts run unchanged on both.

@@ -68,7 +68,9 @@ def moon(strength=9.0):
     obj.rotation_euler = MOON_DIRECTION.to_track_quat("-Z", "Y").to_euler()
     obj.location = (-3.0, -5.0, 9.0)
     obj["note"] = "moonlight; a directional light in the engine"
-    return core.link(obj, "lights")
+    # With the haze, in "atmosphere": the night itself, which a scene that
+    # links this file and brings its own sky can leave out.
+    return core.link(obj, "atmosphere")
 
 
 def practicals():
@@ -106,7 +108,7 @@ def practicals():
                 _flicker(data, data.energy)
         obj["kind"] = kind
         obj.visible_volume_scatter = bool(marker.get("haze", True))
-        made.append(core.link(obj, "lights"))
+        made.append(core.link(obj, "lot" if kind == "sodium" else "lights"))   # the streetlight goes with the street
     return made
 
 

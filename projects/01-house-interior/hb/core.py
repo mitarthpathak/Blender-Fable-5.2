@@ -74,10 +74,11 @@ SPECS: dict[str, Spec] = {
     "metal_painted": Spec("#8a8676", 0.6),
     "bark": Spec("#4a4338", 0.95),
     "roof_tin": Spec("#4f4239", 0.6, metallic=0.4),
-    "ground_dirt": Spec("#3f392c", 0.95),
-    "shed_boards": Spec("#5c5b50", 0.85),
+    "ground_dirt": Spec("#5d533f", 0.95),
+    "shed_boards": Spec("#5c5b50", 0.85, rot=True),    # boards stand upright
     "plastic_hose": Spec("#33492f", 0.5),
     "tarp": Spec("#3c4a57", 0.6),
+    "log_end": Spec("#8a765a", 0.9),                   # the cut end of a piece of firewood
     "screen_mesh": Spec("#1a1c1b", 0.6, alpha=0.45),
     "sodium_on": Spec("#ffa040", 0.3, emission=30.0),
     # floors

@@ -15,7 +15,7 @@ from mathutils import Vector
 
 import plan
 from . import dressing as dr
-from . import bathroom, joinery, kitchen, models, shapes, utility
+from . import bathroom, joinery, kitchen, models, shapes, shell, utility, yard
 from . import clutter as cl
 from .core import MeshBuilder
 from .dressing import (CHIMNEY, DIVIDER_N, DIVIDER_S, EAST, F1, HALL_EAST, NORTH, ROOM_WEST, SOUTH, WEST,
@@ -161,14 +161,14 @@ def chest(name, face, a0, a1, floor, depth=0.46, height=0.92, open_drawer=1, col
 def hall():
     put("side_table_tall_01", "hall_side_table", 2.18, 2.95, GF, facing=180)
     dr.table_lamp("hall_table", (2.18, 2.95, 0.762), kind="warm", watts=12)
-    dr.pendant("hall", 1.78, 5.30, plan.CEILING, drop=0.50, kind="flicker", watts=18)
+    dr.pendant("hall", 1.78, 5.30, plan.CEILING, drop=0.50, kind="flicker", watts=18, style="bell")
     dr.radiator("radiator_hall", HALL_EAST, 3.95, 4.95, GF)
     rail, hooks = dr.coat_rail("coat_rail_hall", WEST, 0.35, 1.55, 1.68)
     dr.curtain("coat_hall_dark", WEST, hooks[1] - 0.20, hooks[1] + 0.22, 1.66, 0.62, seed=11, off=0.085,
                key="fabric_bed")
     dr.curtain("coat_hall_long", WEST, hooks[3] - 0.19, hooks[3] + 0.21, 1.66, 0.48, seed=12, off=0.09,
                key="fabric_curtain")
-    dr.rug("doormat_hall", 1.42, 0.12, 2.12, 0.62, GF, key="rubber")
+    dr.rug("doormat_hall", 1.42, 0.12, 2.12, 0.62, GF, key="rubber", fringe=False, thick=0.012)
     dr.mail("mail_hall", (1.74, 0.82, GF + 0.012), count=11, seed=4, spread=0.42)
     put("hanging_picture_frame_03", "picture_stair_1", 0.0, 3.05, 2.40, facing=0)
     put("hanging_picture_frame_03", "picture_stair_2", 0.0, 3.92, 2.93, facing=0, tilt=(0, 7.0))
@@ -200,7 +200,7 @@ def hall():
     shapes.poster(small, HALL_EAST, 0.50, 1.52, 0.21, "missing", tilt=2.0)                     # taped up by the front door
     shapes.poster(small, HALL_EAST, 0.74, 1.40, 0.15, "letter", tilt=-3.0)
     cl.open_box(small, 1.80, 7.46, GF, yaw=14, seed=1)
-    cl.heap(soft, 1.80, 7.46, GF + 0.14, 0.19, 0.14, 0.14, "fabric_curtain", seed=4, yaw=14)
+    cl.heap(soft, 1.80, 7.46, GF + 0.14, 0.19, 0.14, 0.14, "fabric_curtain", seed=4, yaw=14, spread=0.0)
     cl.open_box(small, 1.28, 7.60, GF, size=(0.40, 0.40, 0.34), yaw=-8, flaps=(170.0, 100.0, 160.0, 120.0), seed=2)
     for k in range(5):
         cl.book(small, 1.28 + 0.01 * k, 7.60, GF + 0.03 + k * 0.03, yaw=-8 + 9 * k, key=dr.BOOK_COLORS[k])
@@ -228,12 +228,13 @@ def hall():
     d.wall("grime_streaks", NORTH, 0.7, 2.0, 0.9, 1.4)
     d.flat("water_stain", 1.75, 6.4, plan.CEILING, 1.5, 1.3, up=False, angle_deg=25)
     d.flat("smudge", 1.76, 1.1, GF, 1.3, 1.0, angle_deg=10)
+    d.flat("nicotine", 1.5, 2.2, plan.CEILING, 1.8, 2.2, up=False, angle_deg=80)
     d.build()
 
 
 def living():
     put("sofa_02", "sofa", 4.28, 2.30, GF, facing=0)
-    dr.rug("rug_living", 4.05, 1.05, 6.55, 3.55, GF)
+    dr.rug("rug_living", 4.05, 1.05, 6.55, 3.55, GF, seed=1, lift=0.025)
     put("small_wooden_table_01", "coffee_table", 5.42, 2.30, 0.012, facing=0)
     put("ArmChair_01", "armchair", 6.02, 3.42, GF, facing=-82)
     put("side_table_01", "tv_table", 6.98, 0.82, GF, facing=180)
@@ -245,12 +246,11 @@ def living():
     put("WoodenTable_03", "sideboard", 5.42, 4.12, GF, facing=-90)
     dr.table_lamp("sideboard", (5.86, 4.14, 0.832), kind="warm", watts=20)
     dr.broken_floor_lamp("broken", (2.86, 2.55, GF), direction_deg=76)
-    dr.pendant("living", 4.9, 2.3, plan.CEILING, drop=0.6, kind="off")
+    dr.pendant("living", 4.9, 2.3, plan.CEILING, drop=0.6, kind="off", style="drum")
     put("mantel_clock_01", "mantel_clock", 6.84, 2.30, 1.146, facing=180)
     put("standing_picture_frame_02", "mantel_photo", 6.85, 1.74, 1.146, facing=165)
     put("brass_vase_01", "mantel_vase", 6.84, 2.90, 1.146, facing=0, scale=0.55)
     put("fancy_picture_frame_02", "picture_fireplace", 6.95, 2.30, 1.86, facing=180)
-    put("hanging_picture_frame_02", "picture_living", plan.PART_X1, 3.55, 1.62, facing=0, tilt=(0, -4.0))
     put("wine_bottles_01", "bottles", 5.36, 2.02, 0.545, facing=20, scale=0.9)
     put("ceramic_vase_01", "vase_sideboard", 5.02, 4.14, 0.832, facing=0, scale=0.8)
     put("Ottoman_01", "ottoman", 5.18, 3.30, 0.012, facing=-75, scale=0.7)
@@ -258,7 +258,11 @@ def living():
 
     dr.curtain_pole("pole_living_front", SOUTH, 3.50, 6.34, 2.40)
     dr.curtain("curtain_living_front_l", SOUTH, 3.52, 4.18, 2.39, 0.04, seed=1)
-    dr.curtain("curtain_living_front_r", SOUTH, 5.28, 6.32, 2.39, 0.04, seed=2)
+    # (drawn back clear of the radiator: it used to hang through it)
+    dr.curtain("curtain_living_front_r", SOUTH, 5.70, 6.33, 2.39, 0.04, seed=2)
+    # the side window by the chimney: one thin curtain pushed to the side, stopping at the sill
+    dr.curtain_pole("pole_living_side", EAST, 0.28, 1.32, 2.37, off=0.06)
+    dr.curtain("curtain_living_side", EAST, 0.34, 0.84, 2.36, 0.965, seed=8, off=0.06, key="fabric_pillow")
 
     small, soft = MeshBuilder(), MeshBuilder()
     table = 0.548
@@ -277,7 +281,7 @@ def living():
     # on the sofa: two cushions and a blanket someone slept under
     cl.pillow(soft, 4.02, 1.68, 0.60, 0.22, 0.22, 0.15, yaw=90, lean=-62, seed=11, key="fabric_plaid")
     cl.pillow(soft, 4.20, 3.02, 0.50, 0.22, 0.22, 0.15, yaw=70, lean=-18, dent=0.4, seed=12, key="fabric_plaid")
-    cl.heap(soft, 4.30, 2.35, 0.40, 0.26, 0.55, 0.12, "fabric_plaid", seed=13)
+    cl.heap(soft, 4.30, 2.35, 0.40, 0.26, 0.55, 0.12, "fabric_plaid", seed=13, spread=0.25)
     cl.pillow(soft, 5.9, 3.42, 0.52, 0.20, 0.20, 0.13, yaw=10, lean=-30, seed=14, key="fabric_curtain")
     # by the television: a video recorder, tapes, and slippers kicked off by the armchair
     shapes.obox(small, (6.98, 0.82, 0.30), (0.26, 0.38, 0.085), 68, "c_black")
@@ -290,6 +294,8 @@ def living():
     cl.standing_photo(small, 4.92, 4.26, 0.832, "polaroid", yaw=-14, width=0.09, key="wood_dark")
     cl.standing_photo(small, 6.86, 2.62, 1.146, "photo_b", yaw=-96, width=0.11)
     cl.framed(small, DIVIDER_S, 5.55, 1.62, 0.34, "photo_a", tilt=-2.0)
+    # over the sofa (the model that hung here has a black canvas)
+    cl.framed(small, ROOM_WEST, 3.55, 1.64, 0.62, "photo_c", tilt=-3.0, border=0.045)
     cl.framed(small, DIVIDER_S, 5.08, 1.52, 0.20, "photo_d", tilt=4.0, key="metal_brass")
     cl.framed(small, DIVIDER_S, 6.02, 1.50, 0.18, "photo_c", tilt=-1.0, key="wood_mid")
     # a packing box by the bookcase, half filled with what came off its shelves
@@ -324,6 +330,8 @@ def living():
     d.wall("smudge", ROOM_WEST, 2.22, 1.2, 0.36, 0.42)
     d.wall("plaster_damage", DIVIDER_S, 4.55, 2.2, 0.5, 0.5)
     d.flat("water_stain", 6.2, 3.6, plan.CEILING, 1.5, 1.3, up=False, angle_deg=70)
+    d.flat("nicotine", 4.7, 2.4, plan.CEILING, 2.6, 2.2, up=False, angle_deg=20)       # over the sofa
+    d.flat("water_stain", 3.4, 0.9, plan.CEILING, 1.0, 0.9, up=False, angle_deg=200)
     d.build()
 
 
@@ -332,22 +340,31 @@ def landing():
     put("potted_plant_04", "plant_landing", 1.78, -0.02, F1 + 0.90, facing=0, scale=1.2)
     put("hanging_picture_frame_02", "picture_landing", plan.PART_X0, 1.55, F1 + 1.62, facing=180)
     put("hanging_picture_frame_03", "picture_landing_2", plan.PART_X0, 7.70, F1 + 1.65, facing=180, tilt=(0, -5.0))
-    dr.pendant("landing", 1.78, 1.6, plan.ROOF_Z, drop=0.55, kind="off")
-    dr.rug("runner_landing", 1.36, 3.25, 2.22, 7.55, F1, key="carpet_runner")
+    dr.pendant("landing", 1.78, 1.6, plan.ROOF_Z, drop=0.42, kind="off", style="bare")
+    dr.rug("runner_landing", 1.36, 3.25, 2.22, 7.55, F1, key="carpet_runner", seed=2, lift=0.03)
+    dr.rug("rug_landing", 0.62, 1.20, 1.72, 2.72, F1, key="carpet_runner", seed=4)
+    # the side window over the radiator: a short curtain, to the sill
+    dr.curtain_pole("pole_landing_side", WEST, 0.55, 1.55, F1 + 2.37, off=0.06)
+    dr.curtain("curtain_landing_side", WEST, 0.60, 1.14, F1 + 2.36, F1 + 0.965, seed=9, off=0.06, key="fabric_pillow")
+    # a low bookcase on the front landing, with a lamp that no longer works
+    dr.bookcase("bookcase_landing", HALL_EAST, 0.30, 1.30, F1, height=1.02, depth=0.26, shelves=3, seed=5, key="wood_mid")
+    dr.table_lamp("landing", (2.25, 0.52, F1 + 1.05), kind="off")
     dr.radiator("radiator_landing", WEST, 0.6, 1.5, F1)
     put("cardboard_box_01", "box_landing", 0.5, 7.5, F1, facing=70, scale=0.9)
 
     small, soft = MeshBuilder(), MeshBuilder()
-    cl.heap(soft, 0.44, 0.50, F1 + 0.46, 0.20, 0.18, 0.10, "fabric_curtain", seed=31)              # clothes on the chair
+    cl.heap(soft, 0.44, 0.50, F1 + 0.46, 0.20, 0.18, 0.10, "fabric_curtain", seed=31, spread=0.15)   # clothes on the chair
     cl.heap(soft, 0.95, 0.62, F1, 0.26, 0.20, 0.09, "fabric_plaid", seed=32, yaw=30)
     cl.shoe(small, 1.30, 0.34, F1, yaw=100, key="wood_dark")
     cl.shoe(small, 1.46, 0.42, F1, yaw=80, key="wood_dark", tipped=True)
-    cl.paper_stack(small, 2.16, 0.60, F1, count=9, yaw=-12, seed=5)
+    cl.paper_stack(small, 1.98, 1.72, F1 + 0.016, count=9, yaw=-12, seed=5)
+    cl.book(small, 2.26, 0.95, F1 + 1.05, "phonebook", yaw=-80, size=(0.15, 0.21, 0.035))
+    cl.standing_photo(small, 2.30, 1.15, F1 + 1.05, "photo_d", yaw=-100)
     cl.framed(small, HALL_EAST, 4.05, F1 + 1.62, 0.26, "photo_b", tilt=1.5)
     cl.framed(small, HALL_EAST, 4.45, F1 + 1.56, 0.18, "photo_c", tilt=-4.0, key="wood_mid")
     cl.framed(small, HALL_EAST, 6.08, F1 + 1.60, 0.20, "photo_d", tilt=0.0, key="metal_brass")
     cl.open_box(small, 1.72, 7.50, F1, size=(0.44, 0.36, 0.28), yaw=-20, flaps=(100.0, 165.0, 130.0, 95.0), seed=6)
-    cl.heap(soft, 1.72, 7.50, F1 + 0.10, 0.18, 0.14, 0.17, "fabric_curtain", seed=33, yaw=-20)
+    cl.heap(soft, 1.72, 7.50, F1 + 0.10, 0.18, 0.14, 0.17, "fabric_curtain", seed=33, yaw=-20, spread=0.0)
     shapes.sheet(small, (1.9, 2.4, F1), 0.21, "magazine_b", yaw=50, lift=0.014)
     shapes.soften(small.build("clutter_landing", "clutter"))
     shapes.soften(soft.build("clutter_landing_cloth", "clutter"), 80.0)
@@ -364,6 +381,8 @@ def landing():
     d.wall("plaster_damage", WEST, 7.35, F1 + 1.5, 0.55, 0.55)
     d.wall("smudge", HALL_EAST, 2.85, F1 + 1.2, 0.36, 0.42)
     d.flat("water_stain", 0.75, 5.0, plan.ROOF_Z, 1.4, 1.5, up=False, angle_deg=40)
+    d.flat("water_stain", 1.6, 1.3, plan.ROOF_Z, 1.1, 1.0, up=False, angle_deg=150)
+    d.flat("mould", 0.55, 0.55, plan.ROOF_Z, 1.0, 1.0, up=False, angle_deg=0)
     d.build()
 
 
@@ -377,14 +396,32 @@ def bedroom():
     put("ceramic_vase_01", "vase_bedroom", 7.05, 0.5, F1 + 0.92, facing=0, scale=0.75)
     put("standing_picture_frame_02", "photo_bedroom", 7.06, 1.05, F1 + 0.92, facing=170)
     put("painted_wooden_chair_01", "bedroom_chair", 6.55, 1.85, F1, facing=150)
-    dr.rug("rug_bedroom", 3.30, 2.55, 4.20, 4.05, F1)
-    dr.pendant("bedroom", 4.9, 2.0, plan.ROOF_Z, drop=0.55, kind="off")
+    dr.rug("rug_bedroom", 3.30, 2.55, 4.20, 4.05, F1, seed=6)
+    dr.pendant("bedroom", 4.9, 2.0, plan.ROOF_Z, drop=0.55, kind="off", style="pleated", tilt=7.0)
     dr.radiator("radiator_bedroom", SOUTH, 4.22, 5.62, F1)
     put("hanging_picture_frame_03", "picture_bedroom", 5.05, plan.DIVIDER_Y0, F1 + 1.78, facing=-90)
 
     dr.curtain_pole("pole_bedroom", SOUTH, 3.50, 6.34, F1 + 2.40)
-    dr.curtain("curtain_bedroom_l", SOUTH, 3.52, 4.95, F1 + 2.39, F1 + 0.04, seed=5)
-    dr.curtain("curtain_bedroom_r", SOUTH, 5.72, 6.32, F1 + 2.39, F1 + 0.04, seed=6)
+    # sill length: full-length curtains hung through the radiator under the window
+    dr.curtain("curtain_bedroom_l", SOUTH, 3.52, 4.95, F1 + 2.39, F1 + 0.79, seed=5)
+    dr.curtain("curtain_bedroom_r", SOUTH, 5.72, 6.32, F1 + 2.39, F1 + 0.79, seed=6)
+    # the side window: a roller blind pulled down to the air conditioner in it
+    dr.roller_blind("blind_bedroom_side", EAST, 0.455, 1.145, F1 + 2.243, F1 + 1.46, off=-0.055, seed=5)
+    # the north-east corner: a linen hamper and two boxes that were never unpacked
+    put("cardboard_box_01", "box_bedroom_1", 6.90, 2.86, F1, facing=8)
+    put("cardboard_box_01", "box_bedroom_2", 6.93, 2.84, F1 + 0.34, facing=-20, scale=0.8)
+    # the west wall, between the wardrobe and the door: a dressing mirror leant against it
+    glass = MeshBuilder()
+    lean = 0.085
+    for (a0, a1, z0, z1, key, out) in ((2.20, 2.72, 0.03, 1.60, "wood_dark", 0.0), (2.245, 2.675, 0.075, 1.555, "mirror", 0.004)):
+        pts = [ROOM_WEST.P(a0, 0.03 + lean * (1 - z0 / 1.6) + out, F1 + z0), ROOM_WEST.P(a1, 0.03 + lean * (1 - z0 / 1.6) + out, F1 + z0),
+               ROOM_WEST.P(a1, 0.03 + lean * (1 - z1 / 1.6) + out, F1 + z1), ROOM_WEST.P(a0, 0.03 + lean * (1 - z1 / 1.6) + out, F1 + z1)]
+        if (pts[1] - pts[0]).cross(pts[2] - pts[0]).dot(ROOM_WEST.normal) < 0:
+            pts = pts[::-1]
+        glass.face(pts, key)
+    for a in (2.20, 2.70):
+        ROOM_WEST.box(glass, a, a + 0.02, 0.0, 0.03 + lean, F1, F1 + 0.03, "wood_dark")
+    glass.build("bedroom_mirror", "furniture")
 
     small, soft = MeshBuilder(), MeshBuilder()
     dr.mug(small, 3.95, 4.14, F1 + 0.70)
@@ -397,7 +434,13 @@ def bedroom():
     cl.clock_radio(small, 6.28, 4.24, F1 + 0.617, yaw=12)
     cl.ashtray(small, 6.06, 4.02, F1 + 0.617, butts=4, seed=9)
     # clothes: over the chair, on the floor, and a suitcase open and half packed
-    cl.heap(soft, 6.56, 1.86, F1 + 0.46, 0.20, 0.18, 0.14, "fabric_plaid", seed=41)
+    cl.heap(soft, 6.56, 1.86, F1 + 0.46, 0.20, 0.18, 0.14, "fabric_plaid", seed=41, spread=0.15)
+    shapes.lathe(small, 6.98, 3.62, [(0.17, F1), (0.21, F1 + 0.55), (0.20, F1 + 0.55), (0.16, F1 + 0.03)], "wicker", 16,
+                 cap_last=True)
+    cl.heap(soft, 6.98, 3.62, F1 + 0.46, 0.19, 0.19, 0.17, "fabric_bed", seed=45, spread=0.0)
+    cl.paper_stack(small, 2.74, 2.48, F1 + 0.016, count=6, yaw=20, seed=8, region="magazine_b", width=0.21)
+    cl.shoe(small, 2.70, 2.95, F1 + 0.016, yaw=10, key="vinyl")
+    cl.shoe(small, 2.82, 3.05, F1 + 0.016, yaw=-25, key="vinyl", tipped=True)
     cl.heap(soft, 5.95, 1.55, F1, 0.30, 0.22, 0.07, "towel", seed=42, yaw=40)
     cl.heap(soft, 3.50, 2.45, F1, 0.22, 0.18, 0.08, "fabric_curtain", seed=43, yaw=-20)
     cl.suitcase(small, soft, 5.36, 2.98, F1 + 0.585, yaw=78, seed=44)       # on the foot of the bed
@@ -436,6 +479,8 @@ def bedroom():
     d.wall("water_stain", EAST, 3.7, F1 + 2.2, 1.0, 0.8)
     d.wall("smudge", ROOM_WEST, 3.05, F1 + 1.2, 0.36, 0.42)
     d.flat("water_stain", 6.4, 3.4, plan.ROOF_Z, 1.7, 1.5, up=False, angle_deg=15)
+    d.flat("nicotine", 4.9, 3.5, plan.ROOF_Z, 2.2, 1.8, up=False, angle_deg=100)        # over the bed
+    d.flat("mould", 2.99, 0.45, plan.ROOF_Z, 0.9, 0.9, up=False, angle_deg=0)
     d.build()
 
 
@@ -493,13 +538,91 @@ def details():
     fx.build("electrics_detail", "fixtures")
 
 
+def kitchen_wall():
+    """The kitchen's long bare wall, by the table: a chest used as a
+    sideboard with the bread bin and the radio on it, a shelf of tins over
+    it, an apron on a hook by the way through to the living room."""
+    chest("kitchen_sideboard", DIVIDER_N, 4.45, 5.45, GF, depth=0.42, height=0.86, open_drawer=2)
+    mb = MeshBuilder()
+    DIVIDER_N.box(mb, 4.28, 5.30, 0.0, 0.17, GF + 1.90, GF + 1.92, "wood_mid")
+    for a in (4.38, 5.20):
+        mb.prism([(0.0, GF + 1.90), (0.15, GF + 1.90), (0.0, GF + 1.76)], DIVIDER_N.P(a, 0, 0), DIVIDER_N.normal,
+                 (0, 0, 1), DIVIDER_N.along, 0.018, "wood_mid")
+    DIVIDER_N.box(mb, 4.22, 4.30, 0.0, 0.016, GF + 1.60, GF + 1.66, "wood_mid")
+    mb.cylinder(DIVIDER_N.P(4.26, 0.016, GF + 1.63), DIVIDER_N.normal * 0.04, 0.006, "metal_brass", segments=6)
+    mb.build("kitchen_shelf", "furniture", recalc=True)
+    dr.curtain("apron_kitchen", DIVIDER_N, 4.14, 4.40, GF + 1.62, GF + 0.86, seed=15, off=0.045, key="gingham")
+    small = MeshBuilder()
+    y, top = plan.DIVIDER_Y1 + 0.20, GF + 0.86
+    shapes.loft(small, [shapes.ring(4.72, y, top + zz, 0.17 * sc, 0.115 * sc, 18, 5.0) for zz, sc in
+                        ((0.0, 0.97), (0.02, 1.0), (0.13, 1.0), (0.19, 0.86), (0.205, 0.5))], "enamel_almond",
+                cap_first=True, cap_last=True)                                              # the bread bin
+    cl.clock_radio(small, 5.20, y - 0.02, top, yaw=172)
+    cl.plates(small, 5.02, y + 0.02, top, 4, radius=0.10)
+    dr.mug(small, 4.98, y + 0.17, top)
+    shapes.sheet(small, (5.22, y + 0.15, top), 0.20, "letter", yaw=160, lift=0.002)
+    sz = GF + 1.92
+    for k, (a, region) in enumerate(((4.36, "soup"), (4.46, "beans"), (4.58, "soup"), (4.98, "beans"))):
+        cl.tin(small, a, plan.DIVIDER_Y1 + 0.085, sz, region, turn=40 * k)
+    cl.cereal(small, 4.78, plan.DIVIDER_Y1 + 0.075, sz, "cereal_a", yaw=178)
+    cl.bottle(small, 5.14, plan.DIVIDER_Y1 + 0.08, sz, height=0.25)
+    cl.bottle(small, 5.22, plan.DIVIDER_Y1 + 0.09, sz, height=0.22, key="glass")
+    shapes.soften(small.build("clutter_kitchen_wall", "clutter"))
+    d = Decals("decals_kitchen_extra", seed=33)
+    d.flat("nicotine", 6.75, 6.3, plan.CEILING, 1.7, 2.0, up=False, angle_deg=10)             # over the cooker
+    d.flat("grease", 6.6, 6.3, plan.CEILING, 1.1, 1.2, up=False, angle_deg=50)
+    d.flat("dust", 4.95, y, top + 0.0015, 1.0, 0.42)
+    d.build()
+
+
+def contact_dirt():
+    """Dirt where every floor meets its walls: a dark line against the
+    skirting that reaches further into the room in some places than others,
+    and a fan of it in every inside corner."""
+    d = Decals("decals_contact", seed=52)
+    rng = d.rng
+    base = joinery.SKIRT_T + 0.001
+    for run in shell.wall_runs("floor", joinery.SKIRT_T):
+        p0, p1, n = run["p0"], run["p1"], run["normal"]
+        length = (p1 - p0).length
+        if length < 0.25:
+            continue
+        along = (p1 - p0).normalized()
+        at = 0.0
+        while at < length - 0.05:
+            piece = min(rng.uniform(1.0, 2.2), length - at)
+            reach = rng.uniform(0.10, 0.24)
+            lift = Vector((0, 0, 0.0030 + rng.random() * 0.0006))
+            a, b = p0 + along * at + n * base + lift, p0 + along * (at + piece) + n * base + lift
+            u0 = rng.random()
+            u1 = u0 + piece / 1.9
+            pts, uvs = [a, b, b + n * reach, a + n * reach], [(u0, 0), (u1, 0), (u1, 1), (u0, 1)]
+            if (pts[1] - pts[0]).cross(pts[2] - pts[0]).z < 0:
+                pts, uvs = pts[::-1], uvs[::-1]
+            d.quad("contact_dirt", pts, uvs)
+            at += piece
+        for end, corner, away in (("end0", p0, along), ("end1", p1, -along)):
+            if run[end] != "inside" or run["axis"] != "x":       # each corner once
+                continue
+            size = rng.uniform(0.24, 0.42)
+            c = corner + n * base + away * base + Vector((0, 0, 0.0038))
+            pts, uvs = [c, c + away * size, c + away * size + n * size, c + n * size], [(0, 0), (1, 0), (1, 1), (0, 1)]
+            if (pts[1] - pts[0]).cross(pts[2] - pts[0]).z < 0:
+                pts, uvs = pts[::-1], uvs[::-1]
+            d.quad("corner_dirt", pts, uvs)
+    return d.build()
+
+
 def build():
     models.reset()
     hall()
     living()
     kitchen.build()
+    kitchen_wall()
     landing()
     bedroom()
     bathroom.build()
     utility.build()
     details()
+    contact_dirt()
+    yard.dress()

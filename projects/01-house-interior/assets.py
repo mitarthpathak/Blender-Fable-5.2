@@ -132,8 +132,8 @@ SURFACES: dict[str, Surface] = {
     "metal_painted": Surface("rusty_metal_02", "#8a8676", gen="dull_hard"),
     "bark": Surface("bark_brown_02", "#4a4338", gen="dull"),
     "roof_tin": Surface("rusty_corrugated_iron", "#4f4239", gen="dull"),
-    "ground_dirt": Surface("brown_mud_leaves_01", "#3f392c", gen="dull"),
-    "shed_boards": Surface("wood_peeling_paint_weathered", "#5c5b50", mono=True),
+    "ground_dirt": Surface("brown_mud_leaves_01", "#5d533f", gen="dull"),
+    "shed_boards": Surface("wood_floor_worn", "#5c5b50", mono=True),         # bare grey boards
     "floor_hall": Surface("old_linoleum_flooring_01", "#74694f", gen="dull"),
     "floor_living": Surface("old_wooden_floor_02"),
     "floor_landing": Surface("dirty_carpet", "#5c5747"),

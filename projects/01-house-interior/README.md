@@ -92,6 +92,8 @@ All dimensions live in `plan.py`; nothing else hard-codes them.
 | `house.blend` | The house scene, rebuilt by `build.py` at each later phase |
 | `assets.py` | Manifest of everything taken from Poly Haven; running it downloads and tints |
 | `decals.py` | Generates the grime and damage decal textures |
+| `texgen.py` | Draws the surfaces that are not photographs: block plinth, tiles, striped paper |
+| `hb/yard.py` | The back and sides of the house and its yard: steps, meter, vents, shed, woodpile |
 | `labels.py` | Generates the print sheet: packaging, papers, photographs (all original, fictional) |
 | `textures/`, `models/` | The downloaded assets (CC0), in Git LFS |
 
@@ -184,6 +186,7 @@ Cameras saved in the scene: `cam_hero_porch`, `cam_hero_hallway`,
 | `renders/10_detail_hero_*.png` | Kitchen, bathroom, living room and hallway after the first detail pass |
 | `renders/12_rooms_hero_*.png` | Every room after the second detail pass: the current state |
 | `renders/12_rooms_work_hero_*.png` | Utility cupboard, landing and bathroom under the even work light (they are near black in the night lighting) |
+| `renders/13_before_*.png`, `renders/14_after_*.png` | The quality pass: every room and every side, before and after (`REVIEW.md`) |
 
 Rebuild everything from the scripts:
 
@@ -196,7 +199,7 @@ blender -b house.blend --python render_views.py -- --rig scene --samples 160 --r
 blender -b house.blend --python export_final.py
 ```
 
-About 170,000 triangles in 174 mesh objects. Repeated furniture shares one
+About 242,000 triangles in 301 mesh objects. Repeated furniture shares one
 mesh per model.
 
 ## For Godot
@@ -212,5 +215,8 @@ mesh per model.
   is shut; the wardrobe and cupboard doors are separate objects too.
 - Glass and the decals use alpha blending. The television's glow is an area
   light, which glTF cannot carry: add it in the engine.
-- The house has no exterior beyond its walls yet, and no collision apart
-  from the stair ramp; let Godot generate trimesh collision for the shell.
+- No collision apart from the stair ramp; let Godot generate trimesh
+  collision for the shell.
+- Collections: `lot` holds the seven yard and street objects the town
+  replaces (and the streetlight), `atmosphere` the moon and the render-only
+  haze. A scene that links `house.blend` can leave both out.

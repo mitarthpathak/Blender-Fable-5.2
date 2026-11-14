@@ -25,7 +25,7 @@ DECIMATE = {
     "book_encyclopedia_set_01": 0.08, "brass_vase_01": 0.12, "cardboard_box_01": 0.22,
     "ceramic_vase_01": 0.2, "desk_lamp_arm_01": 0.22, "fancy_picture_frame_02": 0.1,
     "hanging_picture_frame_03": 0.12, "mantel_clock_01": 0.15, "plastic_crate_03": 0.1,
-    "potted_plant_02": 0.15, "potted_plant_04": 0.35, "wine_bottles_01": 0.12, "wooden_stool_01": 0.25,
+    "potted_plant_01": 0.04, "potted_plant_02": 0.15, "potted_plant_04": 0.35, "wine_bottles_01": 0.12, "wooden_stool_01": 0.25,
     "hanging_picture_frame_02": 0.45, "standing_picture_frame_02": 0.5,
     "side_table_tall_01": 0.6, "vintage_grandfather_clock_01": 0.7, "ArmChair_01": 0.8,
 }

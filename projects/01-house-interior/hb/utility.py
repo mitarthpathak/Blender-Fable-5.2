@@ -65,22 +65,98 @@ def shelves(small):
 
 
 def tank():
-    """A copper hot-water cylinder in its lagging jacket, with pipework."""
+    """A copper hot-water cylinder in its lagging jacket: quilted, so it
+    swells between the straps that hold it on, laced up the front, the bare
+    copper showing at the foot. Pipework off the dome and an immersion
+    heater with its flex."""
     mb = MeshBuilder()
     cx, cy, r = X0 + 0.30, Y1 - 0.30, 0.225
-    shapes.lathe(mb, cx, cy, [(r * 0.9, F1 + 0.06), (r, F1 + 0.12), (r, F1 + 1.02), (r * 0.72, F1 + 1.14),
-                              (r * 0.2, F1 + 1.18)], "fabric_curtain", 16)                # the jacket
-    for z in (0.34, 0.80):                                                                # its straps
-        shapes.annulus(mb, cx, cy, F1 + z, r + 0.004, r - 0.002, 0.03, "plastic_black", n=16)
-    shapes.lathe(mb, cx, cy, [(r * 0.7, F1), (r * 0.9, F1 + 0.06)], "metal_dark", 12)
+    n = 32
+    bands = (0.09, 0.33, 0.57, 0.81, 1.03)
+    profile = [(r * 0.88, F1 + 0.075)]
+    for z0, z1 in zip(bands, bands[1:]):
+        profile += [(r - 0.007, F1 + z0 + 0.01), (r + 0.004, F1 + z0 + 0.06), (r + 0.007, F1 + (z0 + z1) / 2),
+                    (r + 0.004, F1 + z1 - 0.06), (r - 0.007, F1 + z1 - 0.01)]
+    profile += [(r * 0.97, F1 + 1.07), (r * 0.88, F1 + 1.105), (r * 0.72, F1 + 1.14), (r * 0.5, F1 + 1.163),
+                (r * 0.26, F1 + 1.176), (0.04, F1 + 1.18)]
+    shapes.lathe(mb, cx, cy, profile, "fabric_curtain", n)                                 # the jacket
+    for z in bands[1:-1]:                                                                   # its straps
+        shapes.annulus(mb, cx, cy, F1 + z - 0.012, r - 0.004, r - 0.012, 0.024, "plastic_black", n=n)
+    shapes.lathe(mb, cx, cy, [(r * 0.72, F1), (r * 0.80, F1 + 0.02), (r * 0.86, F1 + 0.08)], "metal_brass", 24)
+    for k in range(9):                                                                      # the lacing up the front
+        z = F1 + 0.16 + k * 0.105
+        p = Vector((cx + (r + 0.008) * 0.82, cy - (r + 0.008) * 0.57, z))
+        mb.box((p.x - 0.006, p.y - 0.012, p.z), (p.x + 0.006, p.y + 0.012, p.z + 0.03), "plastic_white")
     top = Vector((cx, cy, F1 + 1.18))
-    shapes.tube(mb, [top, top + Vector((0, 0, 0.30)), top + Vector((0.0, 0.20, 0.38)), top + Vector((0.0, 0.26, 0.38))],
-                0.011, "metal_brass", segments=8)
-    shapes.tube(mb, [top + Vector((0.0, 0.0, 0.30)), top + Vector((0.0, 0.0, 1.45))], 0.011, "metal_brass", segments=8)
-    shapes.tube(mb, [(cx + 0.17, cy - 0.16, F1 + 0.20), (cx + 0.17, cy - 0.16, F1 + 0.04), (cx + 0.40, cy - 0.16, F1 + 0.04),
-                     (cx + 0.40, cy - 0.16, F1)], 0.011, "metal_brass", segments=8)
-    mb.box((cx + 0.10, cy - 0.21, F1 + 0.50), (cx + 0.20, cy - 0.15, F1 + 0.62), "plastic_cream")   # the thermostat
-    return shapes.soften(mb.build("utility_tank", "furniture"))
+    shapes.tube(mb, [top, top + Vector((0, 0, 0.26)), top + Vector((0, 0.03, 0.30)), top + Vector((0.0, 0.20, 0.34)),
+                     top + Vector((0.0, 0.26, 0.34))], 0.011, "metal_brass", segments=8)
+    shapes.tube(mb, [top + Vector((0.0, 0.0, 0.26)), top + Vector((0.0, 0.0, 1.45))], 0.011, "metal_brass", segments=8)
+    shapes.tube(mb, [(cx + 0.17, cy - 0.16, F1 + 0.20), (cx + 0.17, cy - 0.16, F1 + 0.06), (cx + 0.20, cy - 0.16, F1 + 0.035),
+                     (cx + 0.38, cy - 0.16, F1 + 0.035), (cx + 0.40, cy - 0.16, F1)], 0.011, "metal_brass", segments=8)
+    for z in (0.52, 0.98):                                                                  # compression joints
+        mb.cylinder(top + Vector((0, 0, z)), (0, 0, 0.03), 0.016, "metal_brass", segments=8)
+    # immersion heater: a black cap on the dome, its flex down to a switch on the wall
+    cap = Vector((cx + 0.09, cy - 0.06, F1 + 1.15))
+    mb.cylinder(cap, (0.012, -0.008, 0.045), 0.042, "plastic_black", segments=12)
+    dr.cable(mb, [cap + Vector((0.03, -0.02, 0.03)), cap + Vector((0.12, -0.10, 0.02)), (cx + 0.20, cy - 0.20, F1 + 0.9),
+                  (cx + 0.16, cy - 0.19, F1 + 0.62)], radius=0.004, key="plastic_white", steps=6)
+    mb.box((cx + 0.10, cy - 0.215, F1 + 0.50), (cx + 0.20, cy - 0.17, F1 + 0.62), "plastic_cream")     # the thermostat
+    return shapes.soften(mb.build("utility_tank", "furniture"), 50.0)
+
+
+def vacuum(small, soft, x, y, yaw=20.0):
+    """An upright vacuum cleaner of the 1980s: a low moulded head on four
+    wheels with a rubber bumper and a lamp, a cloth dust bag hung from the
+    handle, the flex wound round two hooks on its back."""
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    back = math.tan(math.radians(13.0))                    # the handle leans back
+
+    def P(px, py, pz):
+        py += max(0.0, pz - 0.12) * back
+        return Vector((x + px * ca - py * sa, y + px * sa + py * ca, F1 + pz))
+
+    def loop(cy_, pz, hx, hy, power=4.0, n=18):
+        pts = []
+        for k in range(n):
+            t = 2.0 * math.pi * k / n
+            c, s_ = math.cos(t), math.sin(t)
+            pts.append(P(hx * math.copysign(abs(c) ** (2.0 / power), c), cy_ + hy * math.copysign(abs(s_) ** (2.0 / power), s_),
+                         pz))
+        return pts
+
+    # the head: wide at the front, drawn in to the neck behind
+    shapes.loft(small, [loop(-0.02, 0.012, 0.155, 0.150), loop(-0.02, 0.05, 0.160, 0.155), loop(-0.01, 0.085, 0.150, 0.135),
+                        loop(0.03, 0.115, 0.095, 0.085), loop(0.05, 0.125, 0.05, 0.045)], "plastic_red",
+                cap_first=True, cap_last=True)
+    shapes.loft(small, [loop(-0.02, 0.022, 0.166, 0.161), loop(-0.02, 0.044, 0.166, 0.161)], "rubber")       # the bumper
+    lamp = [P(-0.06, -0.160, 0.058), P(0.06, -0.160, 0.058), P(0.06, -0.152, 0.082), P(-0.06, -0.152, 0.082)]
+    small.face(lamp, "glass_frosted")
+    for sx in (-1, 1):                                       # wheels
+        for wy, wr in ((0.10, 0.042), (-0.11, 0.022)):
+            small.cylinder(P(sx * 0.158, wy, wr), Vector((ca, sa, 0)) * sx * 0.022, wr, "plastic_black", segments=12)
+    # the body: motor housing below, the handle tube above it
+    shapes.loft(small, [loop(0.05, 0.12, 0.07, 0.06, 3.0), loop(0.05, 0.20, 0.085, 0.07, 3.0), loop(0.05, 0.30, 0.08, 0.065, 3.0),
+                        loop(0.05, 0.34, 0.03, 0.03, 2.0)], "plastic_red", cap_last=True)
+    shapes.tube(small, [P(0, 0.05, 0.33), P(0, 0.05, 1.02)], 0.013, "metal_steel", segments=8)
+    grip = [P(0, 0.05, 1.02), P(0, 0.04, 1.08), P(0, 0.0, 1.13), P(0, -0.05, 1.12), P(0, -0.07, 1.07), P(0, -0.05, 1.02),
+            P(0, 0.0, 1.0), P(0, 0.05, 1.02)]
+    shapes.tube(small, grip, 0.012, "plastic_black", segments=6)
+    # the bag: hung from a spring clip under the grip, fat in the middle, clamped at the bottom
+    shapes.loft(soft, [loop(-0.03, 0.30, 0.05, 0.04, 2.5, 14), loop(-0.05, 0.40, 0.095, 0.075, 2.5, 14),
+                       loop(-0.06, 0.60, 0.115, 0.09, 2.5, 14), loop(-0.05, 0.80, 0.10, 0.075, 2.5, 14),
+                       loop(-0.03, 0.92, 0.06, 0.045, 2.5, 14), loop(-0.01, 0.97, 0.02, 0.018, 2.0, 14)], "fabric_curtain",
+                cap_first=True, cap_last=True)
+    small.cylinder(P(0, -0.01, 0.965), P(0, 0.05, 0.99) - P(0, -0.01, 0.965), 0.004, "metal_steel", segments=5)
+    small.box(tuple(P(-0.03, -0.115, 0.52)), tuple(P(0.03, -0.112, 0.60)), "print")                           # the maker's badge
+    # flex round its hooks
+    for pz in (0.42, 0.86):
+        small.cylinder(P(0, 0.063, pz), P(0, 0.10, pz) - P(0, 0.063, pz), 0.006, "plastic_black", segments=6)
+    for k in range(3):
+        off = 0.004 * k
+        loop_pts = [P(0.012 - off, 0.085 + off, 0.86), P(-0.02, 0.09 + off, 0.64), P(0.012 - off, 0.085 + off, 0.42),
+                    P(0.03, 0.09 + off, 0.64), P(0.012 - off, 0.085 + off, 0.86)]
+        dr.cable(small, loop_pts, radius=0.0035, steps=5)
+    dr.cable(small, [P(0.012, 0.09, 0.42), P(0.10, 0.14, 0.2), P(0.16, 0.30, 0.02), P(0.02, 0.48, 0.012)], radius=0.0035)
 
 
 def cleaning(small, soft):
@@ -93,7 +169,7 @@ def cleaning(small, soft):
            for t in (math.pi * k / 10 for k in range(11))]
     shapes.tube(small, arc, 0.004, "metal_steel", segments=4)
     small.cylinder((bx + 0.03, by + 0.02, F1 + 0.10), (-0.10, -0.20, 1.25), 0.013, "wood_mid", segments=6)
-    cl.heap(soft, bx + 0.03, by + 0.02, F1 + 0.08, 0.09, 0.09, 0.12, "fabric_pillow", seed=51)
+    cl.heap(soft, bx + 0.03, by + 0.02, F1 + 0.08, 0.09, 0.09, 0.12, "fabric_pillow", seed=51, spread=0.0)
     # a broom and a dustpan against the south wall
     small.cylinder((X0 + 1.10, Y0 + 0.16, F1 + 0.06), (0.06, -0.13, 1.32), 0.012, "wood_mid", segments=6)
     shapes.obox(small, (X0 + 1.10, Y0 + 0.16, F1), (0.30, 0.05, 0.07), 6, "c_brown")
@@ -101,19 +177,11 @@ def cleaning(small, soft):
     # an ironing board folded and leant in the corner
     shapes.obox(small, (X0 + 0.16, Y0 + 0.50, F1), (0.035, 0.36, 1.36), 4, "c_grey", lean=0)
     shapes.obox(small, (X0 + 0.135, Y0 + 0.50, F1 + 0.02), (0.012, 0.34, 1.32), 4, "c_teal")
-    # an upright vacuum cleaner
-    vx, vy = X0 + 1.00, Y1 - 0.34
-    shapes.obox(small, (vx, vy, F1), (0.30, 0.34, 0.11), 20, "c_red")
-    shapes.lathe(small, vx, vy + 0.02, [(0.10, F1 + 0.11), (0.11, F1 + 0.16), (0.11, F1 + 0.62), (0.08, F1 + 0.70)],
-                 "plastic_red", 12)
-    small.cylinder((vx, vy + 0.08, F1 + 0.68), (0.0, 0.05, 0.46), 0.014, "metal_steel", segments=6)
-    small.cylinder((vx - 0.06, vy + 0.13, F1 + 1.14), (0.12, 0, 0), 0.016, "plastic_black", segments=6)
-    dr.cable(small, [(vx + 0.08, vy + 0.10, F1 + 0.5), (vx + 0.2, vy + 0.05, F1 + 0.2), (vx + 0.1, vy - 0.25, F1 + 0.02),
-                     (vx - 0.2, vy - 0.4, F1 + 0.015)], radius=0.004)
+    vacuum(small, soft, X0 + 1.00, Y1 - 0.36)
     # the laundry basket, full
     shapes.lathe(small, X0 + 0.42, Y0 + 0.95, [(0.17, F1), (0.21, F1 + 0.52), (0.20, F1 + 0.52), (0.16, F1 + 0.03)],
                  "wicker", 16, cap_last=True)
-    cl.heap(soft, X0 + 0.42, Y0 + 0.95, F1 + 0.42, 0.19, 0.19, 0.20, "fabric_plaid", seed=7)
+    cl.heap(soft, X0 + 0.42, Y0 + 0.95, F1 + 0.42, 0.19, 0.19, 0.20, "fabric_plaid", seed=7, spread=0.0)
     cl.heap(soft, X0 + 0.80, Y0 + 1.05, F1, 0.22, 0.17, 0.07, "towel", seed=10, yaw=40)
     shapes.sheet(small, (X0 + 0.95, Y0 + 0.62, F1), 0.21, "magazine_a", yaw=70, lift=0.003)
 
@@ -125,7 +193,7 @@ def build():
     cleaning(small, soft)
     shapes.soften(small.build("clutter_utility", "clutter"))
     shapes.soften(soft.build("clutter_utility_cloth", "clutter"), 80.0)
-    dr.pendant("utility", (X0 + X1) / 2 - 0.2, (Y0 + Y1) / 2, plan.ROOF_Z, drop=0.30, kind="off")
+    dr.pendant("utility", (X0 + X1) / 2 - 0.2, (Y0 + Y1) / 2, plan.ROOF_Z, drop=0.30, kind="off", style="bare")
     fx = MeshBuilder()
     dr.switch(fx, ROOM_WEST, 5.82, F1 + 1.22)
     dr.socket(fx, DIVIDER_N, 3.30, F1 + 0.32)

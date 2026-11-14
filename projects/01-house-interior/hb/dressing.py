@@ -113,7 +113,21 @@ def table_lamp(name, base, kind="warm", watts=40.0, coll="lamps", shade="lampsha
     return obj
 
 
-def pendant(name, x, y, ceiling, drop=0.55, kind="off", watts=40.0, coll="lamps"):
+# Pendant shades, as (radius, height below the lampholder) profiles from the
+# top of the shade down. No two rooms were fitted out in the same year.
+SHADES = {
+    "cone": [(0.035, 0.035), (0.17, -0.085)],                                                   # a plain coolie shade
+    "drum": [(0.045, 0.045), (0.135, 0.030), (0.150, -0.150)],                                  # a fabric drum
+    "bell": [(0.030, 0.050), (0.050, 0.020), (0.075, -0.045), (0.125, -0.100), (0.150, -0.112)],   # pressed glass
+    "globe": [(0.030, 0.045), (0.085, 0.010), (0.118, -0.055), (0.100, -0.125), (0.050, -0.165), (0.0, -0.172)],
+    "pleated": [(0.040, 0.040), (0.095, 0.000), (0.185, -0.110)],                               # with a scalloped rim
+}
+
+
+def pendant(name, x, y, ceiling, drop=0.55, kind="off", watts=40.0, coll="lamps", style="cone", tilt=0.0):
+    """A ceiling pendant. `style` picks the shade from SHADES, or "bare" for
+    a bulb on its flex and nothing else. `tilt` (degrees) hangs a shade
+    crooked on its holder."""
     mb = MeshBuilder()
     mb.cylinder((x, y, ceiling - 0.022), (0, 0, 0.022), 0.055, "plastic_white", segments=14)
     mb.cylinder((x, y, ceiling - drop + 0.05), (0, 0, drop - 0.07), 0.0035, "plastic_black", segments=6,
@@ -122,11 +136,30 @@ def pendant(name, x, y, ceiling, drop=0.55, kind="off", watts=40.0, coll="lamps"
     lit = kind != "off"
     _bulb(mb, (x, y, ceiling - drop - 0.03), 0.03, "bulb_on" if lit else "bulb_off")
     obj = mb.build("pendant_" + name, coll, smooth=True)
-    sh = MeshBuilder()
-    sh.cylinder((x, y, ceiling - drop - 0.085), (0, 0, 0.12), 0.17, "lampshade_lit" if lit else "lampshade",
-                segments=18, caps="none", radius_top=0.035)
-    shade_obj = sh.build("shade_pendant_" + name, coll, smooth=True)
-    shade_obj.visible_shadow = False
+    if style != "bare":
+        profile = SHADES[style]
+        glass = style in ("bell", "globe")
+        key = ("glass_frosted" if glass else "lampshade_lit" if lit else "lampshade")
+        n = 24
+        tz = math.tan(math.radians(tilt))
+        sh = MeshBuilder()
+        rings = []
+        for r, h in profile:
+            if r <= 1e-5:
+                rings.append([Vector((x, y, ceiling - drop + h))])
+                continue
+            loop = []
+            for k in range(n):
+                t = 2.0 * math.pi * k / n
+                rr = r
+                if style == "pleated":
+                    rr = r * (1.0 + 0.045 * math.cos(t * 12))
+                px, py = math.cos(t) * rr, math.sin(t) * rr
+                loop.append(Vector((x + px, y + py, ceiling - drop + h + px * tz)))
+            rings.append(loop)
+        shapes.loft(sh, rings, key)                    # one skin: the materials are two-sided
+        shade_obj = sh.build("shade_pendant_" + name, coll, smooth=True)
+        shade_obj.visible_shadow = False
     if lit:
         lightpoint(name, (x, y, ceiling - drop - 0.04), kind, watts)
     return obj
@@ -209,10 +242,100 @@ def curtain_pole(name, face, a0, a1, z, off=0.105, coll="soft"):
     return mb.build(name, coll)
 
 
-def rug(name, x0, y0, x1, y1, z, key="carpet", coll="soft"):
+def rug(name, x0, y0, x1, y1, z, key="carpet", coll="soft", thick=0.016, seed=0, fringe=True, lift=0.0):
+    """A rug with a body: a pile of real thickness that rolls over at the
+    edge, sides that are not quite straight, a ruck or two where it has been
+    walked into, a fringe on the two short ends. `lift` turns one corner up."""
+    rng = random.Random(sum(ord(ch) for ch in name) + seed)
+    tile = core.spec(key).tile
+    long_x = (x1 - x0) >= (y1 - y0)
+    nx = max(6, int((x1 - x0) / 0.12))
+    ny = max(6, int((y1 - y0) / 0.12))
+    p1, p2, p3 = (rng.uniform(0, 6.28) for _ in range(3))
+    ruck_at, ruck_dir = rng.uniform(0.25, 0.75), rng.uniform(-0.5, 0.5)
+    corner = rng.choice(((0, 0), (1, 0), (0, 1), (1, 1)))
     mb = MeshBuilder()
-    mb.box((x0, y0, z), (x1, y1, z + 0.012), key, skip="-z")
-    return mb.build(name, coll)
+    edge = 0.022                                             # the pile rolls down to the floor over this distance
+
+    def point(i, j):
+        s, t = i / nx, j / ny
+        x, y = x0 + (x1 - x0) * s, y0 + (y1 - y0) * t
+        # sides that wander a few millimetres
+        x += 0.006 * math.sin(7.0 * t + p1) * (1 if s > 0.5 else -1) * abs(2 * s - 1) ** 6
+        y += 0.006 * math.sin(6.0 * s + p2) * (1 if t > 0.5 else -1) * abs(2 * t - 1) ** 6
+        rim = min(s * (x1 - x0), (1 - s) * (x1 - x0), t * (y1 - y0), (1 - t) * (y1 - y0))
+        h = thick * min(1.0, rim / edge) ** 0.5
+        along, across = (s, t) if long_x else (t, s)
+        ruck = math.exp(-((along - ruck_at - ruck_dir * (across - 0.5)) / 0.035) ** 2)
+        h += 0.011 * ruck * min(1.0, rim / 0.10) + 0.0025 * math.sin(9 * s + p3) * math.sin(8 * t + p1) * min(1.0, rim / 0.1)
+        if lift:
+            cs, ct = (s if corner[0] == 0 else 1 - s), (t if corner[1] == 0 else 1 - t)
+            h += lift * max(0.0, 1.0 - (cs * (x1 - x0) + ct * (y1 - y0)) / 0.30) ** 2
+        return Vector((x, y, z + 0.0015 + h)), (x / tile, y / tile)
+
+    grid = [[point(i, j) for j in range(ny + 1)] for i in range(nx + 1)]
+    for i in range(nx):
+        for j in range(ny):
+            quad = [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
+            mb.face([q[0] for q in quad], key, uvs=[q[1] for q in quad])
+    if fringe:                                               # a fringe of knotted warp threads on the short ends
+        ends = ((0, -1.0), (nx, 1.0)) if long_x else ((0, -1.0), (ny, 1.0))
+        for index, sign in ends:
+            count = int(((y1 - y0) if long_x else (x1 - x0)) / 0.022)
+            for k in range(count):
+                f = (k + 0.5) / count
+                reach = rng.uniform(0.035, 0.055)
+                skew = rng.uniform(-0.008, 0.008)
+                if long_x:
+                    bx, by = (x0 if index == 0 else x1), y0 + (y1 - y0) * f
+                    a, b = Vector((bx, by - 0.007, z + 0.004)), Vector((bx, by + 0.007, z + 0.004))
+                    tip = Vector((bx + sign * reach, by + skew, z + 0.002))
+                else:
+                    bx, by = x0 + (x1 - x0) * f, (y0 if index == 0 else y1)
+                    a, b = Vector((bx + 0.007, by, z + 0.004)), Vector((bx - 0.007, by, z + 0.004))
+                    tip = Vector((bx + skew, by + sign * reach, z + 0.002))
+                tri = [a, b, tip]
+                if (tri[1] - tri[0]).cross(tri[2] - tri[0]).z < 0:
+                    tri = tri[::-1]
+                mb.face(tri, "fabric_pillow")
+    return mb.build(name, coll, smooth=True)
+
+
+def roller_blind(name, face, a0, a1, z_top, z_bot, off=-0.05, key="fabric_curtain", coll="soft", seed=0):
+    """A roller blind inside a window reveal: a roller on two brackets, a
+    thin sheet of cloth hanging from the back of it with a slight curl, a
+    wooden lath in its hem and a cord with an acorn. `off` is measured out
+    from the wall face; negative is inside the reveal."""
+    rng = random.Random(seed)
+    mb = MeshBuilder()
+    r = 0.019
+    axis = face.P(a0 + 0.012, off, z_top - r - 0.004)
+    mb.cylinder(axis, face.along * (a1 - a0 - 0.024), r, key, segments=10)                       # cloth wound on the roller
+    for a in (a0, a1 - 0.012):
+        face.box(mb, a, a + 0.012, off - 0.028, off + 0.028, z_top - 0.05, z_top, "metal_white")
+    cols, rows = 10, 8
+    tile = core.spec(key).tile
+    skew = rng.uniform(-0.012, 0.012)                          # it never hangs quite level
+    grid = []
+    for i in range(cols + 1):
+        s = i / cols
+        column = []
+        for j in range(rows + 1):
+            t = j / rows
+            z = z_top - r - 0.004 + (z_bot - (z_top - r - 0.004)) * t + skew * (s - 0.5) * t
+            d = off - r + 0.004 * math.sin(s * math.pi) * t + 0.003 * math.sin(3.0 * t + s * 2.0)
+            column.append((face.P(a0 + 0.014 + (a1 - a0 - 0.028) * s, d, z), (s * (a1 - a0) / tile, z / tile)))
+        grid.append(column)
+    for i in range(cols):
+        for j in range(rows):
+            quad = [grid[i][j], grid[i][j + 1], grid[i + 1][j + 1], grid[i + 1][j]]
+            mb.face([q[0] for q in quad], key, uvs=[q[1] for q in quad])
+    lath_l, lath_r = grid[0][rows][0], grid[cols][rows][0]
+    mb.cylinder(lath_l - face.along * 0.004, (lath_r - lath_l) + face.along * 0.008, 0.008, "wood_mid", segments=6)
+    mid = (lath_l + lath_r) / 2
+    mb.cylinder(mid, (0, 0, -0.16), 0.0012, "plastic_white", segments=4, caps="none")
+    mb.cylinder(mid + Vector((0, 0, -0.19)), (0, 0, 0.035), 0.007, "wood_mid", segments=6, radius_top=0.003)
+    return shapes.soften(mb.build(name, coll), 50.0)
 
 
 def radiator(name, face, a0, a1, floor, height=0.58, coll="fixtures"):
@@ -422,15 +545,19 @@ class Decals:
     def __init__(self, name, seed=0):
         self.name, self.mb, self.rng = name, MeshBuilder(), random.Random(seed)
 
-    def wall(self, texture, face, a, z, w, h, flip=None, offset=0.0022):
+    def wall(self, texture, face, a, z, w, h, flip=None, offset=0.0022, uv=None):
+        """A decal on a wall face, centred at (a, z). `uv` (u0, v0, u1, v1)
+        shows only that part of the image, for a texture that repeats along
+        the wall or is carried over a step in it."""
         key = decal_material(texture)
         flip = self.rng.random() < 0.5 if flip is None else flip
         d = offset + self.rng.random() * 0.0006
         corners = [face.P(a - w / 2, d, z - h / 2), face.P(a + w / 2, d, z - h / 2),
                    face.P(a + w / 2, d, z + h / 2), face.P(a - w / 2, d, z + h / 2)]
-        uvs = [(0, 0), (1, 0), (1, 1), (0, 1)]
+        u0, v0, u1, v1 = uv or (0.0, 0.0, 1.0, 1.0)
+        uvs = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
         if flip:
-            uvs = [(1, 0), (0, 0), (0, 1), (1, 1)]
+            uvs = [(u1, v0), (u0, v0), (u0, v1), (u1, v1)]
         n = (corners[1] - corners[0]).cross(corners[2] - corners[0])
         if n.dot(face.normal) < 0:
             corners, uvs = corners[::-1], uvs[::-1]
@@ -447,6 +574,21 @@ class Decals:
         if not up:
             pts, uvs = pts[::-1], uvs[::-1]
         self.mb.face(pts, key, uvs=uvs)
+
+    def quad(self, texture, points, uvs=((0, 0), (1, 0), (1, 1), (0, 1))):
+        """A decal on any four points, wound to face the viewer."""
+        self.mb.face([Vector(p) for p in points], decal_material(texture), uvs=list(uvs))
+
+    def card(self, texture, x, y, z, width, height, angle_deg=0.0, lean=0.0):
+        """A picture standing upright on the ground (a tuft of weeds). Decal
+        materials are two-sided, so one quad is seen from both sides. `lean`
+        tips its top over, in metres."""
+        key = decal_material(texture)
+        ang = math.radians(angle_deg)
+        u = Vector((math.cos(ang), math.sin(ang), 0)) * width / 2
+        tip = Vector((-math.sin(ang), math.cos(ang), 0)) * lean + Vector((0, 0, height))
+        c = Vector((x, y, z))
+        self.mb.face([c - u, c + u, c + u + tip, c - u + tip], key, uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
 
     def build(self, coll="decals"):
         if self.mb.empty:

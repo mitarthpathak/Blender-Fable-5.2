@@ -47,6 +47,9 @@ EXTERIOR = {
     "ext_porch": dict(at=(5.9, -6.4, 1.55), to=(1.9, -0.6, 1.5), lens=24),
     "ext_back_corner": dict(at=(15.5, 17.5, 1.6), to=(5.2, 7.0, 2.8), lens=24),
     "ext_back_door": dict(at=(3.4, 12.6, 1.55), to=(2.2, 8.3, 1.1), lens=22),
+    # the back yard, from beside the back steps
+    "ext_yard": dict(at=(1.6, 10.6, 1.65), to=(8.0, 16.6, 0.75), lens=22),
+    "ext_chimney": dict(at=(13.5, -3.6, 1.6), to=(7.7, 2.4, 4.4), lens=24),
 }
 INTERIOR.update(EXTERIOR)
 
