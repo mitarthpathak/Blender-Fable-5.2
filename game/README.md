@@ -161,52 +161,45 @@ godot --headless --path game --export-release "Windows Desktop" build/HouseInter
 
 Added on the `town-v1` branch. Everything above still works as before.
 
-### Lighting presets
+### Time of day and weather
 
-![Presets: Night, Foggy Overcast Day, Dusk (rows: hallway and porch, High then Low)](screenshots/presets/contact_sheet.jpg)
+![All eight looks on Low: front door, junction, living room](screenshots/time_weather/sheet_all.jpg)
 
-Three looks, each a `LightingPreset` resource in `presets/`:
+Four times (03:00, 06:00, 10:00, 17:00) by two weathers (Clear, Foggy):
+eight looks, each a `LightingPreset` resource in `presets/`
+(`0300_clear.tres` ... `1700_foggy.tres`). **`docs/TIME_WEATHER.md`**
+describes each one, the sun and moon angles, which lights are on, and how
+to tune them. `0300_foggy` is the old Night, exactly; the old Foggy
+Overcast Day, Dusk and Clear Day are now `1000_foggy`, `1700_foggy` and
+`1000_clear`.
 
-| File | Look |
-| --- | --- |
-| `presets/night.tres` | **Night** (default). Exactly the values `main.gd` and `house_lights.gd` used before presets existed. |
-| `presets/foggy_day.tres` | **Foggy Overcast Day**: grey sky, heavy fog, soft shadowless light, street lights off. |
-| `presets/dusk.tres` | **Dusk**: low warm sun from the west, violet fog, street lights just on. |
-
-Open a `.tres` in the Godot inspector to tweak it: key light (moon or sun)
-colour, energy, softness and angle; sky and ambient colour; room-probe
-ambient; volumetric fog (High) and distance fog (Low); exposure for High and
-Low; glow and grade; and multipliers for the lamps, street lights and lit
-windows. `scripts/lighting_preset.gd` documents every field.
-
-`scripts/lighting_presets.gd` applies the preset on top of what `main.gd`
-sets up. `main.gd` only gained three hooks: it attaches the node after
-loading the quality setting, re-applies the preset at the end of
-`set_quality()`, and `_save_quality()` now loads `settings.cfg` before
-writing so it keeps other sections.
+`scripts/lighting_presets.gd` applies the look on top of what `main.gd`
+sets up, cross-fades over 4 seconds when it changes, and can run a clock
+(one game hour in two real minutes). `main.gd`'s three hooks are unchanged.
 
 | Key | Action |
 | --- | --- |
-| F2 | Cycle Night, Foggy Overcast Day, Dusk |
-| F4 | Settings panel: preset dropdown and brightness slider (50 to 200 %) |
+| F2 | Next time of day |
+| F4 | World menu: time, weather, FREEZE TIME, brightness, graphics Low / High |
+| F6 | Free camera (noclip) for screenshots and film framing; F6 again returns to the player |
 
-Both are saved in `user://settings.cfg` under a new `[lighting]` section
-(`preset`, `brightness`); the `[graphics] quality` key is unchanged.
-Brightness multiplies the preset's exposure, so 100 % is the preset as
-authored.
+Time, weather, frozen and brightness are saved under `[lighting]` in the
+build's settings file; `[graphics] quality` is unchanged. Brightness
+multiplies the look's exposure, so 100 % is the look as authored.
 
-Command line: `--preset=night|foggy_day|dusk`, `--brightness=1.2`,
-`--preset-check` (applies Night over the original setup and lists any value
-that changed; it reports 45 values, all identical, on High and Low), and
-`--preset-shots [--quality=low] [--views=hallway,porch]`, which wrote the
-screenshots above. `--env=prop:value,...` overrides Environment properties
-for experiments.
+Command line: `--preset=1000_clear` (or `--time=10 --weather=clear`),
+`--clock`, `--brightness=1.2`, `--preset-check` (applies 03:00 Foggy over
+the original setup and lists any value that changed: 64 values, all
+identical, on High and Low), `--look-selftest` (fades through all eight,
+runs the clock, toggles the camera and the menu), and `--preset-shots
+[--quality=low] [--views=...] [--presets=...]`. `--env=prop:value,...`
+overrides Environment properties for experiments.
 
 **SDFGI sky light.** On High, SDFGI adds the background colour as light
 wherever it sees the sky. Indoors that is right; outdoors it floods the
 yard (the porch row of the Night column shows it: that is the original
-game's look, kept on purpose). Foggy Day and Dusk turn
-`sdfgi_read_sky_light` off; Night keeps it on to stay identical. The town
+game's look, kept on purpose). Every look but 03:00 Foggy turns
+`sdfgi_read_sky_light` off; 03:00 Foggy keeps it on to stay identical. The town
 world turns it off for every preset, because there the player is outdoors.
 
 ### Presets and baked lightmaps
@@ -309,14 +302,21 @@ separate: bake both scenes if you use both.
 Measured on the Low target itself, an Intel HD Graphics 620 (i5-7300U),
 1600x900, with `-- --world=town --town-perf`:
 
-| View | Low (58 % scale) | Low at `main.gd`'s 77 % | High | Draw calls (Low) | Triangles drawn (Low) |
-| --- | --- | --- | --- | --- | --- |
-| Front door, looking out | 32 FPS | 26 FPS | 2 FPS | 304 | 167 k |
-| Junction | 45 FPS | 32 FPS | 4 FPS | 204 | 157 k |
-| Mill Road | 52 FPS | 40 FPS | 6 FPS | 198 | 156 k |
+| View | Low (58 % scale) | High | Draw calls (Low) | Triangles drawn (Low) |
+| --- | --- | --- | --- | --- |
+| Front door, looking out | 35 FPS | 2 FPS | 655 | 238 k |
+| Junction | 44 FPS | 4 FPS | 483 | 210 k |
+| Mill Road | 50 FPS | 5 FPS | 379 | 197 k |
+
+These are after the second detail pass (car interiors, window interiors and
+lit rooms, hero facades, single leaves, the gas station, the mill). Through
+the passes the same views ran at 32 / 45 / 52, then 36 / 45 / 52, now
+35 / 44 / 50 FPS, while draw calls doubled and triangles rose by a quarter:
+this GPU is bound by pixels, and the added detail is small on screen, fades
+with distance and is instanced where it repeats.
 
 Draw calls and triangles include the shadow passes. The town model is about
-116,000 triangles in 232 objects (44 unique meshes); with the house hidden
+209,000 triangles in 372 objects (84 unique meshes); with the house hidden
 the main pass is 117 draw calls and 83,000 triangles.
 
 That GPU is limited by pixels, not triangles: an empty scene runs at 70 FPS
@@ -337,6 +337,24 @@ High is not meant for that machine (2 to 6 FPS there); it needs a discrete GPU.
 ![Low: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_low.jpg)
 ![High: Night, Foggy Overcast Day, Dusk](screenshots/town/contact_sheet_high.jpg)
 
+#### Night fog on Low
+
+Low has no volumetric fog. Outdoors at night it uses the distance fog from
+Night's **Outdoors** group, a blue-grey that hides houses by about 30 m, and
+`town.gd` draws a soft additive halo round each street light
+(`outdoor_street_halo_low` sets its strength per preset). Colours in the
+`.tres` files are sRGB, as everywhere in Godot: a fog colour of 0.1 is nearly
+black on screen.
+
+![Low after the detail pass: Night and Foggy Overcast Day](screenshots/town/detail_pass_low.jpg)
+
+#### The mill on Low
+
+The mill is 70 to 110 m away. High's volumetric fog leaves a faint shape of
+it by itself; Low's distance fog would erase it, so in thick fog on Low
+`town.gd` draws it unshaded and unfogged, a few percent darker than the fog
+colour. In Clear Day it is drawn with its real materials.
+
 #### Town checks
 
 ```bash
@@ -345,6 +363,10 @@ godot --path game -- --world=town --town-perf --quality=low      # FPS, draw cal
 godot --path game -- --world=town --preset-shots --views=front_door,junction,side_street --out=res://screenshots/town
 godot --headless --path game --export-release "Halden Ridge Town" build_town/HaldenRidge.exe
 ```
+
+After importing new town textures headless, run
+`python projects/03-town/godot_imports.py` and import again, so they are
+VRAM-compressed.
 
 ## Halden Ridge Day (free-roam build)
 
@@ -356,7 +378,7 @@ defaults; the other two presets are unchanged.
 | --- | --- | --- | --- |
 | World | the house alone | the town | the town |
 | Player starts | inside the front door | inside the front door | inside the front door |
-| Look on first start | Night | Night | Foggy Overcast Day |
+| Look on first start | 03:00 Foggy | 03:00 Foggy | 10:00 Clear |
 | Quality on first start | High | High | Low |
 | Settings file | `user://settings.cfg` | `user://settings.cfg` | `user://settings_day.cfg` |
 

@@ -31,10 +31,14 @@ import plan  # noqa: E402
 import tk.core  # noqa: E402
 import tk.house_kit  # noqa: E402
 import tk.street_kit  # noqa: E402
+import tk.cars  # noqa: E402
+import tk.facade  # noqa: E402
+import tk.store  # noqa: E402
+import tk.detail  # noqa: E402
 
-for mod in (plan, assets, tk.core, tk.house_kit, tk.street_kit):
+for mod in (plan, assets, tk.core, tk.facade, tk.house_kit, tk.street_kit, tk.cars, tk.store, tk.detail):
     importlib.reload(mod)
-from tk import core, house_kit, street_kit  # noqa: E402
+from tk import core, detail, house_kit, street_kit  # noqa: E402
 
 BLEND = HERE / "town.blend"
 KIT_BLEND = HERE / "kit.blend"
@@ -45,7 +49,7 @@ RENDERS = HERE / "renders"
 
 def args():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"stage": a[0] if a else "town", "samples": 64, "res": (1280, 720), "only": None}
+    opts = {"stage": a[0] if a else "town", "samples": 64, "res": (1280, 720), "only": None, "light": "night"}
     for i, v in enumerate(a):
         if v == "--samples":
             opts["samples"] = int(a[i + 1])
@@ -54,6 +58,8 @@ def args():
             opts["res"] = (int(w), int(h))
         elif v == "--only":
             opts["only"] = a[i + 1]
+        elif v == "--light":
+            opts["light"] = a[i + 1]          # "night" or "day"
     return opts
 
 
@@ -92,6 +98,45 @@ def camera(name, loc, target, lens=24.0):
     return obj
 
 
+def world_day(scene, haze=0.006):
+    """Clear late-autumn daylight: a low sun in a real sky, and a little haze so distance still reads."""
+    world = bpy.data.worlds.new("day")
+    scene.world = world
+    world.use_nodes = True
+    nt = world.node_tree
+    bg = nt.nodes["Background"]
+    sky = nt.nodes.new("ShaderNodeTexSky")
+    sky.sky_type = "NISHITA"
+    sky.sun_elevation = math.radians(24)
+    sky.sun_rotation = math.radians(200)        # from the south-west, down the street
+    sky.air_density = 1.4
+    sky.dust_density = 2.0
+    sky.ozone_density = 1.0
+    sky.sun_disc = False                         # the sun itself is a lamp, so its shadows are ours to place
+    nt.links.new(sky.outputs["Color"], bg.inputs["Color"])
+    bg.inputs["Strength"].default_value = 0.16
+    if haze > 0:
+        x0, y0, x1, y1 = plan.BUILD
+        mesh = bpy.data.meshes.new("haze_volume")
+        v = [(x, y, z) for z in (-1.0, 60.0) for (x, y) in ((x0 - 60, y0 - 140), (x1 + 60, y0 - 140), (x1 + 60, y1 + 60), (x0 - 60, y1 + 60))]
+        mesh.from_pydata(v, [], [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
+        mat = bpy.data.materials.new("haze_volume")
+        mat.use_nodes = True
+        mt = mat.node_tree
+        mt.nodes.clear()
+        out = mt.nodes.new("ShaderNodeOutputMaterial")
+        vol = mt.nodes.new("ShaderNodeVolumePrincipled")
+        vol.inputs["Density"].default_value = haze
+        vol.inputs["Color"].default_value = (0.8, 0.84, 0.9, 1)
+        vol.inputs["Anisotropy"].default_value = 0.5
+        mt.links.new(vol.outputs["Volume"], out.inputs["Volume"])
+        mesh.materials.append(mat)
+        obj = bpy.data.objects.new("haze_volume", mesh)
+        core.collection("render_only").objects.link(obj)
+    scene.cycles.volume_step_rate = 4.0
+    scene.cycles.volume_max_steps = 128
+
+
 def world_night(scene, strength=1.0, fog=True):
     """Night sky colour and a volume fog in the world, as in Godot."""
     world = bpy.data.worlds.new("night")
@@ -106,7 +151,7 @@ def world_night(scene, strength=1.0, fog=True):
         # so no moonlight or sky light would ever get through it.
         x0, y0, x1, y1 = plan.BUILD
         mesh = bpy.data.meshes.new("fog_volume")
-        v = [(x, y, z) for z in (-1.0, 20.0) for (x, y) in ((x0 - 30, y0 - 30), (x1 + 30, y0 - 30), (x1 + 30, y1 + 30), (x0 - 30, y1 + 30))]
+        v = [(x, y, z) for z in (-1.0, 22.0) for (x, y) in ((x0 - 30, y0 - 115), (x1 + 30, y0 - 115), (x1 + 30, y1 + 30), (x0 - 30, y1 + 30))]
         mesh.from_pydata(v, [], [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
         mat = bpy.data.materials.new("fog_volume")
         mat.use_nodes = True
@@ -151,6 +196,7 @@ def build_town():
     street_kit.trees("trees")
     street_kit.cars("cars")
     street_kit.blockers("blockers")
+    detail.build(houses)                 # street detail, lot stories, the fog ends
     street_kit.collision(curbs, houses, "collision")
     house_kit.kit_reference("kit")
     # the glowing window in L3 and its porch light
@@ -277,7 +323,8 @@ def stage_kit(opts):
 def stage_town(opts):
     scene, houses = build_town()
     stats()
-    save_and_export(scene)
+    if "--dry" not in sys.argv:          # --dry: build and count only, write nothing
+        save_and_export(scene)
 
 
 STILLS = {
@@ -285,6 +332,12 @@ STILLS = {
     "front_door": ((1.70, 0.45, 1.62), (2.8, -18.0, 0.9), 20),
     "junction": ((9.5, -9.4, 1.65), (2.0, -24.0, 1.4), 22),
     "side_street": ((5.6, -27.0, 1.65), (1.2, -50.0, 1.6), 24),
+    # the hero areas, for day and night stills
+    "house_lot": ((7.2, -15.4, 1.6), (1.2, -2.0, 2.4), 22),
+    "mill_road_end": ((2.2, -37.5, 1.6), (12.5, -53.0, 2.0), 24),
+    "porch_16": ((21.6, -6.2, 1.5), (19.6, 0.4, 1.7), 28),
+    "car_curb": ((14.2, -14.2, 1.25), (18.5, -16.9, 0.75), 30),
+    "mill": ((3.5, -50.0, 2.0), (-6.0, -128.0, 16.0), 35),
     # close-ups for checking detail (not part of the three hero stills)
     "detail_pothole": ((0.9, -9.9, 1.0), (-1.6, -12.4, -0.55), 28),
     "detail_curb": ((6.4, -11.6, 0.9), (1.8, -9.6, -0.3), 26),
@@ -315,20 +368,43 @@ def stage_stills(opts):
             o.rotation_mode = "XYZ"
             o.rotation_euler = (0.0, 0.0, math.radians(-95 if base == "door_front" else -105))
     render_setup(scene, opts["samples"], opts["res"])
-    world_night(scene)
-    scene.view_settings.exposure = 1.0
-    moon(0.28)
+    day = opts["light"] == "day"
+    if day:
+        world_day(scene)
+        scene.view_settings.exposure = 0.5
+        sun = bpy.data.lights.new("sun", "SUN")
+        sun.energy = 3.2
+        sun.color = (1.0, 0.94, 0.86)
+        sun.angle = math.radians(2.0)
+        so = bpy.data.objects.new("sun", sun)
+        so.rotation_euler = (math.radians(64), 0.0, math.radians(-62))      # low, from the west-south-west
+        core.collection("lights").objects.link(so)
+        for o in bpy.data.objects:                     # street lights, lit rooms and lamps are off by day
+            if o.type == "LIGHT" and o.name != "sun":
+                o.hide_render = True
+        for name in ("sodium_on", "window_lit", "window_lit_lamp", "tube_on"):
+            m = bpy.data.materials.get(name)
+            if m and m.node_tree:
+                for node in m.node_tree.nodes:
+                    if node.type == "BSDF_PRINCIPLED":
+                        node.inputs["Emission Strength"].default_value = 0.0
+    else:
+        world_night(scene)
+        scene.view_settings.exposure = 1.0
+        moon(0.28)
     for o in bpy.data.objects:
         if o.type == "LIGHT" and o.name.startswith("street_sodium"):
             o.data.energy = 650.0
             o.data.shadow_soft_size = 0.2
+        elif o.type == "LIGHT" and o.name.startswith("street_tube"):
+            o.data.energy = 90.0
     RENDERS.mkdir(exist_ok=True)
     for name, (loc, tgt, lens) in STILLS.items():
-        if opts["only"] and opts["only"] != name:
+        if opts["only"] and name not in opts["only"].split(","):
             continue
         cam = camera("cam_still_" + name, loc, tgt, lens)
         scene.camera = cam
-        scene.render.filepath = str(RENDERS / f"03_{name}.png")
+        scene.render.filepath = str(RENDERS / (f"04_{name}_day.png" if day else f"03_{name}.png"))
         bpy.ops.render.render(write_still=True)
         print("RENDER", name)
 

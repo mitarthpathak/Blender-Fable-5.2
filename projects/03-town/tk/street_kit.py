@@ -420,9 +420,21 @@ def _pole_mesh():
 
 
 def _transformer():
+    """A pole-mounted transformer: tank, lid, cooling fins, two bushings, leads up to the lines."""
     mb = MeshBuilder()
-    mb.cylinder((0, -0.35, 6.2), (0, 0, 0.85), 0.24, "metal_painted", segments=10, color=(0.55, 0.57, 0.55))
+    grey = (0.55, 0.57, 0.55)
+    mb.cylinder((0, -0.35, 6.2), (0, 0, 0.85), 0.24, "metal_painted", segments=12, color=grey)
+    mb.cylinder((0, -0.35, 7.05), (0, 0, 0.05), 0.26, "metal_painted", segments=12, color=mul(grey, 0.85))
+    for k in range(6):
+        a = math.pi * (0.25 + 0.5 * k / 5) + math.pi
+        mb.obox((math.cos(a) * 0.27, -0.35 + math.sin(a) * 0.27, 6.6), (0.02, 0.10, 0.6), a + math.pi / 2, "metal_painted",
+                color=mul(grey, 0.9))
+    for x in (-0.12, 0.12):
+        mb.cylinder((x, -0.35, 7.10), (0, 0, 0.16), 0.03, "glass_dirty", segments=6)
+        mb.tube([(x, -0.35, 7.26), (x * 2.5, -0.12, 7.55), (x * 6.5, 0.0, 7.88)], 0.008, "wire", segments=4)
     mb.box((-0.06, -0.16, 6.5), (0.06, -0.1, 6.8), "metal_rust")
+    mb.box((-0.14, -0.13, 6.25), (0.14, -0.10, 6.33), "metal_rust")
+    mb.box((-0.14, -0.13, 6.9), (0.14, -0.10, 6.98), "metal_rust")
     return mb
 
 
@@ -461,7 +473,7 @@ def poles(coll="poles"):
         rot = math.atan2(d.y, d.x) + math.pi / 2          # arm along local X, wires along local Y
         base = Vector((p.x, p.y, SW))
         instance(pm, f"pole_{p.key}", coll, base, rot)
-        if p.key in ("P2", "P5"):
+        if True:                                     # every pole carries a transformer
             instance(tm, f"pole_{p.key}_transformer", coll, base, rot)
         tops[p.key] = (base, rot)
         if p.lamp:
@@ -553,12 +565,23 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
                 p = a + u * s
                 h = 0.95 + rng.uniform(-0.03, 0.03)
                 lean = rng.uniform(-0.06, 0.06) if rng.random() < wear * 0.3 else 0.0
-                mb.obox((p.x, p.y, G + 0.04 + h / 2), (0.075, 0.025, h), rot, "trim",
-                        color=jitter_color(rng, colour, 0.08), tilt=(lean, 0.0))
+                c = jitter_color(rng, colour, 0.08)
+                picket = MeshBuilder()
+                picket.box((-0.0375, -0.0125, 0.0), (0.0375, 0.0125, h - 0.06), "trim", color=c, skip="+z-z")
+                tip = [Vector((-0.0375, -0.0125, h - 0.06)), Vector((0.0375, -0.0125, h - 0.06)), Vector((0.0, -0.0125, h))]
+                back = [Vector((v.x, 0.0125, v.z)) for v in tip]
+                picket.face(tip, "trim", color=c)
+                picket.face(list(reversed(back)), "trim", color=c)
+                picket.face([tip[1], back[1], back[2], tip[2]], "trim", color=mul(c, 0.9))
+                picket.face([tip[2], back[2], back[0], tip[0]], "trim", color=mul(c, 0.9))
+                mb.extend(picket, Matrix.Translation((p.x, p.y, G + 0.04)) @ Matrix.Rotation(rot, 4, "Z")
+                          @ Matrix.Rotation(lean, 4, "X"))
             s += 0.135
         for s in (s0, s1):
             p = a + u * s
             mb.obox((p.x, p.y, G + 0.54), (0.1, 0.1, 1.08), rot, "trim", color=mul(colour, 0.85))
+            mb.obox((p.x, p.y, G + 1.095), (0.13, 0.13, 0.03), rot, "trim", color=mul(colour, 0.9))          # cap
+            mb.obox((p.x, p.y, G + 1.13), (0.07, 0.07, 0.05), rot, "trim", color=mul(colour, 0.9))
 
 
 def chainlink_run(mb, a, b, height=1.2):
@@ -569,7 +592,10 @@ def chainlink_run(mb, a, b, height=1.2):
     for i in range(n + 1):
         p = a.lerp(b, i / n)
         mb.cylinder(p, (0, 0, height + 0.05), 0.03, "metal_rust", segments=6, caps="top")
+        mb.cylinder(p + Vector((0, 0, height + 0.05)), (0, 0, 0.03), 0.038, "metal_rust", segments=6, radius_top=0.012)   # cap
+        mb.box((p.x - 0.036, p.y - 0.036, G + height - 0.06), (p.x + 0.036, p.y + 0.036, G + height - 0.02), "metal_rust")  # rail clamp
     mb.tube([a + Vector((0, 0, height)), b + Vector((0, 0, height))], 0.02, "metal_rust", segments=5)
+    mb.tube([a + Vector((0, 0, 0.06)), b + Vector((0, 0, 0.06))], 0.005, "wire", segments=3)                 # tension wire
     up = Vector((0, 0, height))
     mb.face([a + Vector((0, 0, 0.03)), b + Vector((0, 0, 0.03)), b + up, a + up], "chainlink",
             uvs=[(0, 0), (length, 0), (length, height), (0, height)])
@@ -628,7 +654,8 @@ def fences(coll="fences"):
     # the vacant lot: chain-link on its other sides too
     x0, y0, x1, y1 = next(l for l in plan.LOTS if l.key == "L7").rect
     chainlink_run(cl, (x0 + 0.2, y1 - 0.2), (x1 - 0.6, y1 - 0.2))
-    chainlink_run(cl, (x0 + 0.2, y0 + 0.4), (x0 + 0.2, y1 - 0.2))
+    chainlink_run(cl, (x0 + 0.2, -47.2), (x0 + 0.2, y1 - 0.2))          # Mill Road side: the vacant half only
+    chainlink_run(cl, (x0 + 0.2, -47.2), (x1 - 0.6, -47.2))             # between the lot and Ridge Gas
     # side yards: tall fences from each house's sides to its lot edges, and down the lot lines
     side_runs = [
         # north lots: the house front line + 1.5 m across to the lot boundary, then back to the rear fence
@@ -661,23 +688,46 @@ def fences(coll="fences"):
 # --- Small props -----------------------------------------------------------------------
 
 def _mailbox():
+    """A rural mailbox on a braced post: rounded lid, door with a latch, a flag, a tube for the paper."""
     mb = MeshBuilder()
-    mb.box((-0.045, -0.045, G - 0.1), (0.045, 0.045, G + 1.05), "wood_weathered", skip="-z", color=(0.6, 0.56, 0.5))
-    mb.box((-0.11, -0.26, G + 1.05), (0.11, 0.22, G + 1.08), "wood_weathered", color=(0.6, 0.56, 0.5))
-    mb.box((-0.09, -0.25, G + 1.08), (0.09, 0.22, G + 1.20), "metal_rust", color=(0.75, 0.73, 0.7))
-    mb.cylinder((0, -0.25, G + 1.20), (0, 0.47, 0), 0.09, "metal_rust", segments=12, color=(0.75, 0.73, 0.7))
-    mb.box((0.09, 0.05, G + 1.12), (0.10, 0.07, G + 1.32), "metal_painted", color=(0.6, 0.12, 0.08))
+    wood = (0.6, 0.56, 0.5)
+    tin = (0.75, 0.73, 0.7)
+    mb.box((-0.045, -0.045, G - 0.1), (0.045, 0.045, G + 1.05), "wood_weathered", skip="-z", color=wood)
+    mb.obox((0.0, -0.17, G + 0.86), (0.05, 0.42, 0.05), 0.0, "wood_weathered", color=wood, tilt=(0.75, 0.0))     # brace
+    mb.box((-0.11, -0.30, G + 1.05), (0.11, 0.24, G + 1.08), "wood_weathered", color=wood)
+    mb.box((-0.09, -0.27, G + 1.08), (0.09, 0.22, G + 1.20), "metal_rust", color=tin, skip="+z")
+    # the rounded top, as half a cylinder
+    seg = 8
+    for i in range(seg):
+        a0, a1 = math.pi * i / seg, math.pi * (i + 1) / seg
+        p0 = Vector((math.cos(a0) * 0.09, -0.27, G + 1.20 + math.sin(a0) * 0.09))
+        p1 = Vector((math.cos(a1) * 0.09, -0.27, G + 1.20 + math.sin(a1) * 0.09))
+        d = Vector((0, 0.49, 0))
+        mb.face([p0, p0 + d, p1 + d, p1], "metal_rust", color=tin)
+    for y, flip in ((-0.27, False), (0.22, True)):                 # door and back, as fans
+        pts = [Vector((math.cos(math.pi * i / seg) * 0.09, y, G + 1.20 + math.sin(math.pi * i / seg) * 0.09)) for i in range(seg + 1)]
+        pts += [Vector((-0.09, y, G + 1.08)), Vector((0.09, y, G + 1.08))]
+        mb.face(pts if not flip else list(reversed(pts)), "metal_rust", color=mul(tin, 0.9))
+    mb.box((-0.012, -0.285, G + 1.24), (0.012, -0.27, G + 1.27), "chrome_dull")                                    # latch
+    mb.box((-0.08, -0.275, G + 1.08), (0.08, -0.268, G + 1.095), "chrome_dull")                                    # hinge
+    mb.box((0.09, 0.02, G + 1.12), (0.10, 0.04, G + 1.34), "metal_painted", color=(0.6, 0.12, 0.08))               # flag
+    mb.box((0.09, 0.02, G + 1.27), (0.10, 0.12, G + 1.34), "metal_painted", color=(0.6, 0.12, 0.08))
+    mb.cylinder((0.0, -0.22, G + 0.99), (0, 0.40, 0), 0.055, "metal_painted", segments=8, caps="none", color=(0.3, 0.34, 0.4))  # paper tube
     return mb
 
 
 def _trash_can():
     mb = MeshBuilder()
-    mb.cylinder((0, 0, 0.0), (0, 0, 0.85), 0.27, "metal_rust", segments=14, radius_top=0.30, caps="bottom",
-                color=(0.62, 0.64, 0.6))
-    mb.cylinder((0, 0, 0.85), (0, 0, 0.06), 0.32, "metal_rust", segments=14, color=(0.58, 0.6, 0.56))
-    mb.box((-0.06, -0.02, 0.91), (0.06, 0.02, 0.96), "metal_rust")
-    for z in (0.2, 0.5):
-        mb.cylinder((0, 0, z), (0, 0, 0.03), 0.285, "metal_rust", segments=14, caps="none", color=(0.5, 0.5, 0.48))
+    zinc = (0.52, 0.54, 0.53)
+    mb.cylinder((0, 0, 0.0), (0, 0, 0.85), 0.27, "metal_painted", segments=14, radius_top=0.30, caps="bottom", color=zinc)
+    mb.cylinder((0, 0, 0.0), (0, 0, 0.16), 0.272, "metal_rust", segments=14, radius_top=0.276, caps="none",
+                color=(0.6, 0.55, 0.5))                                            # the rusted-through foot
+    mb.cylinder((0, 0, 0.85), (0, 0, 0.06), 0.32, "metal_painted", segments=14, color=mul(zinc, 0.9))
+    mb.box((-0.06, -0.02, 0.91), (0.06, 0.02, 0.96), "metal_painted", color=mul(zinc, 0.8))
+    for z in (0.3, 0.55):                                                          # pressed ribs
+        mb.cylinder((0, 0, z), (0, 0, 0.03), 0.292, "metal_painted", segments=14, caps="none", color=mul(zinc, 0.85))
+    for s in (-1, 1):                                                              # side handles
+        mb.tube([(s * 0.29, -0.07, 0.62), (s * 0.34, 0.0, 0.60), (s * 0.29, 0.07, 0.62)], 0.01, "chrome_dull", segments=4)
     return mb
 
 
@@ -708,7 +758,7 @@ def _leaf_pile(seed):
     for i in range(rings):
         for j in range(segs):
             k = (j + 1) % segs
-            mb.face([pts[i][j], pts[i][k], pts[i + 1][k], pts[i + 1][j]], "leaves")
+            mb.face([pts[i][j], pts[i][k], pts[i + 1][k], pts[i + 1][j]], "leaves", color=(0.62, 0.52, 0.42))
     return mb
 
 
@@ -758,7 +808,10 @@ def props(coll="props"):
             elif lot.key in ("L4", "L5"):
                 spots.append((rng.uniform(x0, x1), y1 - rng.uniform(0.3, 1.2)))
             else:
-                spots.append((rng.uniform(x0, x1), rng.uniform(y0, y1)))
+                gx, gy = rng.uniform(x0, x1), rng.uniform(y0, y1)
+                if lot.key == "L7" and gy < -47.0:
+                    continue                             # that half is the station's concrete
+                spots.append((gx, gy))
     for i, (x, y) in enumerate(spots):
         instance(clumps[i % 3], f"grass_{i}", "grass", (x, y, G), rng.uniform(0, 6.28), scale=rng.uniform(0.7, 1.3))
     # sale sign in L5's yard
@@ -775,42 +828,53 @@ def props(coll="props"):
 # --- Trees ------------------------------------------------------------------------------
 
 def _tree(seed, height=9.0):
-    """A bare deciduous tree: tapered trunk and recursive, drooping branches."""
+    """A bare deciduous tree that stands up to a close look: a flared, slightly
+    leaning trunk, limbs that each keep a leader and throw side branches, and
+    twigs that thin out and droop. About 4,000 triangles."""
     rng = random.Random(seed)
     mb = MeshBuilder()
+    bark = (0.62, 0.6, 0.56)
+    kids_at = (4, 3, 2, 2)
+    rings_at = (9, 7, 5, 4, 3)
 
     def branch(p, d, length, radius, depth):
+        n = 5 if depth < 2 else 4
         pts, radii = [p], [radius]
-        q = p.copy()
-        dd = d.copy()
-        n = 4
+        q, dd = p.copy(), d.copy()
+        wander = 0.16 + 0.05 * depth
         for i in range(n):
-            dd = (dd + Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25), rng.uniform(-0.12, 0.08)))).normalized()
+            lift = 0.06 if depth < 2 else -0.05                    # limbs reach up, twigs sag
+            dd = (dd + Vector((rng.uniform(-wander, wander), rng.uniform(-wander, wander), lift))).normalized()
             q = q + dd * (length / n)
             pts.append(q.copy())
-            radii.append(radius * (1 - (i + 1) / n * 0.65))
-        mb.tube(pts, radius, "bark", segments=max(4, 8 - depth * 2), radii=radii, color=(0.62, 0.6, 0.56))
-        if depth >= 4 or radius < 0.012:
+            radii.append(radius * (1.0 - (i + 1) / n * 0.5))
+        mb.tube(pts, radius, "bark", segments=rings_at[min(depth, 4)], radii=radii,
+                color=mul(bark, 1.0 - 0.06 * depth))
+        if depth >= 4 or radii[-1] < 0.006:
             return
-        kids = rng.randint(2, 3) if depth > 0 else rng.randint(3, 5)
-        for k in range(kids):
-            t = rng.uniform(0.45, 0.95)
-            idx = min(len(pts) - 1, max(1, int(t * n)))
-            base = pts[idx]
+        # the leader carries on from the tip; side branches leave lower down
+        branch(pts[-1], (dd + Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25), 0.1))).normalized(),
+               length * rng.uniform(0.6, 0.75), radii[-1] * 0.95, depth + 1)
+        for k in range(kids_at[depth] - 1):
+            idx = rng.randint(1, n - 1)
             ang = rng.uniform(0, 2 * math.pi)
-            spread = rng.uniform(0.5, 0.95)
-            nd = (dd * (1 - spread) + Vector((math.cos(ang), math.sin(ang), rng.uniform(0.2, 0.7))) * spread).normalized()
-            branch(base, nd, length * rng.uniform(0.5, 0.72), radii[idx] * rng.uniform(0.5, 0.7), depth + 1)
+            side = Vector((math.cos(ang), math.sin(ang), rng.uniform(0.15, 0.6)))
+            nd = (dd * 0.45 + side * 0.8).normalized()
+            branch(pts[idx], nd, length * rng.uniform(0.45, 0.68), radii[idx] * rng.uniform(0.5, 0.68), depth + 1)
 
-    trunk_h = height * 0.38
-    r = height * 0.026
-    mb.tube([Vector((0, 0, -0.3)), Vector((0, 0, trunk_h * 0.5)), Vector((rng.uniform(-0.2, 0.2), rng.uniform(-0.2, 0.2), trunk_h))],
-            r, "bark", segments=9, radii=[r * 1.25, r, r * 0.85], color=(0.62, 0.6, 0.56))
-    top = Vector((0, 0, trunk_h))
-    for k in range(rng.randint(3, 4)):
-        ang = 2 * math.pi * k / 4 + rng.uniform(-0.4, 0.4)
-        d = Vector((math.cos(ang) * 0.6, math.sin(ang) * 0.6, 0.8)).normalized()
-        branch(top, d, height * 0.42, r * 0.6, 1)
+    trunk_h = height * 0.36
+    r = height * 0.021
+    lean = Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25), 0))
+    trunk = [Vector((0, 0, -0.3)), Vector((0, 0, 0.12)), lean * 0.2 + Vector((0, 0, trunk_h * 0.35)),
+             lean * 0.6 + Vector((0, 0, trunk_h * 0.7)), lean + Vector((0, 0, trunk_h))]
+    mb.tube(trunk, r, "bark", segments=10, radii=[r * 1.7, r * 1.25, r * 1.05, r * 0.95, r * 0.85], color=bark)
+    top = trunk[-1]
+    n_limbs = rng.randint(3, 4)
+    for k in range(n_limbs):
+        ang = 2 * math.pi * k / n_limbs + rng.uniform(-0.4, 0.4)
+        d = Vector((math.cos(ang) * 0.62, math.sin(ang) * 0.62, 0.78)).normalized()
+        branch(top - Vector((0, 0, rng.uniform(0.0, trunk_h * 0.25))), d, height * 0.30, r * 0.62, 1)
+    branch(top, (lean * 0.3 + Vector((0, 0, 1))).normalized(), height * 0.34, r * 0.8, 1)          # the leader
     return mb
 
 
@@ -823,8 +887,8 @@ def trees(coll="trees"):
 
 # --- Cars --------------------------------------------------------------------------------
 
-CAR_PAINTS = {"car_sedan": (0.30, 0.31, 0.33), "car_wagon": (0.33, 0.24, 0.16), "car_crashed": (0.18, 0.22, 0.27),
-              "car_west": (0.40, 0.38, 0.33)}
+CAR_PAINTS = {"car_sedan": (0.14, 0.19, 0.17), "car_wagon": (0.30, 0.21, 0.13), "car_crashed": (0.13, 0.17, 0.24),
+              "car_west": (0.26, 0.10, 0.09)}
 # plan key: (body, state). Bodies are built in tk/cars.py.
 CAR_KINDS = {"car_sedan": ("sedan", "abandoned"), "car_wagon": ("wagon", "on_blocks"),
              "car_crashed": ("pickup", "crashed"), "car_west": ("sedan", "crashed")}
