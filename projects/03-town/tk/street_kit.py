@@ -617,8 +617,10 @@ def tall_fence_run(mb, a, b, rng, height=2.2):
         p = a + u * (s + w / 2)
         h = height + rng.uniform(-0.04, 0.04)
         lean = rng.uniform(-0.015, 0.015)
+        # no bottom face: it is in the ground. (The edges stay: without them the
+        # 6 mm gaps between boards show the sky at a slant.)
         mb.obox((p.x, p.y, G + h / 2), (w - 0.006, 0.022, h), rot, "wood_weathered",
-                color=jitter_color(rng, (0.8, 0.76, 0.7), 0.1), tilt=(lean, 0.0))
+                color=jitter_color(rng, (0.8, 0.76, 0.7), 0.1), tilt=(lean, 0.0), skip="-z")
         s += 0.15
     n = max(1, int(length / 2.4))
     for i in range(n + 1):

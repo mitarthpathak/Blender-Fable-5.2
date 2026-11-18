@@ -454,3 +454,11 @@ published as a GitHub Release on this repository (tag such as
 `v0.1-dayroam`) with the `.exe` and the `.pck` as release assets; the `.pck`
 must sit beside the `.exe`. The two `HouseInterior` files already tracked in
 `build/` are from before this rule and are out of date.
+
+## Town clutter culling
+
+`town.gd` instances the town's repeated meshes as MultiMeshes. The yard and
+verge clutter (`CHUNKED_FADE`: grass, weeds, shrubs, leaf piles, drums) is
+split into 16 m chunks, each culled past its distance (42 to 55 m on High,
+0.7 of that on Low). They are culled, not faded: a fading MultiMesh is drawn
+again in the transparent pass, which cost more than the culling saved.

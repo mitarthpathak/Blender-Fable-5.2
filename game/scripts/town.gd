@@ -40,7 +40,16 @@ const CYLINDERS := {"tree_": [0.26, 4.0], "pole_P": [0.17, 8.0], "trash_can_": [
 ## Decals and street detail come from Blender in 24 m sectors ("decals_3_7"), so
 ## each sector is culled and faded on its own.
 const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
-	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0, "shrub_": 55.0, "yard_drum_": 50.0}
+	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0}
+## Instanced yard and verge clutter. A MultiMesh is one node, so one range
+## would show or hide every copy in the town at once: these are split into
+## CHUNK-metre squares, each its own MultiMesh with its own range (metres, on
+## High; Low multiplies it by LOW_CHUNK_FADE), past which it is culled. Before
+## this the yards' shrubs and grass were one MultiMesh each, drawn at any
+## distance: the shrub_ entry in FADE_PREFIXES never reached them.
+const CHUNKED_FADE := {"grass_": 42.0, "weed_": 42.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
+const CHUNK := 16.0
+const LOW_CHUNK_FADE := 0.7
 
 const SODIUM := Color(1.0, 0.55, 0.20)
 const WINDOW_WARM := Color(1.0, 0.62, 0.34)
@@ -61,6 +70,7 @@ var _flicker_emission := 1.0
 var _noise := FastNoiseLite.new()
 var _time := 0.0
 var _quality := ""
+var _chunks: Array = []          # [MultiMeshInstance3D, fade distance on High]
 var _shadow_timer := 0.0
 
 
@@ -81,8 +91,8 @@ func _ready() -> void:
 	_add_view_cameras()
 	_make_halos()
 	_noise.frequency = 1.0
-	print("town ready: %d collision bodies, %d meshes kept, %d instanced into %d multimeshes, %d street lights" % [
-		stats["bodies"], stats["meshes"], stats["instanced"], stats["multimeshes"], _street_lights.size()])
+	print("town ready: %d collision bodies, %d meshes kept, %d instanced into %d multimeshes (%d of them culled chunks), %d street lights" % [
+		stats["bodies"], stats["meshes"], stats["instanced"], stats["multimeshes"], stats.get("chunks", 0), _street_lights.size()])
 	var args := OS.get_cmdline_user_args()
 	if "--preset-shots" in args or "--town-perf" in args:
 		_open_front_doors()
@@ -226,6 +236,8 @@ func _apply_quality(high: bool) -> void:
 	RenderingServer.positional_soft_shadow_filter_set_quality(filter)
 	if not high and not fixed_scale:
 		get_viewport().scaling_3d_scale = LOW_SCALE
+	for chunk in _chunks:
+		(chunk[0] as GeometryInstance3D).visibility_range_end = chunk[1] * (1.0 if high else LOW_CHUNK_FADE)
 
 
 ## On Low there is no volumetric fog, so a lamp in fog is just a bright dot. A
@@ -367,27 +379,47 @@ func _setup_town(town: Node3D) -> Dictionary:
 		if n in flicker_heads:
 			_make_flicker_lamp(mi)       # its own material, so only this lamp head flickers
 		elif _starts(n, INSTANCED_PREFIXES):
-			if not groups.has(mi.mesh):
-				groups[mi.mesh] = []
-			groups[mi.mesh].append(mi)
+			# Clutter that fades goes in by mesh and chunk; the rest by mesh alone.
+			var key: Variant = mi.mesh
+			for prefix in CHUNKED_FADE:
+				if n.begins_with(prefix):
+					key = [mi.mesh, floori(mi.position.x / CHUNK), floori(mi.position.z / CHUNK), prefix]
+			if not groups.has(key):
+				groups[key] = []
+			groups[key].append(mi)
 			continue
 		stats["meshes"] += 1
-	for mesh in groups:
-		var list: Array = groups[mesh]
-		if list.size() < 2:
+	for key in groups:
+		var list: Array = groups[key]
+		var chunked: bool = key is Array
+		if list.size() < 2 and not chunked:
 			stats["meshes"] += 1
 			continue
+		# The node stands at the middle of its copies: a visibility range is
+		# measured from there.
+		var centre := Vector3.ZERO
+		for mi in list:
+			centre += (mi as MeshInstance3D).position
+		centre /= float(list.size())
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = mesh
+		mm.mesh = (list[0] as MeshInstance3D).mesh
 		mm.instance_count = list.size()
 		for i in list.size():
-			mm.set_instance_transform(i, (list[i] as MeshInstance3D).transform)
+			mm.set_instance_transform(i, (list[i] as MeshInstance3D).transform.translated(-centre))
 		var node := MultiMeshInstance3D.new()
 		var first := list[0] as MeshInstance3D
 		node.name = "mm_" + String(first.name).rstrip("0123456789").trim_suffix("_")
 		node.multimesh = mm
+		node.position = centre
 		node.cast_shadow = first.cast_shadow
+		if chunked:
+			# Culled, not faded: a fading MultiMesh is drawn again in the
+			# transparent pass, which cost more than the culling saved.
+			node.visibility_range_end_margin = 6.0
+			node.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
+			_chunks.append([node, CHUNKED_FADE[key[3]]])
+			stats["chunks"] = stats.get("chunks", 0) + 1
 		town.add_child(node)
 		for mi in list:
 			mi.queue_free()

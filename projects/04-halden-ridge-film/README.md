@@ -112,10 +112,11 @@ and the moved tree. No house file was changed.
   11.10 plus its roof overhang of 0.15) and 1.09 m north of it. Left as it
   is: the fence is the L1/L3 lot line, and the gap is narrower than the
   player, so nobody can get stuck in it.
-- A ray east from the back yard at y 12 finds no fence within 24 m (the
-  first thing is `tree_11` in L9), and one west finds a tree at x -18: the
-  side fences between L1 and its neighbours do not run the full depth of
-  the lot at that point.
+- The check's rays east and west from the back yard pass the side fences:
+  they slip through the 6 mm gaps between boards (one board every 15 cm,
+  and the rays are cast on the 1.5 m lines where boards meet). Cast across
+  those lot lines every 0.1 m, the fences are continuous from the houses to
+  the back fence; the player cannot pass.
 
 ## Final quality on a GPU machine
 

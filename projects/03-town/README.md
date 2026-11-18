@@ -235,5 +235,12 @@ Things a merge should know:
   They stop at the corners now.
 - **Leaf piles** stay 1.2 m clear of every sidewalk: on the corner lots
   they were landing by the side street, flat orange mounds at eye level.
+- **Clutter culling**: the yards' grass, weeds, shrubs, leaf piles and
+  drums were one MultiMesh each and drawn at any distance (the `shrub_` fade
+  in `town.gd` never reached them once they were instanced). They are split
+  into 16 m chunks now, each culled past 42 to 55 m (0.7 of that on Low).
+  The tall fence boards lost their buried bottom faces. On Low, the three
+  perf views draw 6 % fewer triangles (front door 323k to 304k), with the
+  same draw calls.
 - **`lot_views.py`**: daylight Cycles views of single lots, for before and
   after checks (`blender -b town.blend --python lot_views.py -- --out DIR`).
