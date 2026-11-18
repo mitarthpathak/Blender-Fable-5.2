@@ -8,7 +8,8 @@ Options: --scene (one of the eight), --cams (comma list or "all"), --samples,
 --res WxH, --prefix (file name prefix, default "test"), --device CPU|GPU,
 --move (render the 120-frame approach as PNG frames into renders/move_<scene>/).
 Interior cameras are opened up by the scene's `indoors_stops`, as a camera
-operator would between an exterior and an interior. Output goes to renders/.
+operator would between an exterior and an interior, and any camera by its
+entry in the scene's `cam_stops` (build.py CAM_STOPS). Output goes to renders/.
 """
 
 import sys
@@ -74,7 +75,9 @@ def main():
     for cam in sorted(cams, key=lambda o: o.name):
         started = time.time()
         scene.camera = cam
-        scene.view_settings.exposure = base + (float(scene.get("indoors_stops", 0.0)) if cam.get("indoors") else 0.0)
+        extra = scene.get("cam_stops", {})
+        scene.view_settings.exposure = base + (float(scene.get("indoors_stops", 0.0)) if cam.get("indoors") else 0.0) \
+            + float(extra.get(cam.name, 0.0))
         path = out / f"{prefix}_{scene.name}_{cam.name}.png"
         scene.render.filepath = str(path)
         bpy.ops.render.render(write_still=True, scene=scene.name)

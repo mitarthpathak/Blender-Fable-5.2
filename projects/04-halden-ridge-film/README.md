@@ -61,7 +61,11 @@ One scene per setup, all showing the same linked collections.
   file.
 - **Colour**: AgX, base contrast, no grade. Exposure is set per scene, and
   `render.py` opens up by the scene's `indoors_stops` for the four interior
-  cameras.
+  cameras. Some rooms are darker than others
+  at a given hour (the hall and the front door face north, away from the
+  10:00 sun; the landing has no lamp of its own at 03:00), so `CAM_STOPS` in
+  `build.py` adds stops per camera and hour on top (scene property
+  `cam_stops`).
 
 ## Cameras
 
@@ -69,7 +73,7 @@ One scene per setup, all showing the same linked collections.
 
 | Camera | Lens | f | Shot |
 | --- | --- | --- | --- |
-| `cam_1_street` | 35 mm | 5.6 | Establishing: the house from across Ashgrove Street |
+| `cam_1_street` | 35 mm | 5.6 | Establishing: the house from across Ashgrove Street (east of pole P2, which stays out of frame) |
 | `cam_2_porch` | 28 mm | 4 | Up the path to the porch |
 | `cam_3_front_door` | 32 mm | 2.8 | The front door from inside the hall |
 | `cam_4_hallway` | 24 mm | 2.8 | The hall and the stair |
@@ -87,23 +91,31 @@ In `renders/`, low sample counts, made on a laptop CPU:
 
 ## Seams (for the town session)
 
-From `check_seams.py`. No town file was changed.
+From `check_seams.py`, run again after the town gained lots L8 to L11, yards
+and the moved tree. No house file was changed.
 
 - Ground heights round the house all match `docs/TOWN.md`: lawn -0.45,
   sidewalk -0.40, road -0.53. No gaps under the porch steps, the back steps
   or anywhere in the lot.
 - The town's path reaches the foot of the porch steps on `ground_sidewalks`
   at -0.425 (2.5 cm above the lawn, as the house's own path was).
-- **`tree_9`** stands in the back yard of lot L1: its bounding box
-  (x 0.7 to 9.6, y 8.5 to 14.9) covers the house's back steps, hose and
-  trash cans, and its branches reach the back wall. The trunk does not hit
-  anything, but it would be better two or three metres further north-west.
-- The tall board fence is 0.29 m east of the new shed (fence at x 11.49,
-  shed to 11.10 plus its roof overhang of 0.15) and 1.09 m north of it. It
-  fits; there is no room to walk round the east side.
-- A ray east from the back yard at y 12 finds no fence within 30 m, and one
-  west finds only a tree at x -18: the side fences between L1 and its
-  neighbours do not run the full depth of the lot at that point.
+- **`tree_9`** (L1's back yard) moved 2.8 m north-west to (3.2, 14.2): it is
+  clear of the back steps, the hose and the trash cans now. Its crown still
+  overhangs the woodpile (the check reports the boxes overlapping), but the
+  trunk is 1.2 m from the chopping block and the crown starts well above the
+  0.8 m pile.
+- `mprop_8_7` and `leaves_8_7` are reported against the doormat and the
+  south wall: they are 21 m town sectors (props, leaf litter), whose
+  bounding boxes cover the whole front of the lot. Nothing in them touches
+  the house.
+- The tall board fence is 0.29 m east of the shed (fence at x 11.49, shed to
+  11.10 plus its roof overhang of 0.15) and 1.09 m north of it. Left as it
+  is: the fence is the L1/L3 lot line, and the gap is narrower than the
+  player, so nobody can get stuck in it.
+- A ray east from the back yard at y 12 finds no fence within 24 m (the
+  first thing is `tree_11` in L9), and one west finds a tree at x -18: the
+  side fences between L1 and its neighbours do not run the full depth of
+  the lot at that point.
 
 ## Final quality on a GPU machine
 

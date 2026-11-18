@@ -47,7 +47,8 @@ WEATHER = ("clear", "foggy")
 
 # Six cameras with real lenses (35 mm full frame), an aperture, and what each focuses on.
 CAMERAS = {
-    "cam_1_street": dict(at=(-4.6, -18.6, 1.7), to=(3.4, -0.5, 3.0), lens=35, fstop=5.6, focus=(1.8, -1.0, 2.0)),
+    # From across Ashgrove, far enough east that pole P2 (-4.2, -9.5) is 3 degrees outside the left edge.
+    "cam_1_street": dict(at=(-2.2, -18.6, 1.7), to=(3.6, -0.5, 3.0), lens=35, fstop=5.6, focus=(1.8, -1.0, 2.0)),
     "cam_2_porch": dict(at=(2.35, -7.6, 1.55), to=(1.85, -0.6, 1.45), lens=28, fstop=4.0, focus=(1.8, -1.2, 1.3)),
     "cam_3_front_door": dict(at=(1.72, 3.3, 1.50), to=(1.78, 0.0, 1.25), lens=32, fstop=2.8, focus=(1.78, 0.05, 1.2),
                              indoors=True),
@@ -223,6 +224,11 @@ def make_fog(name, hour, coll):
 EXPOSURE = {("0600", "clear"): 4.2, ("0600", "foggy"): 3.4, ("1000", "clear"): 0.0, ("1000", "foggy"): 0.3,
             ("1700", "clear"): 0.6, ("1700", "foggy"): 1.0, ("0300", "clear"): 3.6, ("0300", "foggy"): 1.8}
 INDOORS_STOPS = {"0600": -0.6, "1000": 5.0, "1700": 2.6, "0300": 0.4 }     # opening up for an interior
+# And per camera, on top of that: some rooms are darker than others at a given
+# hour (the hall and the front door face north, away from the 10:00 sun; the
+# landing at 03:00 has no lamp of its own). Measured from the test renders.
+CAM_STOPS = {"1000": {"cam_3_front_door": 1.4, "cam_4_hallway": 1.2},
+             "0300": {"cam_6_landing": 3.0}}
 
 
 def render_settings(scene, samples=96, resolution=(1920, 1080)):
@@ -336,6 +342,7 @@ def main():
             render_settings(scene)
             scene.view_settings.exposure = EXPOSURE[clock, weather]
             scene["indoors_stops"] = INDOORS_STOPS[clock]
+            scene["cam_stops"] = CAM_STOPS.get(clock, {})
             scene["clock"], scene["weather"] = clock, weather
             scene.camera = cams["cam_1_street"]
             scene.frame_start, scene.frame_end = 1, MOVE["frames"]
