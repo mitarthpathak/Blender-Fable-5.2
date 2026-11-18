@@ -3,9 +3,10 @@ extends SceneTree
 ##
 ##   godot --headless --path game --script res://tools/anim_measure.gd
 ##
-## For walk and run: how fast the planted foot slides back under the body,
-## which is the speed the clip is made for (in place, the ground would move at
-## that speed). For jump: the height of the hips through the clip, to find
+## For walk, run, the strafes and the backward walk: how fast the planted
+## foot slides under the body, which is the speed the clip is made for (in
+## place, the ground would move at that speed), and which way the body would
+## travel (the character faces -Z: forward is z -1). For jump: the height of the hips through the clip, to find
 ## where the feet leave the ground and where they land.
 
 func _initialize() -> void:
@@ -33,10 +34,13 @@ func _run() -> void:
 	var sk := rig.skeleton
 	var feet := [_bone(sk, "LeftFoot"), _bone(sk, "RightFoot"), _bone(sk, "LeftToeBase"), _bone(sk, "RightToeBase")]
 	var hips := _bone(sk, "Hips")
-	for clip in ["walk", "run"]:
+	for clip in ["walk", "run", "strafe_left", "strafe_right", "walk_back"]:
+		if not player.has_animation(clip):
+			continue
 		var anim := player.get_animation(clip)
 		var steps := 120
 		var dt := anim.length / steps
+		var slide := Vector2.ZERO           # the planted foot's slide over the ground, summed
 		var travelled := 0.0
 		var last := {}
 		for i in steps + 1:
@@ -49,11 +53,14 @@ func _run() -> void:
 			# the planted foot: whichever toe is lowest
 			var planted: int = feet[2] if pos[feet[2]].y < pos[feet[3]].y else feet[3]
 			if i > 0 and last.has(planted):
-				var dz: float = pos[planted].z - last[planted].z      # the character faces -Z: planted feet slide to +Z
-				if dz > 0.0:
-					travelled += dz
+				var d := Vector2(pos[planted].x - last[planted].x, pos[planted].z - last[planted].z)
+				slide += d
+				travelled += d.length()
 			last = pos
-		print("MEASURE %s: %.2f s cycle, foot slides back %.2f m, speed %.2f m/s" % [clip, anim.length, travelled, travelled / anim.length])
+		# The ground moves the way the planted foot slides; the body goes the other way.
+		var heading := -slide.normalized()
+		print("MEASURE %s: %.2f s cycle, foot slides %.2f m, speed %.2f m/s, travel direction (x %.2f, z %.2f)" % [
+			clip, anim.length, travelled, travelled / anim.length, heading.x, heading.y])
 	var jump := player.get_animation("jump")
 	var line := ""
 	for i in 24:

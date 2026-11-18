@@ -52,6 +52,14 @@ up in code, so a fresh export from Blender needs no hand edits:
     view, and aiming turns the body onto the camera. `--selftest` checks
     that the camera's spring arm pulls in against the hall walls.
   - The jump uses only the airborne part of its clip.
+  - Aimed strafing is ready for three more clips: put Mixamo's Rifle Strafe
+    Left, Rifle Strafe Right and Rifle Walk Backward (Without Skin, In
+    Place) in `assets/character/` as `strafe_left.fbx`, `strafe_right.fbx`
+    and `walk_back.fbx`. With all three, aiming blends the legs in a 2D
+    blend space by the direction of travel (lower body only); without them
+    the legs play the forward walk as before. Then run
+    `tools/anim_measure.gd` and put the speeds it prints into
+    `STRAFE_CLIP_SPEED` and `BACK_CLIP_SPEED` in `character.gd`.
   - The rifle's place in the hand comes from the aim pose
     (`tools/rifle_fit.gd`), measured in `rifle.glb`'s own space: rifle.py's
     gun space moved by (0, 0.058, 0.080). The grip points were in gun space

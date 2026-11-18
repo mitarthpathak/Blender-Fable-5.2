@@ -25,8 +25,13 @@ extends Node3D
 const DIR := "res://assets/character/"
 const MODEL := DIR + "character.fbx"
 const RIFLE := DIR + "rifle.glb"
-## Clip name: does it loop?
-const CLIPS := {"idle": true, "walk": true, "run": true, "rifle_aim": true, "fire": false, "jump": false}
+## Clip name: does it loop? strafe_left, strafe_right and walk_back are
+## optional (Mixamo "Rifle Strafe Left/Right", "Rifle Walk Backward", In
+## Place): with all three, the legs follow the direction of travel while
+## aiming instead of always playing the forward walk.
+const CLIPS := {"idle": true, "walk": true, "run": true, "rifle_aim": true, "fire": false, "jump": false,
+	"strafe_left": true, "strafe_right": true, "walk_back": true}
+const AIM_LEG_CLIPS := ["strafe_left", "strafe_right", "walk_back"]
 const HEIGHT := 1.80
 const WALK_SPEED := 1.6          # the player's walk and run (player.gd); the clips are sped up to match
 const RUN_SPEED := 4.2
@@ -35,6 +40,10 @@ const RUN_SPEED := 4.2
 ## makes the feet skate, so the clips are played faster or slower to match.
 const WALK_CLIP_SPEED := 1.17
 const RUN_CLIP_SPEED := 3.28
+## The same for the aimed strafes and the backward walk. Placeholders until
+## tools/anim_measure.gd has measured the downloaded clips.
+const STRAFE_CLIP_SPEED := 1.17
+const BACK_CLIP_SPEED := 1.17
 ## The jump clip crouches for most of a second before the feet leave the
 ## ground; the player jumps the moment the key goes down. Only its airborne
 ## part is used, from the end of the crouch to the landing, slowed to fit the
@@ -63,6 +72,7 @@ var _player: AnimationPlayer
 var _tree: AnimationTree
 var _aim_amount := 0.0
 var _speed := 0.0
+var _aim_legs := false           # the strafe and backward clips are there: a 2D blend for the legs while aiming
 
 
 static func available() -> bool:
@@ -91,6 +101,16 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 	_tree.set("parameters/locomotion/blend_position", _speed)
 	_tree.set("parameters/aim_blend/blend_amount", _aim_amount)
 	_tree.set("parameters/loco_rate/scale", _rate(_speed))
+	if _aim_legs:
+		# Aiming, the body faces the camera and the legs go whichever way the
+		# player moves: forward, back or sideways, from the 2D blend space.
+		var local := global_transform.basis.inverse() * Vector3(velocity.x, 0.0, velocity.z)
+		var direction := Vector2(local.x, -local.z) / WALK_SPEED
+		if direction.length() > 1.0:
+			direction = direction.normalized()
+		_tree.set("parameters/aim_legs/blend_position", direction if on_floor else Vector2.ZERO)
+		_tree.set("parameters/legs/blend_amount", _aim_amount)
+		_tree.set("parameters/aim_legs_rate/scale", _aim_rate(local, flat))
 	if grip:
 		# Both hands on the rifle aiming, standing and walking; at a run the clip
 		# carries it in the right hand alone, so the left lets go on the way there.
@@ -117,6 +137,19 @@ func _rate(speed: float) -> float:
 		return WALK_SPEED / WALK_CLIP_SPEED
 	var t := clampf((speed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0.0, 1.0)
 	return speed / lerpf(WALK_CLIP_SPEED, RUN_CLIP_SPEED, t)
+
+
+## The same for the aimed legs: the ground speed of the mix of forward, back
+## and sideways clips the direction picks.
+func _aim_rate(local: Vector3, speed: float) -> float:
+	var side := absf(local.x)
+	var ahead := maxf(-local.z, 0.0)
+	var back := maxf(local.z, 0.0)
+	var total := side + ahead + back
+	if total < 0.05:
+		return 1.0
+	var clip_speed := (side * STRAFE_CLIP_SPEED + ahead * WALK_CLIP_SPEED + back * BACK_CLIP_SPEED) / total
+	return clampf(speed / clip_speed, 0.5, 3.0)
 
 
 func fire() -> void:
@@ -309,6 +342,15 @@ func _build_tree(library: AnimationLibrary) -> void:
 		if spine != -1 and at == spine:
 			upper.append(NodePath("%s:%s" % [skeleton_path, skeleton.get_bone_name(bone)]))
 
+	# Aimed legs: forward, back and both strafes in a 2D blend space, mixed in
+	# over the lower body only (everything that is not the upper body).
+	_aim_legs = AIM_LEG_CLIPS.all(func(c: String) -> bool: return library.has_animation(c))
+	var lower: Array[NodePath] = []
+	for bone in skeleton.get_bone_count():
+		var path := NodePath("%s:%s" % [skeleton_path, skeleton.get_bone_name(bone)])
+		if not path in upper:
+			lower.append(path)
+
 	var aim_blend := AnimationNodeBlend2.new()
 	var fire_shot := AnimationNodeOneShot.new()
 	fire_shot.fadein_time = 0.05
@@ -333,7 +375,29 @@ func _build_tree(library: AnimationLibrary) -> void:
 	root.add_node("jump_clip", clip.call("jump"), Vector2(500, 300))
 	root.add_node("jump", jump_shot, Vector2(740, 140))
 	root.connect_node("loco_rate", 0, "locomotion")
-	root.connect_node("aim_blend", 0, "loco_rate")
+	if _aim_legs:
+		var space := AnimationNodeBlendSpace2D.new()
+		space.min_space = Vector2(-1.0, -1.0)
+		space.max_space = Vector2(1.0, 1.0)
+		space.sync = true
+		space.add_blend_point(clip.call("idle"), Vector2.ZERO, -1, "idle")
+		space.add_blend_point(clip.call("walk"), Vector2(0.0, 1.0), -1, "forward")
+		space.add_blend_point(clip.call("walk_back"), Vector2(0.0, -1.0), -1, "back")
+		space.add_blend_point(clip.call("strafe_left"), Vector2(-1.0, 0.0), -1, "left")
+		space.add_blend_point(clip.call("strafe_right"), Vector2(1.0, 0.0), -1, "right")
+		root.add_node("aim_legs", space, Vector2(0, -200))
+		root.add_node("aim_legs_rate", AnimationNodeTimeScale.new(), Vector2(130, -200))
+		var legs := AnimationNodeBlend2.new()
+		legs.filter_enabled = true
+		for path in lower:
+			legs.set_filter_path(path, true)
+		root.add_node("legs", legs, Vector2(200, -100))
+		root.connect_node("aim_legs_rate", 0, "aim_legs")
+		root.connect_node("legs", 0, "loco_rate")
+		root.connect_node("legs", 1, "aim_legs_rate")
+		root.connect_node("aim_blend", 0, "legs")
+	else:
+		root.connect_node("aim_blend", 0, "loco_rate")
 	root.connect_node("aim_blend", 1, "aim_clip")
 	root.connect_node("fire", 0, "aim_blend")
 	root.connect_node("fire", 1, "fire_clip")
@@ -350,6 +414,9 @@ func _build_tree(library: AnimationLibrary) -> void:
 	_tree.active = true
 	_tree.set("parameters/jump_rate/scale", JUMP_RATE)
 	_tree.set("parameters/loco_rate/scale", 1.0)
+	if _aim_legs:
+		_tree.set("parameters/aim_legs_rate/scale", 1.0)
+		_tree.set("parameters/legs/blend_amount", 0.0)
 
 
 func _attach_rifle() -> void:
