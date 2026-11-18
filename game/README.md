@@ -42,8 +42,15 @@ up in code, so a fresh export from Blender needs no hand edits:
   - Walk 1.6 m/s, run 4.2 m/s. The clips are played faster to match
     (`tools/anim_measure.gd` measured them at 1.17 and 3.28 m/s), so the
     feet do not skate.
-  - Not aiming, the body turns to face the way it walks. Aiming, it faces
-    the camera.
+  - The mouse orbits the camera, not the body, and movement is relative to
+    the camera (W+A goes forward-left of the view), as in a third-person
+    action game. Not aiming, the body turns to face the way it walks.
+    Aiming, it faces the camera. Scripts that move the player call
+    `player.face(yaw)`, which resets the body and the camera together.
+  - `--world=town --town-selftest` checks this: W with the camera turned a
+    quarter turn walks the camera's way, W+A goes 45 degrees left of the
+    view, and aiming turns the body onto the camera. `--selftest` checks
+    that the camera's spring arm pulls in against the hall walls.
   - The jump uses only the airborne part of its clip.
   - The rifle's place in the hand comes from the aim pose
     (`tools/rifle_fit.gd`).

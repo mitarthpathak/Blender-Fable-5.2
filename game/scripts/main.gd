@@ -453,7 +453,7 @@ func _self_test() -> void:
 		await get_tree().physics_frame
 	print("TEST standing on floor: ", player.is_on_floor(), " at y=%.2f" % player.global_position.y)
 	player.global_position = Vector3(0.52, 0.05, -1.2)
-	player.rotation.y = 0.0
+	player.face(0.0)                  # movement follows the camera: reset it with the body
 	Input.action_press("move_forward")
 	var top := 0.0
 	for i in 60 * 9:
@@ -462,4 +462,16 @@ func _self_test() -> void:
 	Input.action_release("move_forward")
 	print("TEST after climbing: y=%.2f (first floor is 3.06), position %s, on floor: %s" % [
 		player.global_position.y, player.global_position, player.is_on_floor()])
+	# The camera's spring arm indoors: in the hall, turned four ways, it pulls in
+	# where a wall is closer than the arm.
+	player.global_position = Vector3(0.9, 0.05, -2.2)
+	var pulled := 0
+	for quarter in 4:
+		player.face(quarter * PI / 2.0)
+		for i in 8:
+			await get_tree().physics_frame
+		var arm: Vector2 = player.arm_lengths()
+		pulled += 1 if arm.x < arm.y - 0.05 else 0
+		print("TEST hall camera arm, facing %d deg: %.2f of %.2f m" % [quarter * 90, arm.x, arm.y])
+	print("TEST spring arm pulls in indoors: %s" % ("PASS" if pulled > 0 else "FAIL"))
 	get_tree().quit()

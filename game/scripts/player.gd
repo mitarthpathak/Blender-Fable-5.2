@@ -23,6 +23,7 @@ var _body_mesh: MeshInstance3D
 var camera: Camera3D
 var flashlight: SpotLight3D
 var rig: CharacterRig            # null while the player is a capsule
+var force_aim := false           # tools and tests: aim as if the right mouse button were held
 
 
 func _ready() -> void:
@@ -91,6 +92,38 @@ func _ready() -> void:
 	camera.add_child(flashlight)
 
 
+## Turn the player to `yaw`, with the camera behind it and the body facing the
+## same way. Movement follows the camera (pivot) as well as the body, so a
+## script that wants "W walks towards yaw" must reset both: the self-tests
+## and the screenshot tools call this instead of setting rotation.y.
+func face(yaw: float) -> void:
+	rotation.y = yaw
+	_pivot.rotation = Vector3.ZERO
+	if rig:
+		rig.rotation.y = 0.0
+		rig.aim_yaw = 0.0
+
+
+## Orbit the camera by `yaw` around the player, as the mouse does. Tools use it.
+func turn_camera(yaw: float) -> void:
+	_pivot.rotation.y += yaw
+
+
+## Where the camera looks, as a world yaw (0 is -Z).
+func view_yaw() -> float:
+	return rotation.y + _pivot.rotation.y
+
+
+## Where the body faces, as a world yaw: the rig's if there is one.
+func body_yaw() -> float:
+	return rotation.y + (rig.rotation.y if rig else 0.0)
+
+
+## How far the spring arm let the camera out, against the length it wants.
+func arm_lengths() -> Vector2:
+	return Vector2(_arm.get_hit_length(), _arm.spring_length)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		# The camera orbits on its own; the body only turns when it moves or aims
@@ -118,7 +151,7 @@ func _physics_process(delta: float) -> void:
 	# Movement is relative to where the camera looks: W+A goes forward and to
 	# the left of the view, diagonally, whatever way the body is facing.
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var view := Basis(Vector3.UP, rotation.y + _pivot.rotation.y)
+	var view := Basis(Vector3.UP, view_yaw())
 	var direction := (view * Vector3(input.x, 0.0, input.y)).normalized()
 	var speed := RUN_SPEED if Input.is_action_pressed("run") else WALK_SPEED
 	var target := direction * speed
@@ -127,7 +160,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if rig:
-		rig.aiming = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+		rig.aiming = force_aim or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
 		rig.aim_yaw = _pivot.rotation.y
 		rig.update(velocity, is_on_floor(), delta)
 		var length := ARM_LENGTH_AIMING if rig.aiming else ARM_LENGTH

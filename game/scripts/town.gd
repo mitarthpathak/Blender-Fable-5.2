@@ -432,8 +432,10 @@ func _add_view_cameras() -> void:
 
 # --- Checks ------------------------------------------------------------------------------------
 
+## Walk forward towards `yaw`. Movement follows the camera, so the camera is
+## turned to `yaw` too (player.face), not only the body.
 func _walk(player: CharacterBody3D, yaw: float, seconds: float, stop: Callable = Callable()) -> void:
-	player.rotation.y = yaw
+	player.face(yaw)
 	Input.action_press("move_forward")
 	for i in int(seconds * 60.0):
 		await get_tree().physics_frame
@@ -442,6 +444,21 @@ func _walk(player: CharacterBody3D, yaw: float, seconds: float, stop: Callable =
 	Input.action_release("move_forward")
 	for i in 10:
 		await get_tree().physics_frame
+
+
+## What the player runs into if it keeps walking forward: a name for test output.
+func _blocker(player: CharacterBody3D) -> String:
+	Input.action_press("move_forward")
+	var found := "nothing"
+	for i in 5:
+		await get_tree().physics_frame
+		for c in player.get_slide_collision_count():
+			var hit := player.get_slide_collision(c)
+			if absf(hit.get_normal().y) < 0.5:
+				var body := hit.get_collider() as Node
+				found = "%s/%s" % [body.get_parent().name, body.name]
+	Input.action_release("move_forward")
+	return found
 
 
 ## `-- --world=town --town-selftest`: no rendering needed.
@@ -479,7 +496,10 @@ func _self_test() -> void:
 		marks.get("porch", NAN), marks.get("yard", NAN), marks.get("sidewalk", NAN), marks.get("road", NAN)])
 	# Down Mill Road to the barriers.
 	await _walk(player, south, 32.0, func() -> bool: return player.global_position.z >= 56.5)
-	print("TEST Mill Road: stopped at z=%.1f (barriers at 55.8, edge wall at 57.0)" % player.global_position.z)
+	var mill_stop := player.global_position.z
+	var mill_blocker: String = await _blocker(player)
+	print("TEST Mill Road: stopped at z=%.1f against %s (the crashed pickup's side is at about 52.4 on this line, the barriers at 55.8)" % [
+		mill_stop, mill_blocker])
 	# Up a curb from the road onto the sidewalk.
 	player.global_position = Vector3(10.0, -0.5, 13.0)
 	await _walk(player, 0.0, 3.5)
@@ -497,7 +517,51 @@ func _self_test() -> void:
 	player.global_position = Vector3(-24.0, -0.5, 14.2)
 	await _walk(player, PI / 2.0, 6.0)
 	print("TEST west end: stopped at x=%.1f (barriers at -29, edge wall at -31)" % player.global_position.x)
+	await _camera_checks(player)
 	get_tree().quit()
+
+
+## Movement follows the camera, not the body; aiming turns the body to the camera.
+func _camera_checks(player: CharacterBody3D) -> void:
+	# The body faces south (+Z); the camera is turned a quarter turn, so it looks east (+X).
+	player.global_position = Vector3(-6.0, -0.5, 14.2)
+	player.velocity = Vector3.ZERO
+	player.face(PI)
+	player.turn_camera(PI / 2.0)
+	for i in 10:
+		await get_tree().physics_frame
+	var start := player.global_position
+	Input.action_press("move_forward")
+	for i in 120:
+		await get_tree().physics_frame
+	Input.action_release("move_forward")
+	var moved := player.global_position - start
+	var moved_yaw := atan2(-moved.x, -moved.z)
+	var off := rad_to_deg(absf(angle_difference(moved_yaw, player.view_yaw())))
+	var body_off := rad_to_deg(absf(angle_difference(player.body_yaw(), player.view_yaw())))
+	print("TEST camera-relative: W with the camera turned 90 deg moved (%.2f, %.2f), %.1f deg off the view (want < 5), body %.1f deg off it (want < 10): %s" % [
+		moved.x, moved.z, off, body_off, "PASS" if off < 5.0 and body_off < 10.0 and moved.length() > 2.0 else "FAIL"])
+	# W+A: diagonally forward-left of the view.
+	start = player.global_position
+	Input.action_press("move_forward")
+	Input.action_press("move_left")
+	for i in 90:
+		await get_tree().physics_frame
+	Input.action_release("move_forward")
+	Input.action_release("move_left")
+	moved = player.global_position - start
+	off = rad_to_deg(angle_difference(player.view_yaw(), atan2(-moved.x, -moved.z)))
+	print("TEST W+A: moved %.1f deg left of the view (want 45): %s" % [off, "PASS" if absf(off - 45.0) < 5.0 else "FAIL"])
+	# Aiming: the body turns from where it walked to the camera.
+	player.face(0.0)
+	player.turn_camera(-2.0)
+	player.force_aim = true
+	for i in 60:
+		await get_tree().physics_frame
+	body_off = rad_to_deg(absf(angle_difference(player.body_yaw(), player.view_yaw())))
+	print("TEST aiming turns the body to the camera: %.1f deg off it (want < 3): %s" % [body_off, "PASS" if body_off < 3.0 else "FAIL"])
+	player.force_aim = false
+	player.face(0.0)
 
 
 ## `-- --world=town --town-perf [--quality=low]`: average FPS, draw calls and
