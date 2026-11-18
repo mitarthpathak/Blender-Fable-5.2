@@ -99,7 +99,11 @@ triangles.
   from the flyer, left out; 16 a porch swing, pumpkins and a sheet ghost;
   15 a ball, wagon, tricycle and sandbox in the long grass; 17 the sale
   sign and the dead sedan; 3 Mill Road an empty dog house and chain; 4 the
-  wagon on blocks, tyres, pallets and a mattress.
+  wagon on blocks, tyres, pallets and a mattress; 10 spare plywood, a
+  sawhorse and a ladder from a boarding-up never finished; 18 a raised bed
+  and stakes, a watering can, a broken bird bath; 13 papers on the steps and
+  sheets on the line; 19 a brick and glass on the porch, an armchair and a
+  rolled rug in the side yard (`corner_stories`).
 - **Fog ends**: dead trees and a dark tree line beyond each closed street
   end, so the view dissolves instead of stopping at a fence.
 
@@ -222,3 +226,14 @@ Things a merge should know:
   a lawn chair in the back yard, a young tree where there is room, and
   leaves banked in the fence corners. 813 objects (727 of them instanced
   into 23 MultiMeshes in Godot), about 345,000 triangles.
+- **Stories for L8 to L11** (`tk/detail.py`, `corner_stories`), like the
+  other lots' (see `docs/TOWN.md`).
+- **`tree_9`** in L1's back yard moved 2.8 m north-west, off the house's
+  back steps and trash cans (`plan.TREES`).
+- **Backdrop cards**: the two diagonal cards at the south corners reached
+  into the new lots L10 and L11, where they were seen from behind, black.
+  They stop at the corners now.
+- **Leaf piles** stay 1.2 m clear of every sidewalk: on the corner lots
+  they were landing by the side street, flat orange mounds at eye level.
+- **`lot_views.py`**: daylight Cycles views of single lots, for before and
+  after checks (`blender -b town.blend --python lot_views.py -- --out DIR`).

@@ -280,8 +280,8 @@ def build(houses, coll="props"):
             continue
         x0, y0, x1, y1 = lot.rect
         for x, y in ((x0 + 0.7, y1 - 0.7), (x1 - 0.7, y1 - 0.7), (x0 + 0.7, y0 + 0.7), (x1 - 0.7, y0 + 0.7)):
-            if sk.lot_front(lot) == "s" and y < y0 + 1.0 or sk.lot_front(lot) == "n" and y > y1 - 1.0:
-                continue                                         # not in the front yard by the street
+            if any(_inside(x, y, rect, 1.2) for _, rect in plan.SIDEWALKS):
+                continue                                         # not by a street: front yards, and the side street of a corner lot
             instance(piles[n % 3], f"leaf_pile_y{n}", "props", (x, y, G), rng.uniform(0, 6.28), scale=rng.uniform(0.6, 1.0))
             n += 1
     med.build("props")

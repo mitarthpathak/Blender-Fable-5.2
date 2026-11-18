@@ -135,6 +135,10 @@ metre away, in daylight as well as fog:
 | 17 Ashgrove | For sale, and nobody is buying; the sedan at the curb has sat on flat tyres for a long time. |
 | 3 Mill Road | An empty dog house, a chain, a bowl, and a BEWARE OF DOG sign on the fence. |
 | 4 Mill Road | The vacant lot: a station wagon on blocks, tyres, pallets, a mattress. |
+| 10 Ashgrove | The boarding-up was never finished: spare plywood leaning on the front wall, a sawhorse still out, a ladder in the grass, a paint can on its side. |
+| 18 Ashgrove | Someone kept a garden: a raised bed gone to weed, its tomato stakes leaning, a watering can, the bird bath's bowl knocked off into the grass. |
+| 13 Ashgrove | Nobody took the papers in: they lie on the steps and the porch in their bags. Round the back two sheets are still on the line. |
+| 19 Ashgrove | Cleared out in a hurry: the upstairs window was broken from outside (the brick is on the porch, in the glass); an armchair and a rolled rug wait in the side yard for a pickup that never came. |
 
 ## Where the player walks
 
