@@ -1,7 +1,7 @@
 # 03 Town: Halden Ridge
 
 The streets around the player's house: Ashgrove Street, the T-junction with
-Mill Road, five closed neighbouring houses and a vacant lot, built from a
+Mill Road, nine closed neighbouring houses and a vacant lot, built from a
 modular kit to the art bible (`docs/ART_BIBLE.md`). The layout and the
 reasoning are in `docs/TOWN.md`; the Godot side is in `game/README.md`.
 
@@ -203,3 +203,22 @@ Things a merge should know:
 - The character branch should not conflict: nothing here edits `player.gd`.
   If that branch also edits `main.gd`'s `_ready()`, the two edits are on
   neighbouring lines.
+
+## Finishing pass
+
+- **Cars**: the body panels were wound inwards. Cycles draws both sides, so
+  the stills looked right, but Godot culls back faces and showed the dark
+  inner skin from outside: black cars with slabs sticking out. They face
+  out now.
+- **Side fences on the south side of Ashgrove** start from the houses' back
+  corners. From the front corners they went through L4's wrap-round porch.
+- **Four more lots**, L8 to L11, fill the corners at both ends of Ashgrove
+  that were bare verge: 10, 18, 13 and 19 Ashgrove Street, with fences,
+  mailboxes, trees and service drops.
+- **Yards** (`tk/yards.py`): every house lot gets dead shrubs at the corners
+  of the house and beside the porch steps, long grass across the whole lot
+  instead of only along the front fence, a pair of trash cans by the back
+  corner and two or three of a rusted drum, a stack of tyres, a woodpile or
+  a lawn chair in the back yard, a young tree where there is room, and
+  leaves banked in the fence corners. 813 objects (727 of them instanced
+  into 23 MultiMeshes in Godot), about 345,000 triangles.

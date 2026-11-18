@@ -39,6 +39,16 @@ up in code, so a fresh export from Blender needs no hand edits:
   speed, an upper-body aim blend, fire and jump one-shots, and the rifle
   (`assets/character/rifle.glb`) on the right-hand bone. Without those
   files the game runs with the capsule exactly as before.
+  - Walk 1.6 m/s, run 4.2 m/s. The clips are played faster to match
+    (`tools/anim_measure.gd` measured them at 1.17 and 3.28 m/s), so the
+    feet do not skate.
+  - Not aiming, the body turns to face the way it walks. Aiming, it faces
+    the camera.
+  - The jump uses only the airborne part of its clip.
+  - The rifle's place in the hand comes from the aim pose
+    (`tools/rifle_fit.gd`).
+  - `tools/character_check.gd` and `tools/town_player_shot.gd` take
+    pictures of the character for checking.
 - **Lighting**: a cool moon, warm lamps, a scripted failing-bulb flicker on
   `light_hall_flicker`, and a television glow added as a light.
 - **Environment**: plain night fog for a sky, cool ambient light, AgX tone

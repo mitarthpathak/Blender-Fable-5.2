@@ -3,7 +3,7 @@
 The playable town around the player's house: one stretch of **Ashgrove
 Street**, the street the house already faces, and **Mill Road**, a side street
 that meets it in a T-junction right opposite the front door. Small on purpose:
-seven lots, each worth looking at, in fog that hides everything past 20 to 30
+eleven lots, each worth looking at, in fog that hides everything past 20 to 30
 metres (docs/ART_BIBLE.md).
 
 ![Town plan](../projects/03-town/renders/01_town_plan.png)
@@ -52,6 +52,13 @@ the front door opens, lit by the streetlight on pole P5.
 | L5 | 17 Ashgrove Street | Corner house, front gable, faded mustard, chain-link fence and a sale sign. Empty. An abandoned sedan with flat tyres sits at the curb in front. |
 | L6 | 3 Mill Road | Faces Mill Road. Oxblood paint, side-gable, boarded throughout. |
 | L7 | 4 Mill Road | Vacant lot behind chain-link: a dead station wagon on blocks, weeds, leaves, a bare tree. Its south half is the closed **Ridge Gas & Grocery**. |
+| L8 | 10 Ashgrove Street | West end, north side. Narrow front-gable house, putty, every window boarded. |
+| L9 | 18 Ashgrove Street | East end, north side, past the fallen tree. Side-gable, faded blue, one window broken. |
+| L10 | 13 Ashgrove Street | West end, south side. Small side-gable house, sage, closed up. |
+| L11 | 19 Ashgrove Street | East end, south side. Front gable, oxblood, one window boarded and one broken. |
+
+L8 to L11 fill the four corners at the ends of Ashgrove, inside the edge
+fences, which were bare verge until the town was finished.
 
 Only the player's house opens. Every other house has a walkable porch, a
 locked front door (and a screen door), sash windows with casings, gutters and

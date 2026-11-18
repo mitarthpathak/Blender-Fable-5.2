@@ -161,12 +161,15 @@ def ground(coll="ground"):
         covered.append(lot.rect)
     bx0, by0, bx1, by1 = plan.BUILD
     # verge strips: north of the north lots, the corners outside the lots, south of Mill lots
+    north, south = plan.ASHGROVE.road[3] + plan.SIDEWALK_W, plan.ASHGROVE.road[1] - plan.SIDEWALK_W
     verge = [
-        (bx0, plan.ASHGROVE.road[3] + plan.SIDEWALK_W, -21.0, by1),
-        (28.0, plan.ASHGROVE.road[3] + plan.SIDEWALK_W, bx1, by1),
-        (-21.0, 18.0, 28.0, by1),
-        (bx0, by0, -20.0, plan.ASHGROVE.road[1] - plan.SIDEWALK_W),
-        (27.0, by0, bx1, plan.ASHGROVE.road[1] - plan.SIDEWALK_W),
+        (bx0, north, -30.5, by1),
+        (38.5, north, bx1, by1),
+        (-30.5, 18.0, 38.5, by1),
+        (bx0, by0, -30.5, south),
+        (-30.5, by0, -20.0, -40.0),
+        (38.5, by0, bx1, south),
+        (27.0, by0, 38.5, -40.0),
         (-20.0, by0, plan.MILL.road[0] - plan.SIDEWALK_W, -58.0),
         (plan.MILL.road[2] + plan.SIDEWALK_W, by0, 27.0, -58.0),
         (-20.0, -40.0, plan.MILL.road[0] - plan.SIDEWALK_W, -40.0),
@@ -626,14 +629,25 @@ def tall_fence_run(mb, a, b, rng, height=2.2):
         mb.obox((c.x, c.y, G + z), (length, 0.04, 0.09), rot, "wood_weathered", color=(0.62, 0.59, 0.54))
 
 
+def lot_front(lot) -> str:
+    """Which way a lot faces its street: "s" for the north side of Ashgrove,
+    "n" for the south side, "e" for the lots on Mill Road."""
+    x0, y0, x1, y1 = lot.rect
+    if abs(y0 - (plan.ASHGROVE.road[3] + plan.SIDEWALK_W)) < 0.01:
+        return "s"
+    if abs(y1 - (plan.ASHGROVE.road[1] - plan.SIDEWALK_W)) < 0.01:
+        return "n"
+    return "e"
+
+
 def fences(coll="fences"):
     rng = random.Random(21)
     pk, cl, tall = MeshBuilder(), MeshBuilder(), MeshBuilder()
     for lot in plan.LOTS:
         x0, y0, x1, y1 = lot.rect
-        if lot.key in ("L1", "L2", "L3"):
+        if lot_front(lot) == "s":
             a, b, gap = (x0 + 0.1, y0 + 0.25), (x1 - 0.1, y0 + 0.25), (lot.gate_at, y0 + 0.25) if lot.gate_at else None
-        elif lot.key in ("L4", "L5"):
+        elif lot_front(lot) == "n":
             a, b, gap = (x0 + 0.1, y1 - 0.25), (x1 - 0.1, y1 - 0.25), (lot.gate_at, y1 - 0.25) if lot.gate_at else None
         else:
             a, b, gap = (x1 - 0.25, y0 + 0.1), (x1 - 0.25, y1 - 0.1), (x1 - 0.25, lot.gate_at) if lot.gate_at else None
@@ -656,7 +670,9 @@ def fences(coll="fences"):
     chainlink_run(cl, (x0 + 0.2, y1 - 0.2), (x1 - 0.6, y1 - 0.2))
     chainlink_run(cl, (x0 + 0.2, -47.2), (x0 + 0.2, y1 - 0.2))          # Mill Road side: the vacant half only
     chainlink_run(cl, (x0 + 0.2, -47.2), (x1 - 0.6, -47.2))             # between the lot and Ridge Gas
-    # side yards: tall fences from each house's sides to its lot edges, and down the lot lines
+    # side yards: tall fences from each house's sides to its lot edges, and down the lot lines.
+    # On the south side of Ashgrove they run from the houses' back corners: from
+    # the front corners they went through L4's wrap-round porch and along L5's.
     side_runs = [
         # north lots: the house front line + 1.5 m across to the lot boundary, then back to the rear fence
         ((-4.5, 1.2), (-0.3, 1.2)), ((7.6, 1.2), (11.5, 1.2)),
@@ -664,10 +680,15 @@ def fences(coll="fences"):
         ((11.5, 1.8), (15.0, 1.8)), ((24.2, 1.8), (28.0, 1.8)),
         ((-4.5, 1.2), (-4.5, 18.4)), ((11.5, 1.2), (11.5, 18.4)),
         ((-21.0, 1.0), (-21.0, 18.4)), ((28.0, 1.8), (28.0, 18.4)),
-        # south corner lots
-        ((-20.4, -28.5), (-14.8, -28.5)), ((-6.4, -28.5), (-1.6, -28.5)),
-        ((8.6, -27.7), (13.0, -27.7)), ((20.4, -27.7), (27.4, -27.7)),
+        # south corner lots, from the back corners of the houses
+        ((-20.4, -34.0), (-14.8, -34.0)), ((-6.4, -34.0), (-1.6, -34.0)),
+        ((8.6, -35.0), (13.0, -35.0)), ((20.4, -35.0), (27.4, -35.0)),
         ((-20.4, -40.0), (-1.6, -40.0)),
+        # the four new corner lots at the ends of Ashgrove
+        ((-30.5, 0.8), (-29.2, 0.8)), ((-22.2, 0.8), (-21.0, 0.8)),
+        ((28.0, 1.9), (29.2, 1.9)), ((37.2, 1.9), (38.5, 1.9)),
+        ((-30.5, -31.8), (-29.4, -31.8)), ((-21.8, -31.8), (-20.4, -31.8)), ((-30.5, -40.0), (-20.4, -40.0)),
+        ((27.4, -32.0), (29.2, -32.0)), ((37.0, -32.0), (38.5, -32.0)), ((27.4, -40.0), (38.5, -40.0)),
         # Mill Road west lot
         ((-7.7, -58.0), (-7.7, -53.4)), ((-7.7, -44.6), (-7.7, -40.0)),
         # behind the south corner lots
@@ -803,9 +824,9 @@ def props(coll="props"):
         x0, y0, x1, y1 = lot.rect
         n = 40 if lot.key == "L7" else 18
         for _ in range(n):
-            if lot.key in ("L1", "L2", "L3"):
+            if lot_front(lot) == "s":
                 spots.append((rng.uniform(x0, x1), y0 + rng.uniform(0.3, 1.2)))
-            elif lot.key in ("L4", "L5"):
+            elif lot_front(lot) == "n":
                 spots.append((rng.uniform(x0, x1), y1 - rng.uniform(0.3, 1.2)))
             else:
                 gx, gy = rng.uniform(x0, x1), rng.uniform(y0, y1)

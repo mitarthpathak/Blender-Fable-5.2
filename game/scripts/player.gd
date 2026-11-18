@@ -7,9 +7,9 @@ extends CharacterBody3D
 ## hold the right mouse button to aim, click the left to fire. Without those
 ## files nothing changes.
 
-const WALK_SPEED := 2.6
-const RUN_SPEED := 4.6
-const JUMP_VELOCITY := 3.6
+const WALK_SPEED := CharacterRig.WALK_SPEED      # matched to the character's walk and run clips
+const RUN_SPEED := CharacterRig.RUN_SPEED
+const JUMP_VELOCITY := 2.9                        # about 0.6 s in the air: as long as the jump clip's flight
 const MOUSE_SENSITIVITY := 0.0025
 const ACCELERATION := 12.0
 const ARM_LENGTH := 1.9
@@ -93,7 +93,9 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
+		# The camera orbits on its own; the body only turns when it moves or aims
+		# (scripts/character.gd), as in a third-person action game.
+		_pivot.rotation.y -= event.relative.x * MOUSE_SENSITIVITY
 		_pivot.rotation.x = clampf(_pivot.rotation.x - event.relative.y * MOUSE_SENSITIVITY, -1.2, 0.9)
 	elif event is InputEventMouseButton and event.pressed:
 		if rig and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and event.button_index == MOUSE_BUTTON_LEFT:
@@ -113,8 +115,11 @@ func _physics_process(delta: float) -> void:
 		if rig:
 			rig.jump()
 
+	# Movement is relative to where the camera looks: W+A goes forward and to
+	# the left of the view, diagonally, whatever way the body is facing.
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
+	var view := Basis(Vector3.UP, rotation.y + _pivot.rotation.y)
+	var direction := (view * Vector3(input.x, 0.0, input.y)).normalized()
 	var speed := RUN_SPEED if Input.is_action_pressed("run") else WALK_SPEED
 	var target := direction * speed
 	velocity.x = move_toward(velocity.x, target.x, ACCELERATION * delta)
@@ -123,6 +128,7 @@ func _physics_process(delta: float) -> void:
 
 	if rig:
 		rig.aiming = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+		rig.aim_yaw = _pivot.rotation.y
 		rig.update(velocity, is_on_floor(), delta)
 		var length := ARM_LENGTH_AIMING if rig.aiming else ARM_LENGTH
 		_arm.spring_length = move_toward(_arm.spring_length, length, delta * 4.0)

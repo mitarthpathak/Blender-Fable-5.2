@@ -25,20 +25,35 @@ const RIFLE := DIR + "rifle.glb"
 ## Clip name: does it loop?
 const CLIPS := {"idle": true, "walk": true, "run": true, "rifle_aim": true, "fire": false, "jump": false}
 const HEIGHT := 1.80
-const WALK_SPEED := 2.6          # the speeds the walk and run clips are matched to (player.gd)
-const RUN_SPEED := 4.6
+const WALK_SPEED := 1.6          # the player's walk and run (player.gd); the clips are sped up to match
+const RUN_SPEED := 4.2
+## The ground speed each clip was made for, measured from how fast its planted
+## foot slides back (tools/anim_measure.gd). Playing a clip at any other speed
+## makes the feet skate, so the clips are played faster or slower to match.
+const WALK_CLIP_SPEED := 1.17
+const RUN_CLIP_SPEED := 3.28
+## The jump clip crouches for most of a second before the feet leave the
+## ground; the player jumps the moment the key goes down. Only its airborne
+## part is used, from the end of the crouch to the landing, slowed to fit the
+## time the player spends in the air.
+const JUMP_FROM := 0.84
+const JUMP_TO := 1.95
+const JUMP_RATE := 0.95
+const TURN_RATE := 10.0          # how fast the body turns to face where it is going
 
 ## Where the rifle sits in the right hand, in the hand bone's own space and in
-## metres. Mixamo's hand bone runs along the hand (+Y towards the fingers) with
-## the palm facing -X. The rifle's muzzle is its +Z and its top is +Y. These
-## were set on a stand-in rig: check them once the real character is in.
-const RIFLE_BASIS := Basis(Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0))
-const RIFLE_OFFSET := Vector3(-0.035, 0.095, 0.015)
+## metres. Measured from the character's aiming pose by tools/rifle_fit.gd:
+## the pistol grip in the right palm, the fore grip in the left. Run that tool
+## again if the character or its clips change.
+const RIFLE_BASIS := Basis(Vector3(-0.2758, -0.1736, 0.9454), Vector3(0.9605, -0.0879, 0.2640), Vector3(0.0373, 0.9809, 0.1910))
+const RIFLE_OFFSET := Vector3(0.0896, 0.1321, 0.0387)
 
 var model: Node3D
 var skeleton: Skeleton3D
 var rifle: Node3D
 var aiming := false
+var aim_yaw := 0.0               # where the camera looks, relative to the player: the body turns to it to aim
+var _fire_hold := 0.0            # after a shot from the hip the body faces the target for a moment
 
 var _player: AnimationPlayer
 var _tree: AnimationTree
@@ -71,9 +86,32 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 	_aim_amount = move_toward(_aim_amount, 1.0 if aiming else 0.0, delta * 6.0)
 	_tree.set("parameters/locomotion/blend_position", _speed)
 	_tree.set("parameters/aim_blend/blend_amount", _aim_amount)
+	_tree.set("parameters/loco_rate/scale", _rate(_speed))
+	# Not aiming, the body turns to face the way it is moving; aiming, it faces
+	# where the camera looks and the legs walk on under it.
+	_fire_hold = maxf(_fire_hold - delta, 0.0)
+	var facing_target := aiming or _fire_hold > 0.0
+	var want := aim_yaw
+	if not facing_target and flat > 0.3:
+		var body := (get_parent() as Node3D).global_transform.basis if get_parent() is Node3D else Basis.IDENTITY
+		var local := body.inverse() * Vector3(velocity.x, 0.0, velocity.z)
+		want = atan2(-local.x, -local.z)
+	elif not facing_target:
+		want = rotation.y
+	rotation.y = lerp_angle(rotation.y, want, clampf(delta * TURN_RATE, 0.0, 1.0))
+
+
+## How fast to play the walk/run blend at a speed, so the feet do not skate:
+## the speed over the ground speed of whatever mix of the two clips is playing.
+func _rate(speed: float) -> float:
+	if speed <= WALK_SPEED:
+		return WALK_SPEED / WALK_CLIP_SPEED
+	var t := clampf((speed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0.0, 1.0)
+	return speed / lerpf(WALK_CLIP_SPEED, RUN_CLIP_SPEED, t)
 
 
 func fire() -> void:
+	_fire_hold = 0.6
 	_tree.set("parameters/fire/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
@@ -106,6 +144,8 @@ func _build() -> bool:
 		var animation := _load_clip(DIR + clip + ".fbx")
 		if animation == null:
 			continue
+		if clip == "jump":
+			animation = _trim(animation, JUMP_FROM, JUMP_TO)
 		animation.loop_mode = Animation.LOOP_LINEAR if CLIPS[clip] else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
 	if not library.has_animation("idle"):
@@ -210,6 +250,31 @@ func _bone_ending(suffix: String) -> int:
 	return -1
 
 
+## A copy of an animation holding only the keys from t0 to t1, moved to start at 0.
+func _trim(source: Animation, t0: float, t1: float) -> Animation:
+	var out := Animation.new()
+	out.length = t1 - t0
+	for track in source.get_track_count():
+		var kind := source.track_get_type(track)
+		var index := out.add_track(kind)
+		out.track_set_path(index, source.track_get_path(track))
+		out.track_set_interpolation_type(index, source.track_get_interpolation_type(track))
+		# a key on each end, so the trimmed clip starts and ends exactly where the source was then
+		for t in [t0, t1]:
+			match kind:
+				Animation.TYPE_POSITION_3D:
+					out.position_track_insert_key(index, t - t0, source.position_track_interpolate(track, t))
+				Animation.TYPE_ROTATION_3D:
+					out.rotation_track_insert_key(index, t - t0, source.rotation_track_interpolate(track, t))
+				Animation.TYPE_SCALE_3D:
+					out.scale_track_insert_key(index, t - t0, source.scale_track_interpolate(track, t))
+		for key in source.track_get_key_count(track):
+			var t := source.track_get_key_time(track, key)
+			if t > t0 + 0.001 and t < t1 - 0.001:
+				out.track_insert_key(index, t - t0, source.track_get_key_value(track, key))
+	return out
+
+
 func _build_tree(library: AnimationLibrary) -> void:
 	var clip := func(wanted: String) -> AnimationNodeAnimation:
 		var node := AnimationNodeAnimation.new()
@@ -220,9 +285,9 @@ func _build_tree(library: AnimationLibrary) -> void:
 	locomotion.min_space = 0.0
 	locomotion.max_space = RUN_SPEED
 	locomotion.sync = true
-	locomotion.add_blend_point(clip.call("idle"), 0.0)
-	locomotion.add_blend_point(clip.call("walk"), WALK_SPEED)
-	locomotion.add_blend_point(clip.call("run"), RUN_SPEED)
+	locomotion.add_blend_point(clip.call("idle"), 0.0, -1, "idle")
+	locomotion.add_blend_point(clip.call("walk"), WALK_SPEED, -1, "walk")
+	locomotion.add_blend_point(clip.call("run"), RUN_SPEED, -1, "run")
 
 	# Aiming and firing take over the spine, arms and head; the legs keep walking.
 	var upper: Array[NodePath] = []
@@ -249,18 +314,23 @@ func _build_tree(library: AnimationLibrary) -> void:
 
 	var root := AnimationNodeBlendTree.new()
 	root.add_node("locomotion", locomotion, Vector2(0, 0))
+	root.add_node("loco_rate", AnimationNodeTimeScale.new(), Vector2(130, 0))
+	var jump_rate := AnimationNodeTimeScale.new()
+	root.add_node("jump_rate", jump_rate, Vector2(620, 300))
 	root.add_node("aim_clip", clip.call("rifle_aim"), Vector2(0, 200))
 	root.add_node("aim_blend", aim_blend, Vector2(260, 60))
 	root.add_node("fire_clip", clip.call("fire"), Vector2(260, 260))
 	root.add_node("fire", fire_shot, Vector2(500, 100))
 	root.add_node("jump_clip", clip.call("jump"), Vector2(500, 300))
 	root.add_node("jump", jump_shot, Vector2(740, 140))
-	root.connect_node("aim_blend", 0, "locomotion")
+	root.connect_node("loco_rate", 0, "locomotion")
+	root.connect_node("aim_blend", 0, "loco_rate")
 	root.connect_node("aim_blend", 1, "aim_clip")
 	root.connect_node("fire", 0, "aim_blend")
 	root.connect_node("fire", 1, "fire_clip")
 	root.connect_node("jump", 0, "fire")
-	root.connect_node("jump", 1, "jump_clip")
+	root.connect_node("jump_rate", 0, "jump_clip")
+	root.connect_node("jump", 1, "jump_rate")
 	root.connect_node("output", 0, "jump")
 
 	_tree = AnimationTree.new()
@@ -269,6 +339,8 @@ func _build_tree(library: AnimationLibrary) -> void:
 	model.add_child(_tree)
 	_tree.anim_player = _tree.get_path_to(_player)
 	_tree.active = true
+	_tree.set("parameters/jump_rate/scale", JUMP_RATE)
+	_tree.set("parameters/loco_rate/scale", 1.0)
 
 
 func _attach_rifle() -> void:

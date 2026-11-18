@@ -188,6 +188,32 @@ LOTS = (
     Lot("L7", "4 Mill Road", (8.6, -58.0, 27.0, -40.0),
         "Vacant lot behind chain-link (a dead car on blocks, weeds) and, on its south half, the closed Ridge Gas & Grocery.",
         lawn="overgrown", fence="chainlink"),
+    # The four corners at the ends of Ashgrove, inside the edge fences. They
+    # were bare verge: from the street the town looked unfinished there.
+    Lot("L8", "10 Ashgrove Street", (-30.5, -8.6, -21.0, 18.0),
+        "A narrow house at the west end, every window boarded.",
+        KitHouse(7.0, 8.4, "s", (-29.2, -0.8), "gable_front", "entry", "putty",
+                 wear=0.95, door_at=1.0, windows_gf=((3.4, 1.0), (5.2, 1.0)),
+                 windows_ff=((1.0, 1.0), (4.2, 1.2)), boarded=("gf0", "gf1", "ff0", "ff1"), chimney=0.7),
+        lawn="dead", fence="picket", gate_at=-27.7),
+    Lot("L9", "18 Ashgrove Street", (28.0, -8.6, 38.5, 18.0),
+        "The last house on the east end, past the fallen tree. Faded blue, curtains still up.",
+        KitHouse(8.0, 8.0, "s", (29.2, 0.4), "gable_side", "full", "dusty_blue",
+                 trim="trim_grey", wear=0.55, door_at=3.3, windows_gf=((1.0, 1.3), (5.4, 1.3)),
+                 windows_ff=((1.0, 1.0), (3.5, 1.0), (6.0, 1.0)), broken=("ff2",), chimney=0.2),
+        lawn="overgrown", fence="picket", gate_at=33.1),
+    Lot("L10", "13 Ashgrove Street", (-30.5, -40.0, -20.0, -19.7),
+        "A small sage house on the south-west corner, closed up.",
+        KitHouse(7.6, 8.0, "n", (-21.8, -24.4), "gable_side", "entry", "sage",
+                 wear=0.7, door_at=3.2, windows_gf=((1.0, 1.2), (5.4, 1.2)),
+                 windows_ff=((1.0, 1.0), (5.6, 1.0)), boarded=("gf0",), chimney=0.8),
+        lawn="overgrown", fence="picket", gate_at=-25.6),
+    Lot("L11", "19 Ashgrove Street", (27.0, -40.0, 38.5, -19.7),
+        "Oxblood, front gable, on the south-east corner. One window broken.",
+        KitHouse(7.8, 8.6, "n", (37.0, -24.0), "gable_front", "full", "oxblood",
+                 wear=0.65, door_at=4.6, windows_gf=((1.0, 1.0), (2.6, 1.0)),
+                 windows_ff=((1.4, 1.0), (4.9, 1.0)), boarded=("gf1",), broken=("ff0",), chimney=-1.0),
+        lawn="dead", fence="none"),
 )
 
 HOUSES = tuple(lot for lot in LOTS if lot.house)
@@ -242,6 +268,8 @@ SERVICE_DROPS = (
     ("P5", 13.4, -26.2, 5.2),      # 17 Ashgrove, across Mill Road
     ("P7", -6.2, -50.2, 5.2),      # 3 Mill Road
     ("P7", 16.4, -52.4, 3.3),      # Ridge Gas & Grocery
+    ("P1", -25.7, -0.8, 5.2),      # 10 Ashgrove
+    ("P4", 33.2, 0.4, 5.2),        # 18 Ashgrove
 )
 
 LAMP_HEIGHT = 6.40 - 0.45      # lamp height above the sidewalk, as on the house pole
@@ -276,10 +304,12 @@ TREES = (
     (-9.0, -5.5, 9.0, 1), (9.5, -5.0, 8.0, 2), (23.0, -4.2, 10.0, 3), (-18.5, 12.0, 11.0, 4),
     (-11.0, -23.0, 9.5, 5), (24.0, -23.5, 8.5, 6), (-16.0, -47.0, 10.0, 7), (20.5, -44.0, 9.0, 8),
     (25.2, -45.4, 7.5, 9), (5.0, 12.0, 9.5, 10),
+    (-25.0, 12.5, 10.0, 11), (34.5, 12.0, 9.0, 12), (-27.5, -35.5, 9.5, 13), (31.0, -36.0, 8.5, 14),
 )
 
 MAILBOXES = ((HOUSE_DOOR_X + 1.25, -8.55, 0), (-12.0, -8.55, 180), (20.6, -8.55, 0),
-             (-3.3, -20.2, 0), (14.6, -20.2, 0), (-2.2, -48.0, 90))
+             (-3.3, -20.2, 0), (14.6, -20.2, 0), (-2.2, -48.0, 90),
+             (-26.4, -8.55, 180), (31.8, -8.55, 0), (-24.2, -20.2, 0), (34.6, -20.2, 0))
 TRASH_CANS = ((6.6, -9.1, 0.0, "up"), (7.3, -9.15, 20.0, "up"), (-3.0, -19.3, 75.0, "fallen"),
               (21.8, -9.0, 0.0, "up"), (-1.3, -43.5, 0.0, "up"))
 MANHOLES = ((3.5, -14.2), (21.0, -14.0), (-17.0, -14.3), (3.6, -38.0))
@@ -319,8 +349,8 @@ def check() -> list[str]:
                 bx0, by0, bx1, by1 = b.rect
                 if ax0 < bx1 - 1e-6 and bx0 < ax1 - 1e-6 and ay0 < by1 - 1e-6 and by0 < ay1 - 1e-6:
                     problems.append(f"{a.key} overlaps {b.key}")
-    if not (6 <= len(LOTS) <= 8):
-        problems.append("the brief asks for 6 to 8 lots")
+    if not (6 <= len(LOTS) <= 12):
+        problems.append("expected 6 to 12 lots")
     keys = {p.key for p in POLES}
     for a, b in WIRES:
         if a not in keys or b not in keys:

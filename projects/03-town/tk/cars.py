@@ -247,7 +247,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                 return Vector((v.x, v.y * side, v.z))
             for i in range(6):
                 q = [P(a, i), P(b, i), P(b, i + 1), P(a, i + 1)]
-                if side < 0:
+                if side > 0:                                     # wound to face out: a game engine culls back faces
                     q.reverse()
                 centre = (q[0] + q[1] + q[2] + q[3]) / 4
                 if i < 3:

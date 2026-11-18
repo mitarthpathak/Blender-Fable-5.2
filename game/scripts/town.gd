@@ -33,14 +33,14 @@ const TRIMESH_PREFIXES := ["ground_", "house_", "fence_", "car_", "barrier_", "j
 ## Flat or thin things that should not cast shadows.
 const NO_SHADOW_PREFIXES := ["puddles", "decals_", "detail_", "road_markings", "road_patches", "grass", "weed", "wires", "manhole", "leaf_pile", "leaves_", "ground_", "backdrop"]
 ## Repeated props drawn as MultiMesh instances.
-const INSTANCED_PREFIXES := ["grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "edgetree_", "pole_P", "streetlamp_P"]
+const INSTANCED_PREFIXES := ["grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "edgetree_", "pole_P", "streetlamp_P", "shrub_", "yard_drum_"]
 ## Simple cylinder colliders: name prefix -> [radius, height].
 const CYLINDERS := {"tree_": [0.26, 4.0], "pole_P": [0.17, 8.0], "trash_can_": [0.31, 0.9], "hydrant_": [0.14, 0.75]}
 ## Small props that fade out with distance (metres). Fog hides them sooner.
 ## Decals and street detail come from Blender in 24 m sectors ("decals_3_7"), so
 ## each sector is culled and faded on its own.
 const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
-	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0}
+	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0, "shrub_": 55.0, "yard_drum_": 50.0}
 
 const SODIUM := Color(1.0, 0.55, 0.20)
 const WINDOW_WARM := Color(1.0, 0.62, 0.34)
@@ -458,7 +458,7 @@ func _self_test() -> void:
 	# Out of the front door, across the porch, down the steps and the path, to the middle of the road.
 	var marks := {}
 	var south := PI
-	await _walk(player, south, 14.0, func() -> bool:
+	await _walk(player, south, 18.0, func() -> bool:
 		var p := player.global_position
 		for mark in [["porch", 1.4], ["yard", 5.0], ["sidewalk", 9.4], ["road", 13.5]]:
 			if not marks.has(mark[0]) and p.z >= mark[1]:
@@ -478,7 +478,7 @@ func _self_test() -> void:
 	print("TEST heights  porch %.2f (0.00)  yard %.2f (-0.45)  sidewalk %.2f (-0.40)  road %.2f (-0.53)" % [
 		marks.get("porch", NAN), marks.get("yard", NAN), marks.get("sidewalk", NAN), marks.get("road", NAN)])
 	# Down Mill Road to the barriers.
-	await _walk(player, south, 22.0, func() -> bool: return player.global_position.z >= 56.5)
+	await _walk(player, south, 32.0, func() -> bool: return player.global_position.z >= 56.5)
 	print("TEST Mill Road: stopped at z=%.1f (barriers at 55.8, edge wall at 57.0)" % player.global_position.z)
 	# Up a curb from the road onto the sidewalk.
 	player.global_position = Vector3(10.0, -0.5, 13.0)
