@@ -4,9 +4,10 @@ extends SceneTree
 ##
 ##   godot --path game --script res://tools/character_check.gd
 ##
-## Writes res://screenshots/character_<clip>.png and prints CHECK lines: how
-## tall the character came in, which clips loaded, and where the rifle ended
-## up. Needs a window (not --headless): it renders.
+## Writes res://screenshots/character_<clip>_<view>.png and prints CHECK
+## lines: how tall the character came in, which clips loaded, where the rifle
+## ended up and how close the left palm is to the handguard. Needs a window
+## (not --headless): it renders. `-- --only=aim,idle` for some clips only.
 
 const OUT := "res://screenshots"
 const SHOTS := [
@@ -64,12 +65,20 @@ func _run() -> void:
 	cam.make_current()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 
+	var only := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			only = arg.get_slice("=", 1)
 	for shot in SHOTS:
+		if only != "" and not shot[0] in only.split(","):
+			continue
 		var speed: float = shot[1]
 		tree.set("parameters/locomotion/blend_position", speed)
 		tree.set("parameters/aim_blend/blend_amount", 1.0 if shot[2] else 0.0)
 		if shot[3] != "":
 			tree.set("parameters/%s/request" % shot[3], AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+		if rig.grip:                # as CharacterRig.update sets it: both hands on, except at a run
+			rig.grip.weight = 1.0 if shot[2] or speed <= CharacterRig.WALK_SPEED * 1.7 else 0.0
 		var until := Time.get_ticks_msec() + int(shot[4] * 1000.0)
 		while Time.get_ticks_msec() < until:
 			await process_frame
@@ -79,7 +88,8 @@ func _run() -> void:
 				# close-ups of the hands and the rifle: right side, left side, from above
 				["hands_right", hands + Vector3(0.9, 0.15, -0.35), hands, 30.0],
 				["hands_left", hands + Vector3(-0.9, 0.15, -0.45), hands, 30.0],
-				["hands_top", hands + Vector3(0.05, 0.95, -0.25), hands, 32.0]]:
+				["hands_top", hands + Vector3(0.05, 0.95, -0.25), hands, 32.0],
+				["hands_under", hands + Vector3(-0.55, -0.55, -0.35), hands + Vector3(-0.05, 0.0, -0.15), 34.0]]:
 			cam.fov = view[3]
 			cam.look_at_from_position(view[1], view[2])
 			await process_frame
@@ -95,6 +105,9 @@ func _run() -> void:
 			top = maxf(top, y)
 			bottom = minf(bottom, y)
 		var muzzle := rig.rifle.global_transform * Vector3(0, 0, 0.6) if rig.rifle else Vector3.ZERO
+		if rig.grip and rig.grip.weight > 0.0:
+			print("CHECK %-5s left hand: grip weight %.1f, palm %.1f cm from the handguard point" % [
+				shot[0], rig.grip.weight, rig.grip.palm_error() * 100.0])
 		print("CHECK %-5s bones y %.2f..%.2f  rifle at %s  muzzle points %s" % [shot[0], bottom, top,
 			rig.rifle.global_position if rig.rifle else "none", muzzle - (rig.rifle.global_position if rig.rifle else Vector3.ZERO)])
 	quit()

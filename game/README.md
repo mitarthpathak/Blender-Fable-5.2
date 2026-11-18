@@ -53,7 +53,15 @@ up in code, so a fresh export from Blender needs no hand edits:
     that the camera's spring arm pulls in against the hall walls.
   - The jump uses only the airborne part of its clip.
   - The rifle's place in the hand comes from the aim pose
-    (`tools/rifle_fit.gd`).
+    (`tools/rifle_fit.gd`), measured in `rifle.glb`'s own space: rifle.py's
+    gun space moved by (0, 0.058, 0.080). The grip points were in gun space
+    before, which put the right fist 8 cm behind the pistol grip.
+  - `scripts/left_hand_grip.gd`, a `SkeletonModifier3D` after the
+    AnimationTree, puts the left palm on the fore grip (an analytic two-bone
+    IK that keeps the clip's elbow), turns the hand onto it and closes the
+    fingers round it. Full weight aiming, standing and walking; it lets go
+    on the way to a run, where the clip carries the rifle one-handed.
+    `character_check.gd` prints how far the palm is from its point.
   - `tools/character_check.gd` and `tools/town_player_shot.gd` take
     pictures of the character for checking.
 - **Lighting**: a cool moon, warm lamps, a scripted failing-bulb flicker on

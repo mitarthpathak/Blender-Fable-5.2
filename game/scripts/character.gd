@@ -18,6 +18,9 @@ extends Node3D
 ##   locomotion (idle / walk / run by speed) ─┐
 ##   rifle_aim ───────────── aim_blend (upper body) ── fire (one shot, upper
 ##   body) ── jump (one shot) ── output
+##
+## After the tree, LeftHandGrip (a SkeletonModifier3D) moves the left hand
+## onto the handguard and closes its fingers.
 
 const DIR := "res://assets/character/"
 const MODEL := DIR + "character.fbx"
@@ -45,12 +48,13 @@ const TURN_RATE := 10.0          # how fast the body turns to face where it is g
 ## metres. Measured from the character's aiming pose by tools/rifle_fit.gd:
 ## the pistol grip in the right palm, the fore grip in the left. Run that tool
 ## again if the character or its clips change.
-const RIFLE_BASIS := Basis(Vector3(-0.2758, -0.1736, 0.9454), Vector3(0.9605, -0.0879, 0.2640), Vector3(0.0373, 0.9809, 0.1910))
-const RIFLE_OFFSET := Vector3(0.0896, 0.1321, 0.0387)
+const RIFLE_BASIS := Basis(Vector3(-0.2758, -0.1736, 0.9454), Vector3(0.9605, -0.0883, 0.2640), Vector3(0.0376, 0.9809, 0.1911))
+const RIFLE_OFFSET := Vector3(0.0309, 0.0587, 0.0081)
 
 var model: Node3D
 var skeleton: Skeleton3D
 var rifle: Node3D
+var grip: LeftHandGrip           # the left hand on the handguard (scripts/left_hand_grip.gd); null without a rifle
 var aiming := false
 var aim_yaw := 0.0               # where the camera looks, relative to the player: the body turns to it to aim
 var _fire_hold := 0.0            # after a shot from the hip the body faces the target for a moment
@@ -87,6 +91,11 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 	_tree.set("parameters/locomotion/blend_position", _speed)
 	_tree.set("parameters/aim_blend/blend_amount", _aim_amount)
 	_tree.set("parameters/loco_rate/scale", _rate(_speed))
+	if grip:
+		# Both hands on the rifle aiming, standing and walking; at a run the clip
+		# carries it in the right hand alone, so the left lets go on the way there.
+		var running := clampf((_speed - WALK_SPEED) / ((RUN_SPEED - WALK_SPEED) * 0.5), 0.0, 1.0)
+		grip.weight = maxf(_aim_amount, 1.0 - running)
 	# Not aiming, the body turns to face the way it is moving; aiming, it faces
 	# where the camera looks and the legs walk on under it.
 	_fire_hold = maxf(_fire_hold - delta, 0.0)
@@ -361,3 +370,9 @@ func _attach_rifle() -> void:
 	var scale_here := (model.transform * _relative(skeleton, model)).basis.get_scale().x
 	scale_here = maxf(scale_here, 0.0001)
 	rifle.transform = Transform3D(RIFLE_BASIS.scaled(Vector3.ONE / scale_here), RIFLE_OFFSET / scale_here)
+	grip = LeftHandGrip.new()
+	grip.name = "LeftHandGrip"
+	skeleton.add_child(grip)
+	if not grip.setup(skeleton, rifle):
+		grip.queue_free()
+		grip = null

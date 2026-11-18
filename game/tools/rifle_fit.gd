@@ -11,10 +11,12 @@ extends SceneTree
 ## That placement, measured in the right hand's own space, is what every clip
 ## then uses: Mixamo's rifle clips all hold the weapon the same way.
 
-## Points on the rifle (scripts/character.gd's rifle space: +Z muzzle, +Y up,
-## origin at the top of the pistol grip), from projects/03-character/rifle.py.
-const GRIP := Vector3(0.0, -0.105, -0.090)      # the middle of the pistol grip, where the fist closes
-const FORE := Vector3(0.0, -0.070, 0.225)       # the middle of the fore grip
+## Points on the rifle in rifle.glb's own space (+Z muzzle, +Y up). rifle.py
+## models in gun space (x, u along the barrel, z up) and exports it moved by
+## P(): rifle space is (x, z + 0.058, u + 0.080). Measured from rifle.glb:
+## the pistol grip's foot is at y -0.112, the muzzle at z 0.602.
+const GRIP := Vector3(0.0, -0.047, -0.010)      # the middle of the pistol grip (gun u -0.090, z -0.105)
+const FORE := Vector3(0.0, -0.012, 0.306)       # the middle of the fore grip (gun u 0.226, z -0.070)
 ## The clip was made for a rifle with a lower stock than ours: held exactly
 ## grip to grip, our stock goes through the cheek. So the fist slides this far
 ## up the grip (the rifle drops) and the muzzle comes up this many degrees,
