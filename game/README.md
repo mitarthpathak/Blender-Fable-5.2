@@ -14,6 +14,7 @@ Open `game/` in Godot 4.7.2, or run the Windows build in `build/`
 | W A S D | Move |
 | Shift / Space | Run / jump |
 | Mouse | Look (Esc frees the pointer, click recaptures) |
+| V | First person / over the shoulder |
 | E | Open or close the nearest door |
 | F | Flashlight |
 | Right / left mouse | Aim / fire (only once the character is installed, see below) |
@@ -47,6 +48,19 @@ up in code, so a fresh export from Blender needs no hand edits:
     action game. Not aiming, the body turns to face the way it walks.
     Aiming, it faces the camera. Scripts that move the player call
     `player.face(yaw)`, which resets the body and the camera together.
+  - **First person** (V): the camera rides with the rifle's sight, the
+    head is hidden (`scripts/aim_pose.gd` collapses the head bone), the
+    body turns with the camera at once, and a dot marks the middle of the
+    screen. At the ready the rifle sits low on the right; aiming (right
+    mouse) the eye goes 8.5 cm behind the reticle and the view closes from
+    75 to 58 degrees. The sight's two lenses are opaque in the rifle's one
+    material, so their triangles are taken out when the rifle loads and the
+    reticle dot hangs in the open hood.
+  - `scripts/aim_pose.gd` also points the rifle where the camera looks,
+    aiming in either view and always in first person: it measures the
+    muzzle every frame and turns the spine (a third per bone) onto the line
+    of sight, so the walk's swinging hips and the aim clip's bladed stance
+    do not throw it off.
   - `--world=town --town-selftest` checks this: W with the camera turned a
     quarter turn walks the camera's way, W+A goes 45 degrees left of the
     view, and aiming turns the body onto the camera. `--selftest` checks

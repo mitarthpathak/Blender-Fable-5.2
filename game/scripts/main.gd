@@ -90,6 +90,7 @@ func _setup_input() -> void:
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
 		"jump": [KEY_SPACE], "run": [KEY_SHIFT], "interact": [KEY_E], "toggle_quality": [KEY_F1], "toggle_fps": [KEY_F3], "flashlight": [KEY_F],
+		"toggle_view": [KEY_V],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -327,7 +328,7 @@ func set_quality(level: String) -> void:
 		# On Low only the lamps the player walks past keep shadows.
 		lamp.shadow_enabled = high or String(lamp.name).contains("hall_table")
 	if _hud:
-		_hud.text = "WASD move   Shift run   Space jump   Mouse look   E door   F flashlight   F1 quality: %s   F3 FPS   Esc free mouse" \
+		_hud.text = "WASD move   Shift run   Space jump   Mouse look   V view   E door   F flashlight   F1 quality: %s   F3 FPS   Esc free mouse" \
 			% level.capitalize()
 	if has_node("LightingPresets"):
 		(get_node("LightingPresets") as LightingPresets).apply()

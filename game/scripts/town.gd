@@ -562,6 +562,72 @@ func _camera_checks(player: CharacterBody3D) -> void:
 	print("TEST aiming turns the body to the camera: %.1f deg off it (want < 3): %s" % [body_off, "PASS" if body_off < 3.0 else "FAIL"])
 	player.force_aim = false
 	player.face(0.0)
+	await _first_person_checks(player)
+
+
+## V: first person. The camera sits at the eyes, the head is hidden, the body
+## and spine follow the camera, and movement still follows the camera.
+func _first_person_checks(player: CharacterBody3D) -> void:
+	player.global_position = Vector3(-6.0, -0.5, 14.2)
+	player.velocity = Vector3.ZERO
+	player.face(PI)
+	player.set_first_person(true)
+	for i in 30:
+		await get_tree().physics_frame
+	var rig = player.get("rig")
+	var cam: Camera3D = player.camera
+	var eye_height := cam.global_position.y - player.global_position.y
+	var from_head := 0.0
+	if rig:
+		var head: int = LeftHandGrip._bone(rig.skeleton, "Head")
+		from_head = cam.global_position.distance_to(rig.skeleton.global_transform * rig.skeleton.get_bone_global_pose(head).origin)
+	print("TEST first person: camera %.2f m above the feet (want 1.5..1.75), %.2f m from the head bone (want < 0.2): %s" % [
+		eye_height, from_head, "PASS" if eye_height > 1.5 and eye_height < 1.75 and from_head < 0.2 else "FAIL"])
+	# Turn the camera a quarter turn and walk: the body turns with it at once, and goes the camera's way.
+	player.turn_camera(PI / 2.0)
+	var start := player.global_position
+	Input.action_press("move_forward")
+	var sway := 0.0
+	for i in 90:
+		await get_tree().physics_frame
+		if rig and rig.rifle and i > 20:          # the rifle stays on the view's heading through the stride
+			var muzzle: Vector3 = rig.rifle.global_transform.basis.z
+			sway = maxf(sway, rad_to_deg(absf(angle_difference(atan2(-muzzle.x, -muzzle.z), player.view_yaw()))))
+	Input.action_release("move_forward")
+	var moved := player.global_position - start
+	var off := rad_to_deg(absf(angle_difference(atan2(-moved.x, -moved.z), player.view_yaw())))
+	var body_off := rad_to_deg(absf(angle_difference(player.body_yaw(), player.view_yaw())))
+	print("TEST first person walk: %.1f deg off the view, body %.1f deg off it, rifle sways up to %.1f deg (want < 3): %s" % [
+		off, body_off, sway, "PASS" if off < 5.0 and body_off < 2.0 and sway < 3.0 and moved.length() > 1.5 else "FAIL"])
+	# Looking up bends the spine: the rifle's muzzle rises with the camera.
+	if rig and rig.rifle:
+		var muzzle_level := func() -> float:
+			var forward: Vector3 = rig.rifle.global_transform.basis.z.normalized()
+			return rad_to_deg(asin(clampf(forward.y, -1.0, 1.0)))
+		var level: float = muzzle_level.call()
+		player.set("_pivot", player.get("_pivot"))
+		(player.get("_pivot") as Node3D).rotation.x = 0.5
+		for i in 30:
+			await get_tree().physics_frame
+		var raised: float = muzzle_level.call()
+		print("TEST first person look up 29 deg: muzzle %.1f -> %.1f deg (want it to rise by 15 or more): %s" % [
+			level, raised, "PASS" if raised - level > 15.0 else "FAIL"])
+	# Aiming in first person: the reticle in the middle of the view, the rifle pointing along it.
+	(player.get("_pivot") as Node3D).rotation.x = 0.0
+	player.force_aim = true
+	for i in 60:
+		await get_tree().physics_frame
+	if rig and rig.rifle:
+		var cam_forward := -cam.global_transform.basis.z
+		var muzzle: Vector3 = rig.rifle.global_transform.basis.z.normalized()
+		var to_dot: Vector3 = (rig.reticle_position() - cam.global_position).normalized()
+		var muzzle_off := rad_to_deg(cam_forward.angle_to(muzzle))
+		var dot_off := rad_to_deg(cam_forward.angle_to(to_dot))
+		print("TEST first person aim: reticle %.1f deg from the middle of the view (want < 1), muzzle %.1f deg off the line of sight (want < 4): %s" % [
+			dot_off, muzzle_off, "PASS" if dot_off < 1.0 and muzzle_off < 4.0 else "FAIL"])
+	player.force_aim = false
+	player.set_first_person(false)
+	player.face(0.0)
 
 
 ## `-- --world=town --town-perf [--quality=low]`: average FPS, draw calls and

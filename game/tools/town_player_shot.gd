@@ -26,6 +26,11 @@ const SPOTS := [
 	# Aiming and walking left: the body stays on the camera, the legs go sideways.
 	["aim_strafe", Vector3(20.0, -0.5, 14.2), PI, 0.0, true, ["move_left"], 1.2],
 	["junction", Vector3(3.5, -0.5, 18.0), PI, 0.0, false, [], 1.0],
+	# First person (V): name, position, yaw, camera turn, aim, actions, seconds, first person, camera pitch.
+	["fp_walk", Vector3(3.0, -0.5, 13.0), PI, 0.0, false, ["move_forward"], 1.2, true, -0.05],
+	["fp_aim", Vector3(-3.0, -0.5, 14.2), -PI / 2.0, 0.0, true, [], 1.0, true, 0.0],
+	["fp_look_up", Vector3(1.8, 0.05, 2.0), 0.0, 0.0, true, [], 1.0, true, 0.35],
+	["fp_porch", Vector3(1.78, 0.05, 1.6), PI, 0.0, false, [], 1.0, true, -0.2],
 ]
 
 
@@ -56,6 +61,9 @@ func _run() -> void:
 		player.face(spot[2])
 		player.turn_camera(spot[3])
 		player.force_aim = spot[4]
+		var fp: bool = spot.size() > 7 and spot[7]
+		player.set_first_person(fp)
+		(player.get("_pivot") as Node3D).rotation.x = spot[8] if spot.size() > 8 else 0.0
 		for i in 6:
 			await physics_frame
 		var start := player.global_position
@@ -77,4 +85,5 @@ func _run() -> void:
 		line += ", body %.1f deg left of the view" % rad_to_deg(angle_difference(view, player.body_yaw()))
 		print(line)
 		player.force_aim = false
+		player.set_first_person(false)
 	quit()

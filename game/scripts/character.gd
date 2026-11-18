@@ -52,6 +52,16 @@ const JUMP_FROM := 0.84
 const JUMP_TO := 1.95
 const JUMP_RATE := 0.95
 const TURN_RATE := 10.0          # how fast the body turns to face where it is going
+## First person, not aiming: the rifle up in the ready pose but this far
+## (radians) below the line of sight, so it sits low in the view.
+const FP_READY_DROP := 0.21
+
+## The reflex sight's reticle dot and its two lenses, in rifle space
+## (rifle.py: rear lens gun u -0.036..-0.0345, front u 0.005..0.0065, z 0.054..0.0855,
+## x +-0.0135; rifle space is (x, z + 0.058, u + 0.080)).
+const RETICLE := Vector3(0.0, 0.1278, 0.0435)
+const LENSES := [AABB(Vector3(-0.0137, 0.1118, 0.0439), Vector3(0.0274, 0.0317, 0.0023)),
+	AABB(Vector3(-0.0137, 0.1118, 0.0848), Vector3(0.0274, 0.0317, 0.0019))]
 
 ## Where the rifle sits in the right hand, in the hand bone's own space and in
 ## metres. Measured from the character's aiming pose by tools/rifle_fit.gd:
@@ -64,6 +74,9 @@ var model: Node3D
 var skeleton: Skeleton3D
 var rifle: Node3D
 var grip: LeftHandGrip           # the left hand on the handguard (scripts/left_hand_grip.gd); null without a rifle
+var aim_pose: AimPose            # spine pitch, hidden head, eye position (scripts/aim_pose.gd)
+var first_person := false        # the camera is at the eyes: the body always faces it, the head is hidden
+var look_pitch := 0.0            # the camera's pitch (radians, + up): the spine follows it aiming or in first person
 var aiming := false
 var aim_yaw := 0.0               # where the camera looks, relative to the player: the body turns to it to aim
 var _fire_hold := 0.0            # after a shot from the hip the body faces the target for a moment
@@ -72,6 +85,7 @@ var _player: AnimationPlayer
 var _tree: AnimationTree
 var _aim_amount := 0.0
 var _speed := 0.0
+var _ready_drop := 0.0
 var _aim_legs := false           # the strafe and backward clips are there: a 2D blend for the legs while aiming
 
 
@@ -97,7 +111,9 @@ static func create() -> CharacterRig:
 func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 	var flat := Vector2(velocity.x, velocity.z).length()
 	_speed = lerpf(_speed, flat if on_floor else _speed, clampf(delta * 10.0, 0.0, 1.0))
-	_aim_amount = move_toward(_aim_amount, 1.0 if aiming else 0.0, delta * 6.0)
+	# In first person the rifle is always up (aiming, or at the ready below the sight line).
+	_aim_amount = move_toward(_aim_amount, 1.0 if aiming or first_person else 0.0, delta * 6.0)
+	_ready_drop = move_toward(_ready_drop, FP_READY_DROP if first_person and not aiming else 0.0, delta * 1.5)
 	_tree.set("parameters/locomotion/blend_position", _speed)
 	_tree.set("parameters/aim_blend/blend_amount", _aim_amount)
 	_tree.set("parameters/loco_rate/scale", _rate(_speed))
@@ -111,6 +127,10 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 		_tree.set("parameters/aim_legs/blend_position", direction if on_floor else Vector2.ZERO)
 		_tree.set("parameters/legs/blend_amount", _aim_amount)
 		_tree.set("parameters/aim_legs_rate/scale", _aim_rate(local, flat))
+	if aim_pose:
+		aim_pose.weight = move_toward(aim_pose.weight, 1.0 if aiming or first_person else _aim_amount, delta * 6.0)
+		aim_pose.pitch = look_pitch - _ready_drop
+		aim_pose.hide_head = first_person
 	if grip:
 		# Both hands on the rifle aiming, standing and walking; at a run the clip
 		# carries it in the right hand alone, so the left lets go on the way there.
@@ -119,7 +139,7 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 	# Not aiming, the body turns to face the way it is moving; aiming, it faces
 	# where the camera looks and the legs walk on under it.
 	_fire_hold = maxf(_fire_hold - delta, 0.0)
-	var facing_target := aiming or _fire_hold > 0.0
+	var facing_target := aiming or _fire_hold > 0.0 or first_person
 	var want := aim_yaw
 	if not facing_target and flat > 0.3:
 		var body := (get_parent() as Node3D).global_transform.basis if get_parent() is Node3D else Basis.IDENTITY
@@ -127,7 +147,8 @@ func update(velocity: Vector3, on_floor: bool, delta: float) -> void:
 		want = atan2(-local.x, -local.z)
 	elif not facing_target:
 		want = rotation.y
-	rotation.y = lerp_angle(rotation.y, want, clampf(delta * TURN_RATE, 0.0, 1.0))
+	# In first person the body is the camera's: it turns with it at once.
+	rotation.y = want if first_person else lerp_angle(rotation.y, want, clampf(delta * TURN_RATE, 0.0, 1.0))
 
 
 ## How fast to play the walk/run blend at a speed, so the feet do not skate:
@@ -150,6 +171,24 @@ func _aim_rate(local: Vector3, speed: float) -> float:
 		return 1.0
 	var clip_speed := (side * STRAFE_CLIP_SPEED + ahead * WALK_CLIP_SPEED + back * BACK_CLIP_SPEED) / total
 	return clampf(speed / clip_speed, 0.5, 3.0)
+
+
+## Where the eyes are, in world space, after the spine and head have moved
+## (one frame behind the pose: the modifier records it as it runs).
+func eye_position() -> Vector3:
+	if aim_pose == null or aim_pose.eye == Vector3.ZERO:
+		return global_position + Vector3.UP * 1.62
+	return skeleton.global_transform * aim_pose.eye
+
+
+## The reticle dot in world space: in first person the eye goes behind it to aim.
+func reticle_position() -> Vector3:
+	return rifle.global_transform * RETICLE if rifle else eye_position()
+
+
+## Seconds-to-full of the aim blend, 0..1: how far into aiming the pose is.
+func aim_amount() -> float:
+	return _aim_amount
 
 
 func fire() -> void:
@@ -194,7 +233,15 @@ func _build() -> bool:
 		return false
 	_player.add_animation_library("", library)
 	_build_tree(library)
+	aim_pose = AimPose.new()
+	aim_pose.name = "AimPose"
+	skeleton.add_child(aim_pose)                 # before the grip: the grip reads the hand after the spine moves
+	if not aim_pose.setup(skeleton, self):
+		aim_pose.queue_free()
+		aim_pose = null
 	_attach_rifle()
+	if aim_pose:
+		aim_pose.rifle = rifle
 	return true
 
 
@@ -419,6 +466,45 @@ func _build_tree(library: AnimationLibrary) -> void:
 		_tree.set("parameters/legs/blend_amount", 0.0)
 
 
+## The rifle is one mesh with one material, its two sight lenses opaque. Take
+## their triangles out so the sight can be looked through: the reticle dot,
+## just behind the rear lens, then hangs in the hood as in a real reflex sight.
+func _open_sight() -> void:
+	var body := rifle.find_child("rifle", true, false) as MeshInstance3D
+	if body == null or not body.mesh is ArrayMesh:
+		return
+	var source := body.mesh as ArrayMesh
+	var to_rifle := _relative(body, rifle)
+	var opened := ArrayMesh.new()
+	var removed := 0
+	for surface in source.get_surface_count():
+		var arrays := source.surface_get_arrays(surface)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		var kept := PackedInt32Array()
+		for t in range(0, indices.size(), 3):
+			var lens := false
+			for box: AABB in LENSES:
+				var inside := true
+				for k in 3:
+					if not box.grow(0.0003).has_point(to_rifle * verts[indices[t + k]]):
+						inside = false
+						break
+				if inside:
+					lens = true
+					break
+			if lens:
+				removed += 1
+			else:
+				kept.append_array([indices[t], indices[t + 1], indices[t + 2]])
+		arrays[Mesh.ARRAY_INDEX] = kept
+		opened.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		opened.surface_set_material(surface, source.surface_get_material(surface))
+	if removed > 0:
+		body.mesh = opened
+	print_verbose("CharacterRig: %d lens triangles taken out of the sight" % removed)
+
+
 func _attach_rifle() -> void:
 	var hand := _bone_ending("RightHand")
 	if hand == -1 or not ResourceLoader.exists(RIFLE):
@@ -437,6 +523,7 @@ func _attach_rifle() -> void:
 	var scale_here := (model.transform * _relative(skeleton, model)).basis.get_scale().x
 	scale_here = maxf(scale_here, 0.0001)
 	rifle.transform = Transform3D(RIFLE_BASIS.scaled(Vector3.ONE / scale_here), RIFLE_OFFSET / scale_here)
+	_open_sight()
 	grip = LeftHandGrip.new()
 	grip.name = "LeftHandGrip"
 	skeleton.add_child(grip)
