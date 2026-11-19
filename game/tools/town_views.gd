@@ -35,6 +35,11 @@ const VIEWS := {
 	"tree_base": [Vector3(-7.4, 1.3, 7.2), Vector3(-9.0, 0.4, 5.5), 60.0],
 	"tree_edge": [Vector3(-20.0, 1.7, 14.2), Vector3(-34.0, 6.0, 12.0), 65.0],
 	"leaves_fall": [Vector3(-3.0, 1.6, 12.0), Vector3(-7.0, 2.4, 6.0), 55.0],
+	# house and car details: plates, meter side, the condenser side, the cracked windshield
+	"sedan_rear": [Vector3(22.6, 1.25, 15.6), Vector3(20.8, 0.55, 16.9), 45.0],
+	"house_l3_meter": [Vector3(26.6, 1.6, -2.6), Vector3(24.2, 1.1, -5.0), 70.0],
+	"house_l3_ac": [Vector3(12.4, 1.6, -2.4), Vector3(15.0, 0.6, -5.0), 70.0],
+	"crashed_glass": [Vector3(4.4, 1.9, 52.2), Vector3(2.4, 1.2, 54.6), 50.0],
 }
 
 

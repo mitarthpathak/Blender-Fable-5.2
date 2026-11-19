@@ -386,7 +386,17 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     for s in (-1, 1):
         y0, y1 = (0.36, hw0 - 0.12) if s > 0 else (-(hw0 - 0.12), -0.36)
         mb.box((-half - 0.014, y0, zt), (-half, y1, zt + 0.13), "lamp_red")
-    mb.box((-half - 0.012, -0.16, zt - 0.02), (-half, 0.16, zt + 0.10), "trim", color=(0.75, 0.74, 0.68))
+    # licence plates (a 2 x 2 atlas of four, tk/detail_maps.plates), on a dark backing
+    cell = seed % 4
+    u0, v0 = (cell % 2) * 0.5, 0.5 - (cell // 2) * 0.5
+    plate_uv = [(u0, v0), (u0 + 0.5, v0), (u0 + 0.5, v0 + 0.5), (u0, v0 + 0.5)]
+    mb.box((-half - 0.010, -0.165, zt - 0.05), (-half, 0.165, zt + 0.12), "plastic_dark")
+    mb.face([Vector((-half - 0.012, 0.15, zt - 0.04)), Vector((-half - 0.012, -0.15, zt - 0.04)),
+             Vector((-half - 0.012, -0.15, zt + 0.11)), Vector((-half - 0.012, 0.15, zt + 0.11))], "plate", uvs=plate_uv)
+    if state != "crashed":
+        zf = (zb_f - 0.02) + 0.10
+        mb.face([Vector((half + 0.094, -0.15, zf - 0.075)), Vector((half + 0.094, 0.15, zf - 0.075)),
+                 Vector((half + 0.094, 0.15, zf + 0.075)), Vector((half + 0.094, -0.15, zf + 0.075))], "plate", uvs=plate_uv)
     if kind != "pickup":
         mb.box((-half - 0.012, -0.34, zt + 0.0), (-half - 0.004, -0.17, zt + 0.12), "lamp_red", color=(0.5, 0.5, 0.5))
         mb.box((-half - 0.012, 0.17, zt + 0.0), (-half - 0.004, 0.34, zt + 0.12), "lamp_red", color=(0.5, 0.5, 0.5))
@@ -430,6 +440,57 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     # the exhaust under the back, rusted through
     mb.cylinder((-half + 0.25, -0.45, 0.24 + ride), (-0.34, 0, 0), 0.026, "metal_rust", segments=8, caps="none")
     mb.cylinder((-half - 0.09, -0.45, 0.24 + ride), (0.002, 0, 0), 0.026, "interior_dark", segments=8)
+    # a bright strip along the belt line under the side glass, from the rear glass to the windshield
+    roof_knots = [k[0] for k in spec["g"] if k[1] == 1]
+    zero_knots = [k[0] for k in spec["g"] if k[1] == 0]
+    cab0, cab1 = roof_knots[0], roof_knots[-1]
+    rear_foot = max(x for x in zero_knots if x < cab0)
+    ws_foot = min(x for x in zero_knots if x > cab1)
+    for s in (-1, 1):
+        y_in, y_out = s * (hw0 - 0.032), s * (hw0 - 0.004)
+        mb.box((rear_foot + 0.04, min(y_in, y_out), spec["belt"] + ride - 0.012), (ws_foot - 0.04, max(y_in, y_out),
+               spec["belt"] + ride + 0.014), "chrome_dull", color=(0.75, 0.74, 0.7))
+    # side marker lamps: amber at the front of the front wings, red at the back of the rear quarters
+    for mx, lamp, colour in ((half - 0.22, "lamp_red", (1.6, 1.2, 0.5)), (-half + 0.22, "lamp_red", None)):
+        pts, _g, _a, _hw, _f, _b = _section(spec, mx, ride)
+        zz = spec["belt"] + ride - 0.20
+        t = max(0.0, min(1.0, (zz - pts[2].z) / max(pts[3].z - pts[2].z, 1e-3)))
+        yy = pts[2].y + (pts[3].y - pts[2].y) * t
+        for s in (-1, 1):
+            mb.box((mx - 0.05, min(s * (yy - 0.006), s * (yy + 0.006)), zz - 0.022),
+                   (mx + 0.05, max(s * (yy - 0.006), s * (yy + 0.006)), zz + 0.022), lamp, color=colour)
+    # the interior you see through the glass: a rear-view mirror and two sun visors, one flipped down
+    rz_in = spec["roof"] + ride - 0.05
+    mb.box((cab1 - 0.08, -0.12, rz_in - 0.13), (cab1 - 0.05, 0.12, rz_in - 0.07), "plastic_dark")
+    mb.tube([(cab1 - 0.06, 0.0, rz_in - 0.07), (cab1 - 0.04, 0.0, rz_in)], 0.008, "plastic_dark", segments=4)
+    for y0, y1, down in ((0.08, 0.62, True), (-0.62, -0.08, False)):
+        if down:
+            mb.obox((cab1 - 0.06, (y0 + y1) / 2, rz_in - 0.10), (0.02, y1 - y0, 0.17), 0.0, "car_interior",
+                    color=(0.85, 0.82, 0.76), tilt=(0.0, 0.25))
+        else:
+            mb.box((cab1 - 0.22, y0, rz_in - 0.035), (cab1 - 0.04, y1, rz_in - 0.01), "car_interior", color=(0.85, 0.82, 0.76))
+    # wet leaves caught at the foot of the windshield, round the wipers
+    tones = [(0.95, 0.8, 0.55), (0.8, 0.62, 0.4), (0.6, 0.48, 0.34), (0.45, 0.38, 0.3)]
+    for _ in range(rng.randint(6, 12)):
+        lx = ws_foot + rng.uniform(0.0, 0.22)
+        ly = rng.uniform(-hw0 + 0.25, hw0 - 0.25)
+        lz = _section(spec, lx, ride)[0][6].z + 0.012
+        size = rng.uniform(0.07, 0.12)
+        m = Matrix.Translation((lx, ly, lz)) @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z") @ Matrix.Rotation(rng.uniform(-0.3, 0.3), 4, "X")
+        q = [m @ Vector(v) for v in ((-size / 2, -size * 0.6, 0), (size / 2, -size * 0.6, 0), (size / 2, size * 0.6, 0),
+                                     (-size / 2, size * 0.6, 0))]
+        c = rng.randrange(4)
+        cu, cv = (c % 2) * 0.5, (c // 2) * 0.5
+        mb.face(q, "leaf_card", uvs=[(cu, cv), (cu + 0.5, cv), (cu + 0.5, cv + 0.5), (cu, cv + 0.5)],
+                color=mul(tones[rng.randrange(4)], rng.uniform(0.5, 0.85)))
+    # a crashed car's windshield is cracked from where a head or the pole hit it
+    if state == "crashed":
+        xa, xb = cab1 + 0.12 * (ws_foot - cab1), cab1 + 0.88 * (ws_foot - cab1)
+        za, zb = _section(spec, xa, ride)[0][6].z + 0.012, _section(spec, xb, ride)[0][6].z + 0.012
+        # one web on the passenger side, square on the glass (the glass is about 1.3 m across)
+        y0, y1 = -0.66, 0.02
+        mb.face([Vector((xb, y0, zb)), Vector((xb, y1, zb)), Vector((xa, y1, za)), Vector((xa, y0, za))],
+                "glass_crack", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
     # the wagon's roof rack: two rails on six feet
     if kind == "wagon":
         rz = spec["roof"] + ride

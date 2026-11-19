@@ -381,3 +381,28 @@ many twig cards deep: past that it renders black knots. `lot_views.py`, the
 stills in `build.py` and the film's `render_settings` raise
 `transparent_max_bounces` to 64. Godot is not affected (alpha scissor is
 depth-tested).
+
+## House and car details
+
+`tk/house_detail.py` dresses every kit house (its own random stream, so the
+rest of each house is unchanged):
+
+- a painted block foundation 5 cm proud of the siding, with louvred
+  crawl-space vents on the sides and back, an access hatch, and cracks on
+  the worn houses;
+- water streaks under the window sills and down from the gutter corners
+  (`water_streaks`, detail_maps.py);
+- on one side wall (never behind a wrap porch): an electric meter with its
+  glass dome, the conduit up to a weatherhead under the eave, a ground
+  wire, a hose bib with a green hose hanging in loops; a dryer vent with
+  lint stains at the back;
+- an air-conditioner condenser on a pad: in the other side yard if it is
+  wider than 1.7 m, otherwise at the back between the window and the door;
+- on the back of the roof a plumbing vent stack and one or two box vents;
+  on the worst houses a patch of missing shingles.
+
+`tk/cars.py` adds licence plates front and back (`plates`, four invented
+numbers in a 2 x 2 atlas; no front plate on a crashed nose), a bright strip
+along the belt line, side marker lamps, a rear-view mirror and two sun
+visors, wet leaves caught round the wipers, and a spider-web crack in the
+windshield of both crashed cars (`windshield_crack`).

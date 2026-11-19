@@ -611,6 +611,118 @@ def twig_atlas():
     save(orm(np.full(a.shape[:2], 0.85, np.float32), 0.0), DECALS / "twig_atlas_orm.png")
 
 
+def plates():
+    """Four licence plates in a 2 x 2 atlas (1024 x 512, 30 x 15 cm each): off-white
+    reflective sheet, dark blue embossed characters, a year sticker, two bolt
+    holes, rust bleeding from the bolts and road dirt along the bottom. The
+    lettering is invented, no real state."""
+    W, H = 512, 256
+    img = Image.new("RGB", (W * 2, H * 2), (0, 0, 0))
+    rng = np.random.default_rng(41)
+    numbers = ["HRG 4417", "7KX 209", "MLB 638", "4TC 951"]
+    stickers = [("96", (190, 60, 50)), ("95", (60, 120, 70)), ("97", (220, 180, 60)), ("94", (60, 90, 170))]
+    for c, (num, (yr, sc)) in enumerate(zip(numbers, stickers)):
+        cell = Image.new("RGB", (W, H), (214, 212, 200))
+        d = ImageDraw.Draw(cell)
+        d.rectangle([4, 4, W - 5, H - 5], outline=(70, 80, 120), width=6)            # the pressed rim
+        d.rectangle([14, 14, W - 15, 50], fill=(200, 198, 186))
+        centred(d, 16, "PASSENGER", font(26), (70, 80, 120), W)
+        size = 118
+        f = font(size)
+        while d.textlength(num, font=f) > W * 0.84 and size > 40:       # fit the plate, whatever the font
+            size -= 4
+            f = font(size)
+        tw = d.textlength(num, font=f)
+        x0 = (W - tw) / 2
+        ty = 60 + (180 - size) // 2
+        d.text((x0 + 3, ty + 3), num, fill=(150, 150, 140), font=f)                     # the emboss shadow
+        d.text((x0, ty), num, fill=(36, 44, 92), font=f)
+        d.rectangle([W - 96, 20, W - 26, 52], fill=sc)                                   # the year sticker
+        d.text((W - 86, 21), yr, fill=(240, 240, 230), font=font(26))
+        for bx in (W * 0.22, W * 0.78):                                                 # bolt holes
+            d.ellipse([bx - 9, 22, bx + 9, 40], fill=(60, 58, 54))
+        a = np.asarray(cell, np.float32) / 255.0
+        hgt, wid = a.shape[:2]
+        yy, xx = np.mgrid[0:hgt, 0:wid].astype(np.float32)
+        for bx in (W * 0.22, W * 0.78):                                                 # rust runs down from the bolts
+            run = np.exp(-((xx - bx) / 10.0) ** 2) * np.clip((yy - 31) / 140.0, 0, 1) * np.exp(-(yy - 31) / 160.0)
+            run *= (yy > 31)
+            a = a * (1 - 0.55 * run[..., None]) + run[..., None] * 0.55 * np.array([0.45, 0.25, 0.12], np.float32)
+        dirt = noise(max(hgt, wid), 10)[:hgt, :wid] * np.clip((yy - hgt * 0.55) / (hgt * 0.45), 0, 1)
+        a *= (1 - 0.45 * dirt)[..., None]
+        a *= (0.92 + 0.08 * noise(max(hgt, wid), 40)[:hgt, :wid])[..., None]
+        img.paste(Image.fromarray(np.clip(a * 255, 0, 255).astype(np.uint8)), ((c % 2) * W, (c // 2) * H))
+    out = np.asarray(img, np.float32) / 255.0
+    rgba = np.concatenate([out, np.ones(out.shape[:2] + (1,), np.float32)], axis=-1)
+    save(rgba, DECALS / "plates.png")
+    luma = out @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+    save(normal_from_height((1.0 - blur(luma, 1.0)).astype(np.float32), 3.0), DECALS / "plates_nor.png")
+    save(orm((0.45 + 0.3 * (1 - luma)).astype(np.float32), 0.0), DECALS / "plates_orm.png")
+
+
+def windshield_crack():
+    """A spider-web crack in laminated glass (512 px): an impact point, cracks
+    running out from it and rings of short cracks joining them, pale on
+    transparent, so it shows on dark glass."""
+    s = 512
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rng = np.random.default_rng(53)
+    cx, cy = s * 0.42, s * 0.46
+    rays = []
+    for k in range(int(rng.integers(14, 20))):
+        a = 2 * math.pi * k / 17 + rng.normal(0, 0.12)
+        length = rng.uniform(0.25, 0.62) * s
+        pts = [(cx, cy)]
+        x, y = cx, cy
+        for j in range(8):
+            a += rng.normal(0, 0.08)
+            x += math.cos(a) * length / 8
+            y += math.sin(a) * length / 8
+            pts.append((x, y))
+        rays.append(pts)
+        d.line(pts, fill=(235, 240, 240, 230), width=2)
+    for ring in (0.08, 0.15, 0.24, 0.34):                       # the rings between the rays
+        for k in range(len(rays)):
+            p0 = rays[k][min(8, int(ring * 20))]
+            p1 = rays[(k + 1) % len(rays)][min(8, int(ring * 20))]
+            if rng.random() < 0.8:
+                mid = ((p0[0] + p1[0]) / 2 + rng.normal(0, 4), (p0[1] + p1[1]) / 2 + rng.normal(0, 4))
+                d.line([p0, mid, p1], fill=(225, 230, 230, 200), width=1 if ring > 0.2 else 2)
+    d.ellipse([cx - 14, cy - 14, cx + 14, cy + 14], fill=(240, 244, 244, 210))   # the crushed centre
+    save(np.asarray(img, np.float32) / 255.0, DECALS / "windshield_crack.png")
+    save(normal_from_height(np.zeros((s, s), np.float32), 0.0), DECALS / "windshield_crack_nor.png")
+    save(orm(np.full((s, s), 0.2, np.float32), 0.0), DECALS / "windshield_crack_orm.png")
+
+
+def water_streaks():
+    """Dirty water run down a wall from a sill (256 x 512): a dark band along the
+    top where water sits, then uneven streaks running down and fading, each
+    wobbling a little. Dark grey-brown; alpha carries the strength."""
+    w, h = 256, 512
+    rng = np.random.default_rng(61)
+    alpha = np.zeros((h, w), np.float32)
+    yy = np.arange(h, dtype=np.float32)[:, None]
+    xx = np.arange(w, dtype=np.float32)[None, :]
+    alpha += 0.55 * np.exp(-yy / 18.0) * (0.7 + 0.3 * noise(w, 8)[:1, :w])            # the wet band under the sill
+    for _ in range(int(rng.integers(14, 22))):
+        x0 = rng.uniform(10, w - 10)
+        length = rng.uniform(0.3, 0.95) * h
+        width = rng.uniform(3, 12)
+        strength = rng.uniform(0.25, 0.65)
+        wobble = rng.uniform(2, 7)
+        centre = x0 + wobble * np.sin(yy / rng.uniform(40, 90) + rng.uniform(0, 6))
+        streak = np.exp(-((xx - centre) / width) ** 2) * np.clip(1 - yy / length, 0, 1) ** 1.3
+        alpha = np.maximum(alpha, strength * streak)
+    alpha *= 0.75 + 0.25 * noise(h, 24)[:h, :w]
+    alpha *= np.clip(np.minimum(xx, w - xx) / 20.0, 0, 1)                                  # soft sides
+    rgb = np.empty((h, w, 3), np.float32)
+    rgb[...] = np.array([0.16, 0.14, 0.11], np.float32)
+    save(np.dstack([rgb, np.clip(alpha, 0, 0.8)]).astype(np.float32), DECALS / "water_streaks.png")
+    save(normal_from_height(np.zeros((h, w), np.float32), 0.0), DECALS / "water_streaks_nor.png")
+    save(orm(np.full((h, w), 0.6, np.float32), 0.0), DECALS / "water_streaks_orm.png")
+
+
 def decal_maps():
     for name, (source, strength, rough, metal, _) in DECAL_RULES.items():
         path = DECALS / f"{name}.png"
@@ -651,6 +763,9 @@ def decal_maps():
 def run():
     grass_blades()
     twig_atlas()
+    plates()
+    windshield_crack()
+    water_streaks()
     new_decals()
     flat_sets()
     decal_maps()

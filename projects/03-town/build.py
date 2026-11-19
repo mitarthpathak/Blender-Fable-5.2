@@ -37,8 +37,9 @@ import tk.store  # noqa: E402
 import tk.detail  # noqa: E402
 import tk.yards  # noqa: E402
 import tk.trees  # noqa: E402
+import tk.house_detail  # noqa: E402
 
-for mod in (plan, assets, tk.core, tk.facade, tk.house_kit, tk.trees, tk.street_kit, tk.cars, tk.store, tk.detail, tk.yards):
+for mod in (plan, assets, tk.core, tk.facade, tk.house_detail, tk.house_kit, tk.trees, tk.street_kit, tk.cars, tk.store, tk.detail, tk.yards):
     importlib.reload(mod)
 from tk import core, detail, house_kit, street_kit, yards  # noqa: E402
 

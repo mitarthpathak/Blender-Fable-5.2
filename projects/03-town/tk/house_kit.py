@@ -19,7 +19,7 @@ from mathutils import Matrix, Vector
 
 import plan
 from .core import MeshBuilder, collection, ground_grime, jitter_color, lerp, light, mul
-from . import facade
+from . import facade, house_detail
 
 GROUND = plan.GROUND
 STOREY = 2.9
@@ -602,6 +602,9 @@ def build_house(lot, rng: random.Random):
     for key, wf in faces.items():
         for u0, u1 in ((0.0, 0.12), (wf.length - 0.12, wf.length)):
             board_on_wall(mb, wf, u0, u1, 0.0, EAVE, 0.035, "trim", trim, BOARD_T)
+    # foundation, stains, services, the condenser, roof vents (tk/house_detail.py); its own random
+    # stream, so the rest of the house comes out as before
+    house_detail.dress(mb, h, lot, faces, openings, GROUND, EAVE, random.Random(sum(map(ord, lot.key)) + 7))
     # a lid over the top of the walls (seen through the gable vents only, but keeps the shell closed)
     mb.face([Vector((0, 0, EAVE)), Vector((0, d, EAVE)), Vector((w, d, EAVE)), Vector((w, 0, EAVE))], "interior_dark")
     gutters(mb, eaves, mul(trim, 0.9))
