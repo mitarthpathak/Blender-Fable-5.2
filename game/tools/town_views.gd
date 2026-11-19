@@ -40,6 +40,10 @@ const VIEWS := {
 	"house_l3_meter": [Vector3(26.6, 1.6, -2.6), Vector3(24.2, 1.1, -5.0), 70.0],
 	"house_l3_ac": [Vector3(12.4, 1.6, -2.4), Vector3(15.0, 0.6, -5.0), 70.0],
 	"crashed_glass": [Vector3(4.4, 1.9, 52.2), Vector3(2.4, 1.2, 54.6), 50.0],
+	# the fallen tree across Ashgrove: the picket fence it came down on, and the whole tree from the road
+	"fallen_fence": [Vector3(32.6, 1.6, 11.2), Vector3(36.4, 0.1, 7.6), 60.0],
+	"fallen_tree": [Vector3(27.0, 2.0, 17.5), Vector3(36.0, 0.8, 11.5), 70.0],
+	"fallen_stump": [Vector3(35.0, 1.4, 18.2), Vector3(36.4, -0.05, 20.2), 55.0],
 }
 
 

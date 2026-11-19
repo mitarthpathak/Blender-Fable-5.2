@@ -152,15 +152,19 @@ def trash(det: Sectors, dec: Sectors, rng):
     """Bags piled round the cans nobody collected, a split bag, litter blown along the curb."""
     piles = [(6.95, -9.0, SW, 5), (-2.6, -19.2, SW, 3), (21.5, -9.1, SW, 2), (-1.0, -43.9, SW, 2)]
     for x, y, z, n in piles:
+        # spread towards the road, away from the yard fences behind the sidewalk
+        # (on the north side they used to push through the pickets)
+        toward_road = -1.0 if y > plan.ASHGROVE.road[3] else 1.0
         for k in range(n):
             a = rng.uniform(0, 2 * math.pi)
             r = rng.uniform(0.35, 0.75)
-            bx_, by_ = x + math.cos(a) * r, y + math.sin(a) * r * 0.5 + 0.25
+            bx_, by_ = x + math.cos(a) * r, y + (abs(math.sin(a)) * r * 0.5 + 0.25) * toward_road
             blob(det.at(bx_, by_), (bx_, by_, z), rng.uniform(0.22, 0.3), rng.uniform(0.2, 0.28), rng.uniform(0.3, 0.42),
                  "bag_plastic", rng)
             det.at(bx_, by_).cylinder((bx_, by_, z + 0.3), (rng.uniform(-0.05, 0.05), 0, 0.12), 0.03, "bag_plastic", segments=5)
         dec.at(x, y).card((x + 0.3, y - 0.6, z + 0.008), 2.2, 2.2, rng.uniform(0, 3), "decal_litter", flat=True)
-        det.at(x, y).obox((x - 0.5, y + 0.45, z + 0.03), (0.42, 0.42, 0.05), rng.uniform(0, 3), "plywood", color=(0.75, 0.62, 0.45))
+        det.at(x, y).obox((x - 0.5, y + 0.45 * toward_road, z + 0.03), (0.42, 0.42, 0.05), rng.uniform(0, 3), "plywood",
+                          color=(0.75, 0.62, 0.45))
     for x, y in ((1.0, -10.6), (4.2, -17.6), (-6.0, -10.5), (6.6, -21.5), (11.0, -17.7)):
         dec.at(x, y).card((x, y, RD + 0.011), 1.8, 1.4, rng.uniform(0, 3), "decal_litter", flat=True)
 
@@ -198,7 +202,7 @@ def cart_and_bike(det: Sectors, rng):
             cart.cylinder((sx, sy - 0.02, 0.06), (0, 0.04, 0), 0.06, "plastic_dark", segments=8)
     cart.tube([(-0.34, -0.2, 0.14), (0.36, -0.2, 0.14), (0.36, 0.2, 0.14), (-0.34, 0.2, 0.14), (-0.34, -0.2, 0.14)], 0.012,
               "chrome_dull", segments=4)
-    x, y = 9.6, -18.95
+    x, y = 9.6, -18.7                     # (at -18.95 it reached into L5's chain-link fence)
     _solid_prop(cart, "prop_cart", Matrix.Translation((x, y, SW + 0.27)) @ Matrix.Rotation(0.6, 4, "Z") @ Matrix.Rotation(math.pi / 2, 4, "X"),
                 (-0.62, -0.27, 0.0), (0.46, 0.27, 1.04))
 
@@ -218,8 +222,8 @@ def cart_and_bike(det: Sectors, rng):
     bike.tube([(0.26, -0.24, 0.98), (0.26, 0.24, 0.98)], 0.012, "chrome_dull", segments=4)
     bike.box((-0.36, -0.05, 0.90), (-0.14, 0.05, 0.94), "plastic_dark")
     bike.cylinder((-0.12, -0.05, 0.33), (0, 0.1, 0), 0.07, "chrome_dull", segments=8)
-    x, y = -1.6, -8.05
-    _solid_prop(bike, "prop_bike", Matrix.Translation((x, y, G + 0.06)) @ Matrix.Rotation(0.35, 4, "Z") @ Matrix.Rotation(1.42, 4, "X"),
+    x, y = -1.6, -7.4                     # (nearer the fence a wheel went through the pickets)
+    _solid_prop(bike, "prop_bike", Matrix.Translation((x, y, G + 0.06 + sk.lawn_offset(x, y))) @ Matrix.Rotation(0.35, 4, "Z") @ Matrix.Rotation(1.42, 4, "X"),
                 (-0.86, -0.26, 0.0), (0.86, 0.26, 1.0))
 
 
@@ -352,7 +356,9 @@ def lot_stories(det: Sectors, dec: Sectors, houses, rng):
     tri.tube([(0.35, 0, 0.16), (0.28, 0, 0.5), (-0.3, 0, 0.14)], 0.014, "toy_plastic", segments=4, color=mul(RED, 1.2))
     tri.tube([(0.28, -0.18, 0.5), (0.28, 0.18, 0.5)], 0.012, "chrome_dull", segments=4)
     tri.box((-0.2, -0.08, 0.28), (0.0, 0.08, 0.31), "toy_plastic", color=mul(BLUE, 1.2))
-    m.extend(tri, Matrix.Translation((x + 2.4, y + 1.9, G + 0.1)) @ Matrix.Rotation(1.1, 4, "Z") @ Matrix.Rotation(1.35, 4, "X"))
+    lie = Matrix.Rotation(1.1, 4, "Z") @ Matrix.Rotation(1.35, 4, "X")
+    low = min((lie @ v).z for v in tri.verts)                  # on its side, resting on the grass
+    m.extend(tri, Matrix.Translation((x + 2.4, y + 1.9, G - low)) @ lie)
 
     # L6, 3 Mill Road: an empty dog house, its chain and bowl
     x, y = -3.9, -45.6
@@ -446,7 +452,7 @@ def corner_stories(det: Sectors, dec: Sectors, rng):
     story.extend(sh, Matrix.Translation((5.3, -3.4, G)) @ Matrix.Rotation(0.25, 4, "Z"))
     story.obox((5.3, -3.42, G + 0.77), (1.22, 0.6, 0.014), 0.25, "plywood", color=(0.68, 0.6, 0.47), tilt=(0.0, 0.05))
     _ladder(ld := MeshBuilder())
-    story.extend(ld, Matrix.Translation((3.6, -5.6, G + 0.02)) @ Matrix.Rotation(-0.35, 4, "Z"))
+    story.extend(ld, Matrix.Translation((3.6, -5.6, G - 0.012)) @ Matrix.Rotation(-0.35, 4, "Z"))
     story.cylinder((6.6, -2.4, G + 0.09), (0.17, 0.05, 0.0), 0.09, "metal_painted", segments=10, color=(0.55, 0.55, 0.52))  # paint can, on its side
     story.cylinder((6.95, -2.85, G), (0, 0, 0.012), 0.11, "metal_painted", segments=10, color=(0.6, 0.58, 0.55))        # and its lid
     c = W(5.3, -3.0)
@@ -547,8 +553,10 @@ def corner_stories(det: Sectors, dec: Sectors, rng):
     win_x = h.windows_ff[0][0] + h.windows_ff[0][1] / 2
     story.obox((win_x + 0.3, -1.3, -0.02 + 0.035), (0.2, 0.09, 0.065), 0.7, "brick", color=(0.55, 0.32, 0.25))
     _armchair(ac := MeshBuilder(), (0.36, 0.4, 0.3))
-    story.extend(ac, Matrix.Translation((h.width + 1.2, 1.4, G)) @ Matrix.Rotation(2.2, 4, "Z") @ Matrix.Rotation(0.08, 4, "X"))
-    story.cylinder((h.width + 0.8, 3.2, G + 0.17), (0.25, 1.9, 0.0), 0.17, "fabric", segments=10, color=(0.42, 0.22, 0.18))
+    # in the side yard in front of the fence that returns to the house 1.5 m behind its front (they
+    # stood on that fence line before), where the street can see them
+    story.extend(ac, Matrix.Translation((h.width + 1.0, 0.45, G)) @ Matrix.Rotation(2.2, 4, "Z") @ Matrix.Rotation(0.08, 4, "X"))
+    story.cylinder((h.width + 1.7, -2.1, G + 0.17), (0.1, 1.75, 0.0), 0.17, "fabric", segments=10, color=(0.42, 0.22, 0.18))
     c = W(h.width + 1.0, 2.0)
     det.at(c.x, c.y).extend(story, M)
     p = W(win_x + 0.1, -1.1, -0.02 + 0.006)
@@ -746,7 +754,9 @@ def _cone(mb, x, y, z, rng, fallen=False):
                   color=(0.85, 0.85, 0.82))
     m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z")
     if fallen:
-        m = m @ Matrix.Translation((0, 0, 0.16)) @ Matrix.Rotation(1.38, 4, "X")
+        tip = Matrix.Rotation(1.38, 4, "X")
+        low = min((tip @ v).z for v in part.verts)            # on its side, resting on the road
+        m = m @ Matrix.Translation((0, 0, -low)) @ tip
     mb.extend(part, m)
 
 

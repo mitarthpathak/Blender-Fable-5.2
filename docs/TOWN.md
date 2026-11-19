@@ -171,7 +171,7 @@ into the fog rather than stopping:
 | Edge | What blocks it |
 | --- | --- |
 | Ashgrove, west (x ≈ -29) | a car crashed into the corner, sawhorse road barriers, a tall fence behind |
-| Ashgrove, east (x ≈ 36) | a fallen tree lying across the road, a tall fence behind |
+| Ashgrove, east (x ≈ 35) | a fallen tree lying across the road, its crown on L9's flattened picket fence, a tall fence behind |
 | Mill Road, south (y ≈ -56) | concrete jersey barriers, a ROAD CLOSED sign, a pickup crashed into them, a fence; the mill beyond |
 | Behind the north lots (y ≈ 18.4) | a tall board fence |
 | West and east of the south lots | tall board fences |

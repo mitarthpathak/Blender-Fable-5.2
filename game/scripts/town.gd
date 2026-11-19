@@ -624,7 +624,7 @@ func _self_test() -> void:
 	# Along Ashgrove to the east end.
 	player.global_position = Vector3(30.0, -0.5, 14.2)
 	await _walk(player, -PI / 2.0, 6.0)
-	print("TEST east end: stopped at x=%.1f (fallen tree at 36, edge wall at 39)" % player.global_position.x)
+	print("TEST east end: stopped at x=%.1f (the fallen trunk crosses this line at 34.8, edge wall at 39)" % player.global_position.x)
 	player.global_position = Vector3(-24.0, -0.5, 14.2)
 	await _walk(player, PI / 2.0, 6.0)
 	print("TEST west end: stopped at x=%.1f (barriers at -29, edge wall at -31)" % player.global_position.x)

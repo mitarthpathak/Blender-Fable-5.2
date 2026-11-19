@@ -146,6 +146,14 @@ def _frame(h):
     return W
 
 
+def _seg_dist(x, y, a, b):
+    ax, ay = a
+    bx, by = b
+    dx, dy = bx - ax, by - ay
+    t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / max(dx * dx + dy * dy, 1e-9)))
+    return math.hypot(ax + dx * t - x, ay + dy * t - y)
+
+
 def _inside(x, y, rect, pad=0.0):
     return rect[0] - pad <= x <= rect[2] + pad and rect[1] - pad <= y <= rect[3] + pad
 
@@ -242,9 +250,12 @@ def build(houses, coll="props"):
                 part = {"tyres": lambda: _tyres(rng.randint(2, 4), rng.randint(0, 99)),
                         "woodpile": lambda: _woodpile(rng.randint(0, 99)),
                         "chair": lambda: _lawn_chair(rng.randint(0, 99))}[kind]()
-                m = Matrix.Translation((p.x, p.y, G)) @ Matrix.Rotation(rot, 4, "Z")
+                z0 = G + sk.lawn_offset(p.x, p.y)                  # on the uneven lawn
+                m = Matrix.Translation((p.x, p.y, z0)) @ Matrix.Rotation(rot, 4, "Z")
                 if kind == "chair":
-                    m = m @ Matrix.Rotation(1.35, 4, "X")         # lying on its back
+                    tip = Matrix.Rotation(1.35, 4, "X")             # lying on its back, resting on the ground
+                    low = min((tip @ v).z for v in part.verts)
+                    m = Matrix.Translation((p.x, p.y, z0 - low)) @ Matrix.Rotation(rot, 4, "Z") @ tip
                 med.at(p.x, p.y).extend(part, m)
                 if kind != "chair":
                     size = (0.75, 0.75, 0.8) if kind == "tyres" else (0.5, 1.8, 0.95)
@@ -291,6 +302,7 @@ def build(houses, coll="props"):
         px0, py0, px1, py1 = _porch_box(h)
         porch = [W(px0 - 0.3, py0 - 0.3), W(px1 + 0.3, py1)]
         porch_rect = (min(p.x for p in porch), min(p.y for p in porch), max(p.x for p in porch), max(p.y for p in porch))
+        wrap = [r for r, name in sk.building_rects() if name == f"wrap_{lot.key}"]
         edges = [((hx0 - 0.15, hy0 - 0.15), (hx1 + 0.15, hy0 - 0.15)), ((hx0 - 0.15, hy1 + 0.15), (hx1 + 0.15, hy1 + 0.15)),
                  ((hx0 - 0.15, hy0 - 0.15), (hx0 - 0.15, hy1 + 0.15)), ((hx1 + 0.15, hy0 - 0.15), (hx1 + 0.15, hy1 + 0.15))]
         door = W(h.door_at + 0.45, -3.0)
@@ -306,7 +318,7 @@ def build(houses, coll="props"):
                     continue
                 t = (k + rng.random()) / max(1, int(length / 0.9))
                 x, y = ax + (bx - ax) * t, ay + (by - ay) * t
-                if _inside(x, y, porch_rect) or not _inside(x, y, lot.rect, -0.2):
+                if _inside(x, y, porch_rect) or not _inside(x, y, lot.rect, -0.2) or any(_inside(x, y, r, 0.3) for r in wrap):
                     continue
                 sk.tuft_cluster(x, y, G, rng, n=rng.randint(2, 4), spread=0.15)
                 tufts += 1
@@ -326,6 +338,8 @@ def build(houses, coll="props"):
             x, y = rng.uniform(x0 + 0.3, x1 - 0.3), rng.uniform(y0 + 0.3, y1 - 0.3)
             if any(_inside(x, y, z, 0.25) for z in zones):
                 continue
+            if any(_seg_dist(x, y, a, b) < 1.2 for a, b, _k in sk.FENCE_SEGMENTS):
+                continue                                       # nothing half under a fence (twigs reach 1.1 m)
             z = G + sk.lawn_offset(x, y)
             r = rng.random()
             if r < 0.55:
@@ -363,10 +377,12 @@ def build(houses, coll="props"):
         if not lot.house:
             continue
         x0, y0, x1, y1 = lot.rect
-        for x, y in ((x0 + 0.7, y1 - 0.7), (x1 - 0.7, y1 - 0.7), (x0 + 0.7, y0 + 0.7), (x1 - 0.7, y0 + 0.7)):
-            if any(_inside(x, y, rect, 1.2) for _, rect in plan.SIDEWALKS):
-                continue                                         # not by a street: front yards, and the side street of a corner lot
-            instance(piles[n % 3], f"leaf_pile_y{n}", "props", (x, y, G), rng.uniform(0, 6.28), scale=rng.uniform(0.6, 1.0))
+        for x, y in ((x0 + 1.25, y1 - 1.25), (x1 - 1.25, y1 - 1.25), (x0 + 1.25, y0 + 1.25), (x1 - 1.25, y0 + 1.25)):
+            if any(_inside(x, y, rect, 1.2) for _, rect in plan.SIDEWALKS) or any(_inside(x, y, r) for r, _n in sk.front_yards()):
+                continue                                         # not in a front yard, nor by the side street of a corner lot
+            if any(_seg_dist(x, y, a, b) < 1.1 for a, b, k in sk.FENCE_SEGMENTS if k in ("tall", "edge")):
+                continue                                         # a solid fence (not on the lot line) would cut the pile in two
+            instance(piles[n % 3], f"leaf_pile_y{n}", "props", (x, y, G), rng.uniform(0, 6.28), scale=rng.uniform(0.5, 0.62))
             n += 1
     med.build("props")
     print("YARDS", counts, "leaf piles", n)

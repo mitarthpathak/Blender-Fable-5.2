@@ -14,7 +14,7 @@ import math
 import random
 
 import bpy
-from mathutils import Matrix, Vector, noise as _noise
+from mathutils import Euler, Matrix, Vector, noise as _noise
 
 import plan
 from .core import MeshBuilder, collection, ground_grime, instance, jitter_color, lerp, light, mul
@@ -525,7 +525,9 @@ def road_damage(coll="ground_detail"):
         for _ in range(rng.randint(1, 3)):
             spots.append((x + rng.uniform(-0.4, 0.4), y + rng.uniform(-0.3, 0.3), SW))
     for i, (x, y, zz) in enumerate(spots):
-        instance(weeds[i % 3], f"weed_{i}", "grass", (x, y, zz), rng.uniform(0, 6.28), scale=rng.uniform(0.6, 1.25))
+        # rooted in whatever is under it: a spot meant for the sidewalk can land just over the kerb
+        instance(weeds[i % 3], f"weed_{i}", "grass", (x, y, _surface_z(x, y)), rng.uniform(0, 6.28),
+                 scale=rng.uniform(0.6, 1.25))
     dc.build(coll)
 
     mh = shared("manhole", _manhole)
@@ -682,9 +684,16 @@ def wires(tops, coll="poles"):
 
 # --- Fences ----------------------------------------------------------------------------
 
-def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
-    """Picket fence from a to b (plan points), with an optional gate gap centred at `gap`."""
+def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88), crush=None):
+    """Picket fence from a to b (plan points), with an optional gate gap centred at `gap`.
+    `crush` (s0, s1, push), from fallen_tree_crush: that stretch is knocked flat to one side.
+    The random draws are the same with or without it, so the rest of the fence does not change."""
     a, b = Vector((*a, 0)), Vector((*b, 0))
+    cr0, cr1 = (crush[0], crush[1]) if crush else (1e9, 1e9)
+
+    def crushed(q):
+        return cr0 <= q <= cr1
+
     d = b - a
     length = d.length
     u = d.normalized()
@@ -706,11 +715,17 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
             for zr in (0.25, 0.72):
                 sag = rng.uniform(0.0, 0.025) * wear
                 for half_ in (0, 1):
-                    ca = a + u * (s0 + k * bay + half_ * bay / 2)
-                    c = ca + u * (bay / 4)
-                    mb.obox((c.x, c.y, G + zr + 0.03 - sag * (0.5 if half_ == 0 else 0.5)), (bay / 2, 0.04, 0.06),
-                            rot, "trim", color=mul(colour, 0.9), tilt=(0.0, (sag if half_ == 0 else -sag) / max(bay, 0.1)))
+                    q0 = s0 + k * bay + half_ * bay / 2
+                    # the part of this half rail outside a crushed stretch (broken off at its edge)
+                    for p0_, p1_ in ((q0, min(q0 + bay / 2, cr0)), (max(q0, cr1), q0 + bay / 2)):
+                        if p1_ - p0_ < 0.05:
+                            continue
+                        c = a + u * ((p0_ + p1_) / 2)
+                        mb.obox((c.x, c.y, G + zr + 0.03 - sag * 0.5), (p1_ - p0_, 0.04, 0.06), rot, "trim",
+                                color=mul(colour, 0.9), tilt=(0.0, (sag if half_ == 0 else -sag) / max(bay, 0.1)))
         for k in range(1, n_bays):
+            if crushed(s0 + k * bay):
+                continue
             p = a + u * (s0 + k * bay) + nrm * 0.045
             mb.obox((p.x, p.y, G + 0.5), (0.085, 0.085, 1.0), rot, "trim", color=mul(colour, 0.82))
         s = s0
@@ -720,8 +735,9 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
             if r < 0.04 + 0.08 * wear:                            # gone: lying in the grass in front
                 if rng.random() < 0.5:
                     p = a + u * s - nrm * rng.uniform(0.2, 0.7)
-                    mb.obox((p.x, p.y, G + 0.015), (0.075, 0.9, 0.025), rot + rng.uniform(-0.6, 0.6), "trim",
-                            color=mul(grey, 0.85))
+                    turn = rng.uniform(-0.6, 0.6)
+                    if not crushed(s):
+                        mb.obox((p.x, p.y, G + 0.015), (0.075, 0.9, 0.025), rot + turn, "trim", color=mul(grey, 0.85))
             else:
                 p = a + u * s
                 h = 0.95 + rng.uniform(-0.03, 0.03)
@@ -731,6 +747,9 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
                 lean += bay_lean[bay_i]
                 peel = min(1.0, max(0.0, rng.gauss(wear * 0.6, 0.25)))
                 c = jitter_color(rng, tuple(colour[i] * (1 - peel) + grey[i] * peel for i in range(3)), 0.06)
+                if crushed(s):
+                    s += 0.135
+                    continue
                 picket = MeshBuilder()
                 picket.grime = ground_grime(-0.04, 0.35, 0.42)          # splash-back and moss at the foot
                 picket.box((-0.0375, -0.0125, 0.0), (0.0375, 0.0125, h - 0.06), "trim", color=c, skip="+z-z")
@@ -744,10 +763,68 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
                           @ Matrix.Rotation(lean, 4, "X"))
             s += 0.135
         for s in (s0, s1):
+            if crushed(s):
+                continue
             p = a + u * s
             mb.obox((p.x, p.y, G + 0.54), (0.1, 0.1, 1.08), rot, "trim", color=mul(colour, 0.85))
             mb.obox((p.x, p.y, G + 1.095), (0.13, 0.13, 0.03), rot, "trim", color=mul(colour, 0.9))          # cap
             mb.obox((p.x, p.y, G + 1.13), (0.07, 0.07, 0.05), rot, "trim", color=mul(colour, 0.9))
+    if crush:
+        _flattened_pickets(mb, a, u, nrm, rot, crush, wear, colour, grey)
+
+
+def _flattened_pickets(mb, a, u, nrm, rot, crush, wear, colour, grey):
+    """The stretch of picket fence the fallen tree came down on: the bay lies flat in the grass
+    where it was pushed, rails up, a few pickets torn off it, and the posts snapped at the foot."""
+    c0, c1, push = crush
+    rng = random.Random(int(abs(a.x) * 100 + abs(a.y) * 10 + c0 * 7))
+    side = nrm * push
+    ang = rot + (math.pi / 2 if push > 0 else -math.pi / 2)        # the direction it lies: away from the line
+    fall = Vector((math.cos(ang), math.sin(ang), 0))
+    span = c1 - c0
+    mid = a + u * ((c0 + c1) / 2)
+
+    def ground_at(p):
+        return G + lawn_offset(p.x, p.y)
+
+    # pickets, face down, the foot a little off the fence line where they tore out
+    s = c0 + 0.08
+    while s < c1 - 0.05:
+        if rng.random() < 0.82:
+            h = 0.95 if rng.random() > 0.2 else rng.uniform(0.4, 0.75)      # some snapped
+            foot = a + u * s + side * rng.uniform(0.02, 0.12)
+            twist = rng.uniform(-0.05, 0.05)
+            dirv = Vector((math.cos(ang + twist), math.sin(ang + twist), 0))
+            p = foot + dirv * (h / 2)
+            peel = min(1.0, max(0.0, rng.gauss(wear * 0.7, 0.25)))
+            c = jitter_color(rng, tuple(colour[i] * (1 - peel) + grey[i] * peel for i in range(3)), 0.06)
+            mb.obox((p.x, p.y, ground_at(p) + 0.018), (0.075, h, 0.025), rot + twist, "trim", color=mul(c, 0.92))
+        s += 0.135
+    # the two rails on top, cracked where the trunk landed
+    for zr in (0.25, 0.72):
+        crack = rng.uniform(0.35, 0.65)
+        for f0, f1, lift in ((0.0, crack - 0.02, 0.0), (crack + 0.02, 1.0, rng.uniform(0.0, 0.06))):
+            q = a + u * (c0 + span * (f0 + f1) / 2) + side * 0.07 + fall * zr
+            mb.obox((q.x, q.y, ground_at(q) + 0.065 + lift / 2), (span * (f1 - f0), 0.06, 0.04), rot, "trim",
+                    color=mul(colour, 0.85), tilt=(0.0, lift / max(span * (f1 - f0), 0.1)))
+    # loose pickets kicked further out, and splinters
+    for _ in range(4):
+        p = mid + u * rng.uniform(-span / 2, span / 2) + fall * rng.uniform(1.1, 1.8)
+        mb.obox((p.x, p.y, ground_at(p) + 0.015), (0.075, rng.uniform(0.35, 0.9), 0.025),
+                rot + rng.uniform(-1.2, 1.2), "trim", color=mul(grey, rng.uniform(0.8, 0.95)))
+    for _ in range(6):
+        p = mid + u * rng.uniform(-span / 2, span / 2) + fall * rng.uniform(-0.3, 1.2)
+        mb.obox((p.x, p.y, ground_at(p) + 0.008), (0.025, rng.uniform(0.08, 0.22), 0.012),
+                rng.uniform(0, math.pi), "trim", color=mul(grey, 0.8))
+    # snapped posts: a stub at each end of the flattened bay
+    for s in (c0, c1):
+        p = a + u * s
+        hh = rng.uniform(0.22, 0.38)
+        mb.obox((p.x, p.y, G + hh / 2), (0.1, 0.1, hh), rot + rng.uniform(-0.1, 0.1), "trim",
+                color=mul(colour, 0.8), tilt=(rng.uniform(-0.08, 0.08), 0.0))
+        tip = p + side * 0.2 + fall * 0.3
+        mb.obox((tip.x, tip.y, ground_at(tip) + 0.05), (0.1, 0.8, 0.1), ang - math.pi / 2 + rng.uniform(-0.3, 0.3),
+                "trim", color=mul(colour, 0.78))
 
 
 def chainlink_run(mb, a, b, height=1.2):
@@ -1079,7 +1156,10 @@ def fences(coll="fences"):
             for p0, p1 in _clip_run(a, b):
                 g = gap if gap and min(p0[0], p1[0]) - 0.01 <= gap[0] <= max(p0[0], p1[0]) + 0.01 and \
                     min(p0[1], p1[1]) - 0.01 <= gap[1] <= max(p0[1], p1[1]) + 0.01 else None
-                picket_run(pk, p0, p1, rng, g, wear)
+                crush = fallen_tree_crush(p0, p1)
+                if crush:
+                    print(f"FENCE_CRUSHED {lot.key} picket fence flattened over {crush[1] - crush[0]:.1f} m by the fallen tree")
+                picket_run(pk, p0, p1, rng, g, wear, crush=crush)
         elif lot.fence == "chainlink":
             if gap is None:
                 chainlink_run(cl, a, b)
@@ -1230,15 +1310,29 @@ def _tuft(seed):
 _TUFTS: list = []
 
 
+def _near_curb(x, y, d):
+    for (ax, ay), (bx, by), _side in curb_lines():
+        if abs(ay - by) < 1e-6:
+            if min(ax, bx) <= x <= max(ax, bx) and abs(y - ay) < d:
+                return True
+        elif min(ay, by) <= y <= max(ay, by) and abs(x - ax) < d:
+            return True
+    return False
+
+
 def tuft_cluster(x, y, z, rng, n=3, spread=0.25, coll="grass"):
     """A few tufts together round x, y (named grass_t*: instanced and faded in Godot)."""
     global _TUFTS
     if not _TUFTS:
         _TUFTS = [shared(f"grass_tuft_{k}", lambda k=k: _tuft(k)) for k in range(TUFT_VARIANTS)]
     for _ in range(n):
+        tx, ty = x + rng.uniform(-spread, spread), y + rng.uniform(-spread, spread)
+        if _on_road(tx, ty) and not _near_curb(tx, ty, 0.3):
+            continue                      # grass grows in the gutter at the kerb, not out of the asphalt
         tuft_cluster.count = getattr(tuft_cluster, "count", 0) + 1
+        # on whatever is under it (lawn, sidewalk or the gutter); yard ones are lifted onto the lawn later
         instance(_TUFTS[rng.randrange(TUFT_VARIANTS)], f"grass_t{tuft_cluster.count}", coll,
-                 (x + rng.uniform(-spread, spread), y + rng.uniform(-spread, spread), z), rng.uniform(0, 6.28),
+                 (tx, ty, _surface_z(tx, ty)), rng.uniform(0, 6.28),
                  scale=rng.uniform(0.8, 1.45), tilt=(rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15)))
 
 
@@ -1451,6 +1545,52 @@ def _jersey():
     return mb
 
 
+FALLEN_ROLL = 300.0      # degrees about its own trunk: the crown inside the east-end fence, its top on L9's pickets
+
+
+def _fallen_tree_matrix(x, y, h, length):
+    """Where blockers() lays the fallen tree: its foot short of the road, the crown on the far side,
+    turned about the trunk so no branch passes through a tall fence or out of the town."""
+    loc = Vector((x - math.cos(h) * length * 0.45, y - math.sin(h) * length * 0.45, RD + 0.25))
+    return (Matrix.Translation(loc) @ Euler((0.0, math.radians(84), h)).to_matrix().to_4x4()
+            @ Matrix.Rotation(math.radians(FALLEN_ROLL), 4, "Z"))
+
+
+def fallen_tree_crush(a, b, reach=0.35):
+    """The stretch (s0, s1) of the fence run a..b (plan points; s in metres from a) that the
+    fallen tree lies across, and which way it pushed (+1 along the run's left normal, -1 right),
+    or None. Only the trunk and crown below the fence top count."""
+    a, b = Vector((*a, 0)), Vector((*b, 0))
+    u = (b - a).normalized()
+    nrm = Vector((-u.y, u.x, 0))
+    length = (b - a).length
+    out = None
+    for kind, x, y, heading, tl in plan.BLOCKERS:
+        if kind != "fallen_tree":
+            continue
+        h = math.radians(heading)
+        if "fallen_tree" not in _TREE_POINTS:
+            _TREE_POINTS["fallen_tree"] = list(_tree(909, 13.0).verts)
+        m = _fallen_tree_matrix(x, y, h, tl)
+        s_hit = []
+        for v in _TREE_POINTS["fallen_tree"]:
+            w = m @ v
+            if not (G - 0.05 < w.z < G + 1.2):
+                continue
+            rel = w - a
+            rel.z = 0.0
+            s = rel.dot(u)
+            if -0.2 < s < length + 0.2 and abs(rel.dot(nrm)) < reach:
+                s_hit.append(s)
+        if s_hit:
+            push = 1.0 if Vector((math.cos(h), math.sin(h), 0)).dot(nrm) > 0 else -1.0
+            out = (max(0.0, min(s_hit) - 0.3), min(length, max(s_hit) + 0.3), push)
+    return out
+
+
+_TREE_POINTS: dict = {}
+
+
 def blockers(coll="blockers"):
     rng = random.Random(55)
     saw = shared("sawhorse", _sawhorse)
@@ -1474,13 +1614,27 @@ def blockers(coll="blockers"):
         elif kind == "fallen_tree":
             t = _tree(909, 13.0)
             o = t.build("fallen_tree", coll)
-            o.location = (x - math.cos(h) * length * 0.45, y - math.sin(h) * length * 0.45, RD + 0.25)
-            o.rotation_euler = (0.0, math.radians(84), h)
+            o.matrix_world = _fallen_tree_matrix(x, y, h, length)
             # the trunk hits the road and the crown rests on the far side
             stump = MeshBuilder()
             stump.cylinder((0, 0, G - 0.1), (0, 0, 0.9), 0.36, "bark", segments=10, radius_top=0.33,
                            color=(0.62, 0.6, 0.56))
-            stump.disc((0, 0, G + 0.8), 0.33, "wood_weathered", segments=10, color=(0.9, 0.82, 0.7))
+            # snapped in the storm, not sawn: a ring of splinters, the tallest on the side it fell from
+            srng = random.Random(909)
+            ring = [Vector((math.cos(2 * math.pi * k / 10) * 0.335, math.sin(2 * math.pi * k / 10) * 0.335, G + 0.79))
+                    for k in range(10)]
+            core = Vector((0.04, 0.0, G + 0.86))
+            for k in range(10):
+                a0, a1 = ring[k], ring[(k + 1) % 10]
+                mid = (a0 + a1) / 2
+                back = max(0.0, -math.cos(2 * math.pi * (k + 0.5) / 10 - h))     # 1 on the side away from the fall
+                inward = srng.uniform(0.35, 0.85)
+                tip = Vector((mid.x * inward, mid.y * inward,
+                              G + 0.8 + srng.uniform(0.0, 0.1) + (0.36 * back + srng.uniform(0.0, 0.2)) * srng.random()))
+                col = (0.92, 0.84, 0.7) if srng.random() < 0.7 else (0.74, 0.66, 0.55)
+                stump.face([a0, a1, tip], "wood_weathered", color=col)
+                stump.face([a1, core, tip], "wood_weathered", color=mul(col, 0.9))
+                stump.face([core, a0, tip], "wood_weathered", color=mul(col, 0.9))
             so = stump.build("fallen_tree_stump", coll)
             so.location = (x - math.cos(h) * length * 0.52, y - math.sin(h) * length * 0.52 + 0.2, 0)
 
