@@ -516,6 +516,49 @@ DECAL_RULES = {
 }
 
 
+def grass_blades():
+    """Four grass tufts in a 2 x 2 atlas (512 px): thin blades that taper to a
+    point, curve and lean, with gaps between them, a few seed heads, darker
+    at the root. Neutral straw: each tuft is tinted straw, olive or brown by
+    its vertex colour. Alpha-tested on cards (grass_blade_card)."""
+    s, cell = 512, 256
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rng = np.random.default_rng(23)
+    for c in range(4):
+        cx0, cy0 = (c % 2) * cell, (c // 2) * cell
+        n = int(rng.integers(40, 70))
+        for _ in range(n):
+            x0 = cx0 + cell / 2 + rng.normal(0, cell * 0.12)
+            hgt = rng.uniform(0.35, 0.96) * cell
+            lean = rng.normal(0, 0.28) * hgt
+            bow = rng.uniform(0.6, 1.8)
+            base_w = rng.uniform(5.5, 9.0)        # thick enough to survive the mipmaps at a distance
+            tone = rng.uniform(0.75, 1.0)
+            steps = 10
+            for k in range(steps):
+                t0, t1 = k / steps, (k + 1) / steps
+                p0 = (x0 + lean * t0 ** bow, cy0 + cell - 2 - hgt * t0)
+                p1 = (x0 + lean * t1 ** bow, cy0 + cell - 2 - hgt * t1)
+                w = max(2, int(round(base_w * (1 - t0) ** 0.8)))
+                shade = 0.55 + 0.45 * t0                               # darker at the root
+                col = (int(205 * tone * shade), int(188 * tone * shade), int(140 * tone * shade), 255)
+                d.line([p0, p1], fill=col, width=w)
+            if rng.random() < 0.12:                                    # a seed head
+                tip = (x0 + lean, cy0 + cell - 2 - hgt)
+                for k in range(6):
+                    yy = tip[1] + k * 3
+                    d.line([(tip[0] - 2, yy), (tip[0] + 2, yy + 2)], fill=(190, 170, 120, 255), width=2)
+    img = img.filter(ImageFilter.SMOOTH)
+    a = np.asarray(img, np.float32) / 255.0
+    a[..., 3] = np.where(a[..., 3] > 0.35, 1.0, 0.0)                   # clean cut-out for alpha testing
+    save(a, DECALS / "grass_blades.png")
+    luma = a[..., :3] @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+    save(normal_from_height((blur(luma, 1.0) * a[..., 3]).astype(np.float32), 3.0), DECALS / "grass_blades_nor.png")
+    grain = noise(s, 48, 2)
+    save(orm((0.88 + 0.08 * (grain - 0.5)).astype(np.float32), 0.0), DECALS / "grass_blades_orm.png")
+
+
 def decal_maps():
     for name, (source, strength, rough, metal, _) in DECAL_RULES.items():
         path = DECALS / f"{name}.png"
@@ -554,6 +597,7 @@ def decal_maps():
 
 
 def run():
+    grass_blades()
     new_decals()
     flat_sets()
     decal_maps()

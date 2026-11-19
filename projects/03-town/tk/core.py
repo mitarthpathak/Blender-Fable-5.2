@@ -75,6 +75,7 @@ MATS: dict[str, dict] = {
     "paint_white": dict(diff_png="marking_white", tile=1.0, clip=True, rough=0.7),
     "chainlink": dict(diff_png="chainlink", tile=1.0, clip=True, rough=0.5, metal=0.6),
     "grass_card": dict(diff_png="grass_tuft", tile=1.0, clip=True, rough=0.9, two_sided=True),
+    "grass_blade_card": dict(diff_png="grass_blades", tile=1.0, clip=True, rough=0.9, two_sided=True),
     "puddle": dict(diff_png="puddle", tile=1.0, blend=True),
     "decal_grime": dict(diff_png="grime_streaks", tile=1.0, blend=True, rough=0.9),
     "decal_moss": dict(diff_png="moss", tile=1.0, blend=True, rough=0.95),
@@ -115,6 +116,9 @@ MATS: dict[str, dict] = {
 _cache: dict[str, bpy.types.Material] = {}
 
 
+LAWN_TINT = {"lawn_dead": (0.50, 0.48, 0.38)}   # as street_kit.ground tints them
+
+
 def tile_of(key: str) -> float:
     return MATS[key].get("tile", 1.0)
 
@@ -152,7 +156,13 @@ def material(key: str) -> bpy.types.Material:
     mix.blend_type = "MULTIPLY"
     mix.inputs["Factor"].default_value = 1.0
     mix.location = (0, 250)
-    nt.links.new(vc.outputs["Color"], mix.inputs[7])     # B
+    if key.startswith("lawn_"):
+        # The lawns carry a mask in their vertex alpha for the Godot lawn shader;
+        # the glTF exporter only writes vertex alpha when the material does not
+        # read the vertex colour, so here the tint is a constant instead.
+        mix.inputs[7].default_value = (*LAWN_TINT.get(key, (0.85, 0.85, 0.8)), 1.0)
+    else:
+        nt.links.new(vc.outputs["Color"], mix.inputs[7])     # B
     nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
 
     if "set" in spec:

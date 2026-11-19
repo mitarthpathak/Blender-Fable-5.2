@@ -39,6 +39,8 @@ SETS: dict[str, tuple[str, float, str]] = {
     "leafy_grass": ("2k", 2.0, "kept lawns (same set as the player's house)"),
     "withered_grass": ("2k", 2.5, "dead lawns"),
     "brown_mud_leaves_01": ("2k", 2.5, "overgrown lawns and verges, leaf litter"),
+    "park_dirt": ("2k", 2.0, "bare and trodden earth in the lawns (Godot lawn shader)"),
+    "dry_decay_leaves": ("2k", 1.8, "dry leaf litter blended over the lawns (Godot lawn shader)"),
     "forest_leaves_02": ("1k", 1.5, "leaf piles"),
     "bark_brown_02": ("1k", 1.2, "tree trunks, the fallen tree"),
     "plywood": ("1k", 1.2, "boards over windows"),

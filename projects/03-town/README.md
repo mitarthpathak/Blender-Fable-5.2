@@ -309,3 +309,29 @@ runs it reports both of them.
 
 `game/tools/town_views.gd -- --lots` takes two pictures of every lot with a
 house: from the street, and from inside the back yard.
+
+## Lawns and grass
+
+The lawns are a ground material, not cards. In Godot `game/scripts/lawn.gdshader`
+(set on `ground_lawns` by `town.gd`) blends three Poly Haven sets in world
+space: dead grass (`withered_grass`, sampled twice at two sizes and angles,
+and the darker `lawn_rough` through about half of it, so the repeat does not
+show), bare earth (`park_dirt`) and dry leaf litter (`dry_decay_leaves`). The
+earth comes through where the lawn mesh's vertex alpha says
+(`street_kit.lawn_grid`: bare patches, the drip line along every house, worn
+path edges, and a trail on each lot from the porch round to the side yard; on
+L1 from the back steps to the shed and the washing line); the leaves lie in
+drifts from a noise (the vacant lot is mostly leaves). The lawn materials in
+Blender take their tint as a constant, because the glTF exporter only writes
+vertex alpha for a material that does not read the vertex colour.
+`build.py` copies the shader's textures beside the glTF.
+
+Grass is small tufts only (`street_kit._tuft`): three crossed alpha-tested
+cards from `grass_blades` (a 2 x 2 atlas of thin, tapering, leaning blades,
+`detail_maps.grass_blades`), 15 to 35 cm, straw, olive or brown, random
+scale and lean. They grow in clusters where a mower misses: along the foot of
+every fence, round the foundations, down the front path edges, in the kerb
+joints and the cracks across the sidewalk slabs. The big clumps spread over
+the lawns are gone. Godot culls them in 8 m squares past 25 m (0.8 of that on
+Low). Shrubs are smaller (0.5 to 0.9), fewer (four in ten corners are left
+bare) and six variants.

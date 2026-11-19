@@ -217,12 +217,29 @@ def lawn_grid(mb: MeshBuilder, lot, mat, tint, n):
     ys = [y0 + (y1 - y0) * j / ny for j in range(ny + 1)]
     pt = {(i, j): Vector((xs[i], ys[j], G + lawn_offset(xs[i], ys[j]))) for i in range(nx + 1) for j in range(ny + 1)}
 
+    trails = _trails(lot)
+
     def colour(p):
         patch = _noise.noise(Vector((p.x * 0.16, p.y * 0.16, 9.1)))         # bare, trodden earth
         damp = _noise.noise(Vector((p.x * 0.5, p.y * 0.5, 3.3)))
         k = 1.0 - 0.42 * max(0.0, patch - 0.1) / 0.9 - 0.14 * max(0.0, damp)
         k *= 1.0 + 1.6 * (p.z - G)                                            # the rises a shade lighter, drier
         return mul(mul(tint, n(p)), k)
+
+    def dirt(p):
+        """How much bare earth shows (vertex alpha, read by the Godot lawn shader):
+        bare patches, the drip line along every house, worn path edges, trails."""
+        m = max(0.0, _noise.noise(Vector((p.x * 0.16, p.y * 0.16, 9.1))) - 0.2) * 1.1
+        for r in _HOUSES + [z for z in _zones() if z not in _HOUSES]:
+            dx, dy = max(r[0] - p.x, 0.0, p.x - r[2]), max(r[1] - p.y, 0.0, p.y - r[3])
+            d = math.hypot(dx, dy)
+            m = max(m, (0.85 if r in _HOUSES else 0.55) * max(0.0, 1.0 - d / (0.9 if r in _HOUSES else 0.6)))
+        for a, b in trails:
+            ab = b - a
+            t = max(0.0, min(1.0, (Vector((p.x, p.y, 0)) - a).dot(ab) / max(ab.length_squared, 1e-6)))
+            d = (Vector((p.x, p.y, 0)) - (a + ab * t)).length
+            m = max(m, 0.9 * max(0.0, 1.0 - d / 0.45))
+        return min(1.0, m)
     for i in range(nx):
         for j in range(ny):
             cx, cy = (xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2
@@ -230,7 +247,26 @@ def lawn_grid(mb: MeshBuilder, lot, mat, tint, n):
                 continue
             q = [pt[i, j], pt[i + 1, j], pt[i + 1, j + 1], pt[i, j + 1]]
             mb.face(q, mat)
-            mb.cols[-1] = [(*colour(p), 1.0) for p in q]
+            mb.cols[-1] = [(*colour(p), dirt(p)) for p in q]
+
+
+def _trails(lot):
+    """Worn trails across a lot (from the porch steps round to the side yard, as
+    people cut the corner), as (start, end) pairs. L1: back steps to the shed and
+    the washing line."""
+    if lot.key == "L1":
+        return [(Vector((1.8, 10.0, 0)), Vector((8.6, 14.8, 0))), (Vector((1.8, 10.0, 0)), Vector((-2.4, 12.5, 0)))]
+    h = lot.house
+    if not h:
+        return []
+    rng = random.Random(hash(lot.key) % 1000)
+    (ox, oy), (ax, ay), (bx, by) = plan.house_frame(h)
+    W = lambda lx, ly: Vector((ox + ax * lx + bx * ly, oy + ay * lx + by * ly, 0))
+    side = rng.choice((-1.2, h.width + 1.2))
+    start = W(h.door_at + 0.45, -3.2)
+    corner = W(side, -0.8)
+    yard = W(side, h.depth * 0.6)
+    return [(start, corner), (corner, yard)]
 
 
 def settle_on_lawn(prefixes):
@@ -1130,6 +1166,47 @@ def _leaf_pile(seed):
     return mb
 
 
+TUFT_VARIANTS = 6
+TUFT_TINTS = ((1.0, 0.9, 0.66), (0.72, 0.72, 0.46), (0.74, 0.58, 0.42))     # straw, olive, brown
+
+
+def _tuft(seed):
+    """A small grass tuft: three crossed alpha-tested cards of thin blades from
+    the grass_blades atlas, 15 to 35 cm tall, leaning, darker at the root."""
+    rng = random.Random(1000 + seed)
+    mb = MeshBuilder()
+    tint = TUFT_TINTS[seed % 3]
+    cell = seed % 4
+    u0, v0 = (cell % 2) * 0.5, 0.5 - (cell // 2) * 0.5
+    h = rng.uniform(0.15, 0.35)
+    for k in range(3):
+        a = math.pi * k / 3 + rng.uniform(-0.3, 0.3)
+        w = rng.uniform(0.2, 0.34) * (h / 0.25) ** 0.5
+        d = Vector((math.cos(a), math.sin(a), 0)) * w / 2
+        lean = Vector((rng.uniform(-0.06, 0.06), rng.uniform(-0.06, 0.06), 0))
+        top = Vector((0, 0, h * rng.uniform(0.85, 1.1)))
+        c = mul(tint, rng.uniform(0.85, 1.05))
+        pts = [-d, d, d + top + lean, -d + top + lean]
+        mb.face(pts, "grass_blade_card", uvs=[(u0, v0), (u0 + 0.5, v0), (u0 + 0.5, v0 + 0.5), (u0, v0 + 0.5)])
+        mb.cols[-1] = [(*mul(c, 0.62), 1.0), (*mul(c, 0.62), 1.0), (*c, 1.0), (*c, 1.0)]
+    return mb
+
+
+_TUFTS: list = []
+
+
+def tuft_cluster(x, y, z, rng, n=3, spread=0.25, coll="grass"):
+    """A few tufts together round x, y (named grass_t*: instanced and faded in Godot)."""
+    global _TUFTS
+    if not _TUFTS:
+        _TUFTS = [shared(f"grass_tuft_{k}", lambda k=k: _tuft(k)) for k in range(TUFT_VARIANTS)]
+    for _ in range(n):
+        tuft_cluster.count = getattr(tuft_cluster, "count", 0) + 1
+        instance(_TUFTS[rng.randrange(TUFT_VARIANTS)], f"grass_t{tuft_cluster.count}", coll,
+                 (x + rng.uniform(-spread, spread), y + rng.uniform(-spread, spread), z), rng.uniform(0, 6.28),
+                 scale=rng.uniform(0.8, 1.45), tilt=(rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15)))
+
+
 def _grass_clump(seed):
     rng = random.Random(seed)
     mb = MeshBuilder()
@@ -1180,8 +1257,26 @@ def props(coll="props"):
                 if lot.key == "L7" and gy < -47.0:
                     continue                             # that half is the station's concrete
                 spots.append((gx, gy))
-    for i, (x, y) in enumerate(spots):
-        instance(clumps[i % 3], f"grass_{i}", "grass", (x, y, G), rng.uniform(0, 6.28), scale=rng.uniform(0.7, 1.3))
+    # (the old big grass clumps along the fences are gone: small tufts now grow
+    # in the kerb joints and along the sidewalk edges; yards.py does the lots)
+    for start, end, side in curb_lines():
+        a, b = Vector((*start, 0)), Vector((*end, 0))
+        length = (b - a).length
+        u = (b - a).normalized()
+        for k in range(int(length / 2.6)):
+            if rng.random() < 0.45:
+                continue
+            p = a + u * rng.uniform(k * 2.6, (k + 1) * 2.6)
+            out = {"n": Vector((0, 1, 0)), "s": Vector((0, -1, 0)), "w": Vector((-1, 0, 0)), "e": Vector((1, 0, 0))}[side]
+            q = p + out * rng.uniform(0.05, 0.15)                          # in the joint at the back of the kerb
+            tuft_cluster(q.x, q.y, SW, rng, n=rng.randint(1, 3), spread=0.12)
+    for _, (sx0, sy0, sx1, sy1) in plan.SIDEWALKS:                         # cracks across the slabs
+        along_x = (sx1 - sx0) > (sy1 - sy0)
+        n = int(max(sx1 - sx0, sy1 - sy0) / 6)
+        for _ in range(n):
+            x = rng.uniform(sx0 + 0.2, sx1 - 0.2)
+            y = rng.uniform(sy0 + 0.2, sy1 - 0.2)
+            tuft_cluster(x, y, SW, rng, n=rng.randint(1, 2), spread=0.1)
     # sale sign in L5's yard
     mb = MeshBuilder()
     mb.box((-0.03, -0.03, G), (0.03, 0.03, G + 1.2), "wood_weathered", skip="-z")

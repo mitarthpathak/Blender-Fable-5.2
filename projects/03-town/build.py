@@ -219,6 +219,21 @@ def build_town():
     return scene, houses
 
 
+# Textures the Godot lawn shader blends over the lawns (scripts/lawn.gdshader):
+# the glTF carries only what Blender's materials use, so these are copied over.
+LAWN_SHADER_SETS = ("withered_grass", "park_dirt", "dry_decay_leaves")
+
+
+def copy_lawn_textures():
+    import shutil
+    dst = GLB.parent / "textures"
+    for set_id in LAWN_SHADER_SETS:
+        for part in ("diff", "nor_gl", "arm"):
+            src = HERE / "textures" / set_id / f"{set_id}_{part}_2k.jpg"
+            if src.exists() and not (dst / src.name).exists():
+                shutil.copy2(src, dst / src.name)
+
+
 def save_and_export(scene):
     BLEND.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND), compress=True, relative_remap=True)
@@ -235,6 +250,7 @@ def save_and_export(scene):
         export_image_format="AUTO", export_vertex_color="ACTIVE", export_all_vertex_colors=False,
         export_texcoords=True, export_normals=True, export_materials="EXPORT",
     )
+    copy_lawn_textures()
     size = sum(f.stat().st_size for f in GLB.parent.rglob("*") if f.is_file() and f.suffix != ".import")
     print("exported", GLB, size // 1024, "KB with textures")
 

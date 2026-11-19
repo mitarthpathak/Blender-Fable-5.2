@@ -47,8 +47,12 @@ const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jers
 ## High; Low multiplies it by LOW_CHUNK_FADE), past which it is culled. Before
 ## this the yards' shrubs and grass were one MultiMesh each, drawn at any
 ## distance: the shrub_ entry in FADE_PREFIXES never reached them.
-const CHUNKED_FADE := {"grass_": 42.0, "weed_": 42.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
+const CHUNKED_FADE := {"grass_": 25.0, "weed_": 30.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
 const CHUNK := 16.0
+## Smaller squares for the grass: a range is measured from a chunk's middle, so
+## in a 16 m square a tuft near the camera could be culled with its far corner.
+const CHUNK_SIZE := {"grass_": 8.0, "weed_": 8.0}
+const LOW_GRASS_FADE := 0.8
 const LOW_CHUNK_FADE := 0.6
 
 const SODIUM := Color(1.0, 0.55, 0.20)
@@ -237,7 +241,8 @@ func _apply_quality(high: bool) -> void:
 	if not high and not fixed_scale:
 		get_viewport().scaling_3d_scale = LOW_SCALE
 	for chunk in _chunks:
-		(chunk[0] as GeometryInstance3D).visibility_range_end = chunk[1] * (1.0 if high else LOW_CHUNK_FADE)
+		var low: float = LOW_GRASS_FADE if chunk[2] else LOW_CHUNK_FADE
+		(chunk[0] as GeometryInstance3D).visibility_range_end = chunk[1] * (1.0 if high else low)
 
 
 ## On Low there is no volumetric fog, so a lamp in fog is just a bright dot. A
@@ -364,6 +369,8 @@ func _setup_town(town: Node3D) -> Dictionary:
 				var water := mi.mesh.surface_get_material(surface) as BaseMaterial3D
 				if water and water.resource_name == "puddle":
 					water.metallic_specular = 0.22
+		if n.begins_with("ground_lawns"):
+			_lawn_material(mi)
 		if _starts(n, TRIMESH_PREFIXES):
 			mi.create_trimesh_collision()
 			stats["bodies"] += 1
@@ -383,7 +390,8 @@ func _setup_town(town: Node3D) -> Dictionary:
 			var key: Variant = mi.mesh
 			for prefix in CHUNKED_FADE:
 				if n.begins_with(prefix):
-					key = [mi.mesh, floori(mi.position.x / CHUNK), floori(mi.position.z / CHUNK), prefix]
+					var size: float = CHUNK_SIZE.get(prefix, CHUNK)
+					key = [mi.mesh, floori(mi.position.x / size), floori(mi.position.z / size), prefix]
 			if not groups.has(key):
 				groups[key] = []
 			groups[key].append(mi)
@@ -418,7 +426,7 @@ func _setup_town(town: Node3D) -> Dictionary:
 			# transparent pass, which cost more than the culling saved.
 			node.visibility_range_end_margin = 6.0
 			node.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
-			_chunks.append([node, CHUNKED_FADE[key[3]]])
+			_chunks.append([node, CHUNKED_FADE[key[3]], key[3] in CHUNK_SIZE])
 			stats["chunks"] = stats.get("chunks", 0) + 1
 		town.add_child(node)
 		for mi in list:
@@ -426,6 +434,39 @@ func _setup_town(town: Node3D) -> Dictionary:
 		stats["instanced"] += list.size()
 		stats["multimeshes"] += 1
 	return stats
+
+
+## The lawns: scripts/lawn.gdshader on every surface of ground_lawns, blending
+## dead grass, bare earth (where the mesh's vertex alpha says) and leaf litter.
+## The vacant lot (lawn_leafy) is mostly leaves.
+func _lawn_material(mi: MeshInstance3D) -> void:
+	var tex := func(set_id: String, part: String) -> Texture2D:
+		return load("res://assets/town/textures/%s_%s_2k.jpg" % [set_id, part]) as Texture2D
+	var noise := NoiseTexture2D.new()
+	noise.width = 256
+	noise.height = 256
+	noise.seamless = true
+	noise.generate_mipmaps = true
+	var fast := FastNoiseLite.new()
+	fast.frequency = 0.012
+	fast.fractal_octaves = 3
+	noise.noise = fast
+	var base := ShaderMaterial.new()
+	base.shader = load("res://scripts/lawn.gdshader")
+	for layer in [["grass", "withered_grass"], ["dirt", "park_dirt"], ["leaf", "dry_decay_leaves"]]:
+		base.set_shader_parameter(layer[0] + "_albedo", tex.call(layer[1], "diff"))
+		base.set_shader_parameter(layer[0] + "_normal", tex.call(layer[1], "nor_gl"))
+		base.set_shader_parameter(layer[0] + "_arm", tex.call(layer[1], "arm"))
+	base.set_shader_parameter("noise_tex", noise)
+	base.set_shader_parameter("rough_albedo", load("res://assets/town/textures/lawn_rough_diff.jpg"))
+	for surface in mi.mesh.get_surface_count():
+		var old := mi.mesh.surface_get_material(surface)
+		var mat := base.duplicate() as ShaderMaterial
+		var kind: String = old.resource_name if old else ""
+		mat.set_shader_parameter("leaf_amount", 0.85 if kind.contains("leafy") else 0.45)
+		# the vertex tint is dark on the dead lawns (0.45) and light on the rest (0.77): even them out
+		mat.set_shader_parameter("tint_gain", 1.35 if kind.contains("dead") else 0.8)
+		mi.set_surface_override_material(surface, mat)
 
 
 func _add_cylinder(town: Node3D, mi: MeshInstance3D, radius: float, height: float) -> void:
