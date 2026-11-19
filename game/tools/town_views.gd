@@ -48,6 +48,8 @@ func _run() -> void:
 			only = arg.get_slice("=", 1).split(",")
 		elif arg == "--survey":
 			views = _survey()
+		elif arg == "--lots":
+			views = _lots()
 	for n in ["_hud", "_prompt", "player"]:
 		var node = main.get(n)
 		if node:
@@ -92,4 +94,52 @@ func _survey() -> Dictionary:
 	out["s91_ash_east"] = [Vector3(14.0, eye - 0.5, 14.2), Vector3(38.0, 1.0, 14.2), 65.0]
 	out["s92_mill_south"] = [Vector3(3.5, eye - 0.5, 20.0), Vector3(3.5, 1.0, 57.0), 65.0]
 	out["s93_mill_north"] = [Vector3(3.5, eye - 0.5, 50.0), Vector3(3.5, 1.0, 10.0), 65.0]
+	return out
+
+
+
+## Two views of every lot with a house, for checking the fences against the
+## houses: from the street (the side yards and the fences returning to the
+## house) and from inside the back yard (the house and both side fences).
+## Lots as in projects/03-town/plan.py: x0, y0, x1, y1 in Blender plan space
+## (Godot z = -y), and which way the front faces.
+const LOTS := [
+	["l1", -4.5, -8.6, 11.5, 18.0, "s"], ["l2", -21.0, -8.6, -4.5, 18.0, "s"], ["l3", 11.5, -8.6, 28.0, 18.0, "s"],
+	["l4", -20.0, -40.0, -1.6, -19.7, "n"], ["l5", 8.6, -40.0, 27.0, -19.7, "n"], ["l6", -20.0, -58.0, -1.6, -40.0, "e"],
+	["l8", -30.5, -8.6, -21.0, 18.0, "s"], ["l9", 28.0, -8.6, 38.5, 18.0, "s"], ["l10", -30.5, -40.0, -20.0, -19.7, "n"],
+	["l11", 27.0, -40.0, 38.5, -19.7, "n"],
+]
+
+
+func _lots() -> Dictionary:
+	var out := {}
+	for lot in LOTS:
+		var x0: float = lot[1]
+		var y0: float = lot[2]
+		var x1: float = lot[3]
+		var y1: float = lot[4]
+		var cx := (x0 + x1) / 2.0
+		var cy := (y0 + y1) / 2.0
+		var front: Vector3
+		var front_at: Vector3
+		var back: Vector3
+		var back_at: Vector3
+		match lot[5]:
+			"s":
+				front = Vector3(cx, 2.6, -(y0 - 2.5))
+				front_at = Vector3(cx, 0.5, -(y0 + 9.0))
+				back = Vector3(cx, 2.0, -(y1 - 0.8))
+				back_at = Vector3(cx, 1.2, -cy)
+			"n":
+				front = Vector3(cx, 2.6, -(y1 + 2.5))
+				front_at = Vector3(cx, 0.5, -(y1 - 9.0))
+				back = Vector3(cx, 2.0, -(y0 + 0.8))
+				back_at = Vector3(cx, 1.2, -cy)
+			_:
+				front = Vector3(x1 + 2.5, 2.6, -cy)
+				front_at = Vector3(x1 - 9.0, 0.5, -cy)
+				back = Vector3(x0 + 0.8, 2.0, -cy)
+				back_at = Vector3(cx, 1.2, -cy)
+		out["lot_%s_front" % lot[0]] = [front, front_at, 80.0]
+		out["lot_%s_back" % lot[0]] = [back, back_at, 85.0]
 	return out

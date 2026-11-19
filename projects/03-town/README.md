@@ -287,3 +287,25 @@ Things a merge should know:
   culled at 0.6 of its range there.
 - **`lot_views.py`**: daylight Cycles views of single lots, for before and
   after checks (`blender -b town.blend --python lot_views.py -- --out DIR`).
+
+## Fences are computed, and checked
+
+`street_kit.fence_layout()` works every tall board fence out from the lots
+(no hand-placed runs): down each lot line shared with a neighbour or the
+edge of town, from the back of the lot to 1.5 m behind the house front and
+across to the house; on a corner lot's side street only from the back to the
+house's rear corner; along the back of the south lots; plus the edge-of-town
+fences in `plan.BLOCKERS`. Collinear lines within 0.75 m whose spans meet
+are one fence, run ends meet the line they run into, a line moves off the
+house file's shed rather than being cut round it, and every run (and every
+front picket and chain-link run) is clipped round every building footprint,
+porch with its steps and wrap-porch arm (`building_rects()`), keeping 0.3 m.
+
+`build.py` then tests every fence piece against those footprints (0.1 m for
+the fence's own thickness) and every tree trunk, prints `FENCE_HIT` lines and
+stops the build without saving if there is one. It reports
+`FENCE_CHECK 39 fence pieces, 0 hits`; run against the old hand-placed L4
+runs it reports both of them.
+
+`game/tools/town_views.gd -- --lots` takes two pictures of every lot with a
+house: from the street, and from inside the back yard.

@@ -211,6 +211,11 @@ def build_town():
         if o.type == "LIGHT" and o.name.startswith("street_sodium"):
             o.data.energy = 250.0
     scene["town_plan"] = "projects/03-town/plan.py"
+    # No fence through a building, a porch, steps or a tree: fail rather than ship one.
+    hits = street_kit.fence_check()
+    print(f"FENCE_CHECK {len(street_kit.FENCE_SEGMENTS)} fence pieces, {hits} hits")
+    if hits:
+        raise SystemExit(f"FENCE_CHECK failed: {hits} fence hits (see FENCE_HIT lines)")
     return scene, houses
 
 

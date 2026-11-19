@@ -781,7 +781,216 @@ def lot_front(lot) -> str:
     return "e"
 
 
+# --- where the fences go ---------------------------------------------------------------------
+
+FENCE_CLEAR = 0.3          # metres kept between a fence and any building, porch or steps
+FENCE_SEGMENTS: list = []  # every fence piece built: ((x, y), (x, y), kind), for the build's check
+
+
+def _rect_of(h, l0, m0, l1, m1):
+    (ox, oy), (ax, ay), (bx, by) = plan.house_frame(h)
+    xs = [ox + ax * l + bx * m for l in (l0, l1) for m in (m0, m1)]
+    ys = [oy + ay * l + by * m for l in (l0, l1) for m in (m0, m1)]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def building_rects():
+    """Every footprint a fence must keep clear of, in world x0, y0, x1, y1, with a
+    name: each kit house's walls, its porch with the steps (as house_kit.porch
+    builds them), the side arm of a wrap porch, and the house file's house,
+    porch, back steps and shed on L1."""
+    from .house_kit import DOOR_W
+    out = [((-0.3, -0.3, 7.6, 8.3), "house_L1"), ((0.08, -2.86, 3.92, -0.3), "porch_L1"),
+           ((1.13, 8.3, 2.47, 9.85), "back_steps_L1"), ((8.19, 14.61, 11.25, 17.56), "shed_L1")]
+    for lot in plan.LOTS:
+        h = lot.house
+        if not h:
+            continue
+        out.append((plan.house_rect(h), f"house_{lot.key}"))
+        if h.porch == "entry":
+            x0, x1, depth = h.door_at - 0.9, h.door_at + DOOR_W + 0.9, 1.7
+        else:
+            x0, x1, depth = -0.15, h.width + 0.15, 2.3
+        out.append((_rect_of(h, min(x0, h.door_at - 0.35), -depth - 0.56, max(x1, h.door_at + DOOR_W + 0.35), 0.0),
+                    f"porch_{lot.key}"))
+        if h.porch == "wrap":
+            sx0 = h.width + 0.15 - 2.2 if h.facing == "n" else -0.15
+            out.append((_rect_of(h, sx0, 0.0, sx0 + 2.2, h.depth * 0.55), f"wrap_{lot.key}"))
+    return out
+
+
+# House-file pieces a fence may not be cut round (it would leave a hole next to
+# them): the line is moved off them instead.
+_FIXED = ("shed_L1",)
+
+
+def _clip_run(a, b, margin=FENCE_CLEAR):
+    """An axis-aligned run a-b with every building (plus margin) cut out of it."""
+    (ax, ay), (bx, by) = a, b
+    horizontal = abs(ay - by) < 1e-6
+    c = ay if horizontal else ax
+    lo, hi = sorted((ax, bx) if horizontal else (ay, by))
+    pieces = [(lo, hi)]
+    for (x0, y0, x1, y1), name in building_rects():
+        p0, p1, q0, q1 = (x0, x1, y0, y1) if horizontal else (y0, y1, x0, x1)
+        if not (q0 - margin < c < q1 + margin):
+            continue
+        cut0, cut1 = p0 - margin, p1 + margin
+        nxt = []
+        for s0, s1 in pieces:
+            if cut1 <= s0 or cut0 >= s1:
+                nxt.append((s0, s1))
+                continue
+            if cut0 - s0 > 0.3:
+                nxt.append((s0, cut0))
+            if s1 - cut1 > 0.3:
+                nxt.append((cut1, s1))
+        pieces = nxt
+    return [((s0, c), (s1, c)) if horizontal else ((c, s0), (c, s1)) for s0, s1 in pieces]
+
+
+def fence_layout():
+    """The tall board fences, from the lots: down each lot line that is shared
+    with a neighbour or the edge of town, from the back of the lot to 1.5 m
+    behind the house front, then across to the house; on a corner lot's side
+    street only from the back to the house's rear corner; along the back of
+    the south lots; plus the edge-of-town fences in plan.BLOCKERS. Collinear
+    lines within 0.6 m are one fence (the edge fence's line wins), each line
+    keeps FENCE_CLEAR from the house file's fixed pieces by moving, and then
+    every run is clipped round every building."""
+    lines = {"x": [], "y": []}        # axis the line runs along: (perpendicular coordinate, lo, hi, fixed)
+    def add(a, b, fixed=False):
+        (ax, ay), (bx, by) = a, b
+        if abs(ay - by) < 1e-6:
+            lines["x"].append([ay, min(ax, bx), max(ax, bx), fixed])
+        elif abs(ax - bx) < 1e-6:
+            lines["y"].append([ax, min(ay, by), max(ay, by), fixed])
+    for kind, x, y, heading, length in plan.BLOCKERS:
+        if kind == "fence_tall":
+            h = math.radians(heading)
+            d = Vector((math.cos(h), math.sin(h))) * length / 2
+            add((round(x - d.x, 3), round(y - d.y, 3)), (round(x + d.x, 3), round(y + d.y, 3)), fixed=True)
+
+    def by_street(a, b):
+        mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+        return any(r[0] - 0.6 <= mx <= r[2] + 0.6 and r[1] - 0.6 <= my <= r[3] + 0.6 for _, r in plan.SIDEWALKS)
+
+    house_of = {name[6:]: r for r, name in building_rects() if name.startswith("house_")}
+    for lot in plan.LOTS:
+        if lot.key not in house_of:
+            continue
+        x0, y0, x1, y1 = lot.rect
+        hx0, hy0, hx1, hy1 = house_of[lot.key]
+        front = lot_front(lot)
+        if front in ("s", "n"):
+            fl = hy0 + 1.5 if front == "s" else hy1 - 1.5           # 1.5 m behind the house front
+            rear_y, back_wall = (y1, hy1) if front == "s" else (y0, hy0)
+            for lx, house_x in ((x0, hx0), (x1, hx1)):
+                if by_street((lx, y0), (lx, y1)):                   # a corner lot's side street
+                    add((lx, rear_y), (lx, back_wall))
+                    add((lx, back_wall), (house_x, back_wall))
+                else:
+                    add((lx, rear_y), (lx, fl))
+                    add((lx, fl), (house_x, fl))
+            add((x0, rear_y), (x1, rear_y))
+        else:                                                       # facing Mill Road, front at x1
+            fl = hx1 - 1.5
+            for ly, house_y in ((y0, hy0), (y1, hy1)):
+                add((x0, ly), (fl, ly))
+                add((fl, ly), (fl, house_y))
+            add((x0, y0), (x0, y1))
+    rects = building_rects()
+    runs = []
+    # 1. collinear lines within 0.75 m are one fence: work out each cluster's line
+    clusters = {}
+    for axis in ("x", "y"):
+        out = []
+        for l in sorted(lines[axis], key=lambda l: l[0]):
+            # same fence: nearly the same line, and the spans meet (within 1 m)
+            home = next((cl for cl in out if abs(l[0] - cl[0][0]) < 0.75 and
+                         any(l[1] < m[2] + 1.0 and l[2] > m[1] - 1.0 for m in cl)), None)
+            if home is not None:
+                home.append(l)
+            else:
+                out.append([l])
+        clusters[axis] = out
+    coord = {}
+    for axis in ("x", "y"):
+        for cl in clusters[axis]:
+            fixed = [l for l in cl if l[3]]
+            c = fixed[0][0] if fixed else sum(l[0] for l in cl) / len(cl)
+            # keep clear of the pieces that cannot be cut round: move the line off them
+            for (rx0, ry0, rx1, ry1), name in rects:
+                if name not in _FIXED:
+                    continue
+                q0, q1, p0, p1 = (ry0, ry1, rx0, rx1) if axis == "x" else (rx0, rx1, ry0, ry1)
+                if any(l[1] < p1 and l[2] > p0 for l in cl) and q0 - FENCE_CLEAR - 0.05 < c < q1 + FENCE_CLEAR + 0.05:
+                    c = q1 + FENCE_CLEAR + 0.05 if c > (q0 + q1) / 2 else q0 - FENCE_CLEAR - 0.05
+            coord[axis, cl[0][0]] = c
+    # 2. the ends of each run meet the line they run into, wherever that moved to
+    span = {}
+    for axis in ("x", "y"):
+        for cl in clusters[axis]:
+            span[axis, cl[0][0]] = (min(m[1] for m in cl), max(m[2] for m in cl), coord[axis, cl[0][0]])
+
+    def snap(v, at, other):
+        best = (0.75, v)
+        for (ax, _), (lo, hi, c) in span.items():
+            if ax == other and lo - 0.8 <= at <= hi + 0.8 and abs(c - v) < best[0]:
+                best = (abs(c - v), c)
+        return best[1]
+    for axis, other in (("x", "y"), ("y", "x")):
+        for cl in clusters[axis]:
+            c = coord[axis, cl[0][0]]
+            for l in cl:
+                l[1], l[2] = snap(l[1], c, other), snap(l[2], c, other)
+    # 3. merge each cluster's spans and clip them round the buildings
+    for axis in ("x", "y"):
+        for cl in clusters[axis]:
+            c = coord[axis, cl[0][0]]
+            spans = sorted((l[1], l[2]) for l in cl)
+            merged = [list(spans[0])]
+            for s0, s1 in spans[1:]:
+                if s0 <= merged[-1][1] + 0.05:
+                    merged[-1][1] = max(merged[-1][1], s1)
+                else:
+                    merged.append([s0, s1])
+            for s0, s1 in merged:
+                a, b = ((s0, c), (s1, c)) if axis == "x" else ((c, s0), (c, s1))
+                for p0, p1 in _clip_run(a, b):
+                    runs.append((p0, p1))
+                    FENCE_SEGMENTS.append((p0, p1, "tall"))
+    return runs
+
+
+def fence_check(radius_trunk=0.3):
+    """FENCE_HIT lines for every fence piece that touches a building footprint,
+    porch or steps, or passes within a tree trunk. Returns the number of hits."""
+    import bpy
+    hits = 0
+    for (a, b, kind) in FENCE_SEGMENTS:
+        ax, ay = a
+        bx, by = b
+        for (x0, y0, x1, y1), name in building_rects():
+            # the segment's box against the footprint (both axis-aligned)
+            t = 0.1                                   # the fence's own half-thickness and its posts
+            if min(ax, bx) - t < x1 and max(ax, bx) + t > x0 and min(ay, by) - t < y1 and max(ay, by) + t > y0:
+                print(f"FENCE_HIT {kind} ({ax:.2f}, {ay:.2f})-({bx:.2f}, {by:.2f}) runs through {name}")
+                hits += 1
+        for o in bpy.data.objects:
+            if not (o.name.startswith(("tree_", "edgetree_")) and o.type == "MESH"):
+                continue
+            px, py = o.location.x, o.location.y
+            d = Vector((bx - ax, by - ay))
+            t = max(0.0, min(1.0, ((px - ax) * d.x + (py - ay) * d.y) / max(d.length_squared, 1e-9)))
+            if math.hypot(ax + d.x * t - px, ay + d.y * t - py) < radius_trunk * max(o.scale.x, 0.6):
+                print(f"FENCE_HIT {kind} ({ax:.2f}, {ay:.2f})-({bx:.2f}, {by:.2f}) through the trunk of {o.name} at ({px:.2f}, {py:.2f})")
+                hits += 1
+    return hits
+
+
 def fences(coll="fences"):
+    FENCE_SEGMENTS.clear()
     rng = random.Random(21)
     pk, cl, tall = MeshBuilder(), MeshBuilder(), MeshBuilder()
     tall.grime = ground_grime(G, 0.55, 0.5)                       # damp and moss along the foot
@@ -793,9 +1002,13 @@ def fences(coll="fences"):
             a, b, gap = (x0 + 0.1, y1 - 0.25), (x1 - 0.1, y1 - 0.25), (lot.gate_at, y1 - 0.25) if lot.gate_at else None
         else:
             a, b, gap = (x1 - 0.25, y0 + 0.1), (x1 - 0.25, y1 - 0.1), (x1 - 0.25, lot.gate_at) if lot.gate_at else None
+        FENCE_SEGMENTS.extend((p0, p1, lot.fence) for p0, p1 in _clip_run(a, b) if lot.fence in ("picket", "chainlink"))
         if lot.fence == "picket":
             wear = lot.house.wear if lot.house else 0.5
-            picket_run(pk, a, b, rng, gap, wear)
+            for p0, p1 in _clip_run(a, b):
+                g = gap if gap and min(p0[0], p1[0]) - 0.01 <= gap[0] <= max(p0[0], p1[0]) + 0.01 and \
+                    min(p0[1], p1[1]) - 0.01 <= gap[1] <= max(p0[1], p1[1]) + 0.01 else None
+                picket_run(pk, p0, p1, rng, g, wear)
         elif lot.fence == "chainlink":
             if gap is None:
                 chainlink_run(cl, a, b)
@@ -812,37 +1025,10 @@ def fences(coll="fences"):
     chainlink_run(cl, (x0 + 0.2, y1 - 0.2), (x1 - 0.6, y1 - 0.2))
     chainlink_run(cl, (x0 + 0.2, -47.2), (x0 + 0.2, y1 - 0.2))          # Mill Road side: the vacant half only
     chainlink_run(cl, (x0 + 0.2, -47.2), (x1 - 0.6, -47.2))             # between the lot and Ridge Gas
-    # side yards: tall fences from each house's sides to its lot edges, and down the lot lines.
-    # On the south side of Ashgrove they run from the houses' back corners: from
-    # the front corners they went through L4's wrap-round porch and along L5's.
-    side_runs = [
-        # north lots: the house front line + 1.5 m across to the lot boundary, then back to the rear fence
-        ((-4.5, 1.2), (-0.3, 1.2)), ((7.6, 1.2), (11.5, 1.2)),
-        ((-21.0, 1.0), (-16.6, 1.0)), ((-9.0, 1.0), (-4.5, 1.0)),
-        ((11.5, 1.8), (15.0, 1.8)), ((24.2, 1.8), (28.0, 1.8)),
-        ((-4.5, 1.2), (-4.5, 18.4)), ((11.5, 1.2), (11.5, 18.4)),
-        ((-21.0, 1.0), (-21.0, 18.4)), ((28.0, 1.8), (28.0, 18.4)),
-        # south corner lots, from the back corners of the houses
-        ((-20.4, -34.0), (-14.8, -34.0)), ((-6.4, -34.0), (-1.6, -34.0)),
-        ((8.6, -35.0), (13.0, -35.0)), ((20.4, -35.0), (27.4, -35.0)),
-        ((-20.4, -40.0), (-1.6, -40.0)),
-        # the four new corner lots at the ends of Ashgrove
-        ((-30.5, 0.8), (-29.2, 0.8)), ((-22.2, 0.8), (-21.0, 0.8)),
-        ((28.0, 1.9), (29.2, 1.9)), ((37.2, 1.9), (38.5, 1.9)),
-        ((-30.5, -31.8), (-29.4, -31.8)), ((-21.8, -31.8), (-20.4, -31.8)), ((-30.5, -40.0), (-20.4, -40.0)),
-        ((27.4, -32.0), (29.2, -32.0)), ((37.0, -32.0), (38.5, -32.0)), ((27.4, -40.0), (38.5, -40.0)),
-        # Mill Road west lot
-        ((-7.7, -58.0), (-7.7, -53.4)), ((-7.7, -44.6), (-7.7, -40.0)),
-        # behind the south corner lots
-        ((8.6, -40.0), (27.4, -40.0)),
-    ]
-    for a, b in side_runs:
-        tall_fence_run(tall, a, b, rng)
-    for kind, x, y, heading, length in plan.BLOCKERS:
-        if kind == "fence_tall":
-            h = math.radians(heading)
-            d = Vector((math.cos(h), math.sin(h))) * length / 2
-            tall_fence_run(tall, (x - d.x, y - d.y), (x + d.x, y + d.y), rng, 2.4)
+    # Side and back fences: worked out from each lot and its house, then clipped
+    # round every building (fence_layout); nothing hand-placed.
+    for (ax, ay), (bx, by) in fence_layout():
+        tall_fence_run(tall, (ax, ay), (bx, by), rng, 2.3)
     pk.build("fence_pickets", coll)      # not "fence_picket": that is the house's own, removed in the town
     cl.build("fence_chainlink", coll)
     tall.build("fence_tall", coll)
