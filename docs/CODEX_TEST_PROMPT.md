@@ -24,7 +24,7 @@ STEP 1 - Get every change from the branch
    `git fetch origin claude/sweet-fermat-oxmviq`
    `git merge --ff-only origin/claude/sweet-fermat-oxmviq`
    `git lfs pull`
-5. Print `git log --oneline -8`. HEAD must be fd740d6 or newer.
+5. Print `git log --oneline -8`. HEAD must be 0214894 or newer.
 6. Check that no Git LFS pointer files are left: list every .png .jpg .glb .gltf .bin .blend .fbx under
    game\ and projects\ whose first bytes are "version https://git-lfs". There must be none; if there are,
    run `git lfs pull` again and re-check.
