@@ -167,7 +167,7 @@ def build(houses, coll="props"):
     clumps = [sk.shared(f"grass_clump_{k}", lambda k=k: sk._grass_clump(k)) for k in range(3)]
     can = sk.shared("trash_can", sk._trash_can)
     drum = sk.shared("yard_drum", _drum)
-    trees = [sk.shared(f"tree_{k}", lambda k=k: sk._tree(200 + k)) for k in range(3)]
+    trees = sk.tree_variants()
     med = Sectors("mprop_yard")
     counts = {"shrubs": 0, "grass": 0, "cans": 0, "props": 0, "trees": 0}
 
@@ -259,7 +259,7 @@ def build(houses, coll="props"):
             p = W(lx, ly)
             if _inside(p.x, p.y, lot.rect, -1.5) and _clear(p.x, p.y, blocked) and \
                     all((Vector((tx, ty, 0)) - p).length > 4.0 for tx, ty, _, _ in plan.TREES):
-                instance(trees[rng.randrange(3)], f"tree_y{counts['trees']}", "trees", (p.x, p.y, G), rng.uniform(0, 6.28),
+                instance(trees[rng.randrange(len(trees))], f"tree_y{counts['trees']}", "trees", (p.x, p.y, G), rng.uniform(0, 6.28),
                          scale=rng.uniform(0.55, 0.8))
                 counts["trees"] += 1
                 break

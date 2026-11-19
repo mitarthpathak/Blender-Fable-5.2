@@ -234,6 +234,7 @@ CAM_STOPS = {"1000": {"cam_3_front_door": 1.4, "cam_4_hallway": 1.2},
 def render_settings(scene, samples=96, resolution=(1920, 1080)):
     scene.render.engine = "CYCLES"
     c = scene.cycles
+    c.transparent_max_bounces = 64            # tree crowns: many alpha-tested twig cards deep
     c.device = "CPU"
     c.samples = samples
     c.use_adaptive_sampling = True

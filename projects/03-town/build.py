@@ -36,8 +36,9 @@ import tk.facade  # noqa: E402
 import tk.store  # noqa: E402
 import tk.detail  # noqa: E402
 import tk.yards  # noqa: E402
+import tk.trees  # noqa: E402
 
-for mod in (plan, assets, tk.core, tk.facade, tk.house_kit, tk.street_kit, tk.cars, tk.store, tk.detail, tk.yards):
+for mod in (plan, assets, tk.core, tk.facade, tk.house_kit, tk.trees, tk.street_kit, tk.cars, tk.store, tk.detail, tk.yards):
     importlib.reload(mod)
 from tk import core, detail, house_kit, street_kit, yards  # noqa: E402
 
@@ -79,6 +80,7 @@ def render_setup(scene, samples, res):
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
     scene.cycles.max_bounces = 6
+    scene.cycles.transparent_max_bounces = 64     # tree crowns: many alpha-tested twig cards deep
     scene.render.resolution_x, scene.render.resolution_y = res
     scene.render.resolution_percentage = 100
     scene.view_settings.view_transform = "AgX"

@@ -61,6 +61,7 @@ def main():
     scene.cycles.device = "CPU"
     scene.cycles.samples = int(option(args, "--samples", "24"))
     scene.cycles.use_denoising = True
+    scene.cycles.transparent_max_bounces = 64       # the tree crowns are many alpha cards deep
     scene.render.resolution_x, scene.render.resolution_y = w, h
     scene.render.resolution_percentage = 100
     scene.view_settings.view_transform = "AgX"

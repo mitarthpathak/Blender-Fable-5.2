@@ -29,6 +29,11 @@ const VIEWS := {
 	"l4_fence_w": [Vector3(-20.0, 2.0, 24.0), Vector3(-14.8, 1.2, 28.5), 70.0],
 	"l5_fence": [Vector3(8.0, 2.0, 24.0), Vector3(13.0, 1.2, 27.7), 70.0],
 	"l5_fence_e": [Vector3(26.0, 2.0, 23.0), Vector3(20.4, 1.2, 27.7), 70.0],
+	# trees: one close, from under it; one at street distance; the edge trees against the sky
+	"tree_close": [Vector3(-5.5, 1.6, 9.5), Vector3(-9.0, 4.5, 5.5), 70.0],
+	"tree_street": [Vector3(-2.0, 1.6, 15.5), Vector3(-9.0, 4.0, 5.5), 60.0],
+	"tree_base": [Vector3(-7.4, 1.3, 7.2), Vector3(-9.0, 0.4, 5.5), 60.0],
+	"tree_edge": [Vector3(-20.0, 1.7, 14.2), Vector3(-34.0, 6.0, 12.0), 65.0],
 }
 
 

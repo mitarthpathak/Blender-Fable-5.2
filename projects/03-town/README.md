@@ -343,3 +343,41 @@ joints and the cracks across the sidewalk slabs. The big clumps spread over
 the lawns are gone. Godot culls them in 8 m squares past 25 m (0.8 of that on
 Low). Shrubs are smaller (0.5 to 0.9), fewer (four in ten corners are left
 bare) and six variants.
+
+## Every texture was at the wrong size (fixed)
+
+`MeshBuilder.build_mesh` (tk/core.py) created the UV layer, kept a
+reference to it, then created the colour attribute and wrote the UVs through
+the old reference. In Blender 4.x adding an attribute reallocates the
+others, so the write went nowhere and every face kept the default 0..1
+square: all 114,000 quads in the town showed their texture stretched or
+squeezed to fit the face, whatever its size (siding boards, roads, fences,
+cars, bark). The layers are now looked up by name after both exist, and the
+UVs the kit computes (real-world tiles, tube wraps, atlas cells) arrive. The
+player's house (01-house-interior) does not use this builder and was never
+affected.
+
+## Trees
+
+`tk/trees.py` replaces the old `_tree`: three forms (spreading maple,
+vase-shaped elm, central leader), two seeds each, used for the yard trees,
+the street trees and the trees past the edges of town.
+
+- Trunks flare into five buttress roots going into the soil and taper up;
+  branch radii follow the da Vinci rule; every tip tapers to a point.
+- Bark frames are carried along each branch (no twist) and the texture
+  wraps a whole number of times (no seam).
+- The fine twigs are alpha-tested cards from `twig_atlas` (detail_maps.py,
+  four sprays in a 2 x 2 atlas, two with a few dry leaves left), along and
+  past the ends of the small branches, at most two starting in any 35 cm
+  cell, never smaller than 45 cm. This is what gives a bare tree its hazy
+  outline against the sky.
+- Vertex colour: damp and dark at the foot, moss and lichen on the north
+  side of the trunk and big limbs, the thin wood greyer.
+- About 3,500 to 6,500 triangles a tree; Godot generates the LODs.
+
+Cycles stops a ray after 8 transparent surfaces by default, and a crown is
+many twig cards deep: past that it renders black knots. `lot_views.py`, the
+stills in `build.py` and the film's `render_settings` raise
+`transparent_max_bounces` to 64. Godot is not affected (alpha scissor is
+depth-tested).

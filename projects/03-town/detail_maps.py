@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import math
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -559,6 +561,56 @@ def grass_blades():
     save(orm((0.88 + 0.08 * (grain - 0.5)).astype(np.float32), 0.0), DECALS / "grass_blades_orm.png")
 
 
+def twig_atlas():
+    """Four sprays of bare winter twigs in a 2 x 2 atlas (1024 px) for the tree
+    crowns: a stem from the bottom middle forking four times, each fork thinner
+    and shorter, grey-brown, with a few dry leaves still caught in two of them.
+    Lines are kept thick enough to survive the mipmaps at a distance."""
+    s, cell = 1024, 512
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = None
+    rng = np.random.default_rng(31)
+
+    def spray(x, y, ang, length, width, depth, leaves):
+        x1 = x + math.cos(ang) * length
+        y1 = y - math.sin(ang) * length
+        # a slight kink half way, as real twigs zig-zag at each bud
+        mx = (x + x1) / 2 + rng.normal(0, length * 0.05)
+        my = (y + y1) / 2 + rng.normal(0, length * 0.05)
+        tone = rng.uniform(0.8, 1.1)
+        col = (int(78 * tone), int(71 * tone), int(64 * tone), 255)
+        d.line([(x, y), (mx, my)], fill=col, width=max(3, int(width)))
+        d.line([(mx, my), (x1, y1)], fill=col, width=max(3, int(width * 0.8)))
+        if depth == 0:
+            if leaves and rng.random() < 0.08:
+                lc = [(176, 118, 66), (160, 106, 58), (192, 140, 80)][int(rng.integers(0, 3))]
+                rx, ry = rng.uniform(7, 12), rng.uniform(4, 7)
+                d.ellipse([x1 - rx, y1 - ry, x1 + rx, y1 + ry], fill=(*lc, 255))
+            return
+        n = 2 if depth > 1 else int(rng.integers(2, 4))
+        for k in range(n):
+            t = rng.uniform(0.45, 1.0) if k else 1.0
+            px, py = x + (x1 - x) * t, y + (y1 - y) * t
+            spread = rng.uniform(0.3, 0.75) * (1 if k % 2 else -1)
+            spray(px, py, ang + spread, length * rng.uniform(0.55, 0.75), width * 0.68, depth - 1, leaves)
+
+    for c in range(4):
+        # each spray on its own canvas, so nothing reaches into the next cell
+        part = Image.new("RGBA", (cell, cell), (0, 0, 0, 0))
+        d = ImageDraw.Draw(part)
+        for k in range(2):
+            spray(cell / 2 + rng.normal(0, 30), cell - 4, math.pi / 2 + rng.normal(0, 0.25),
+                  cell * rng.uniform(0.27, 0.34), 11.0, 5, leaves=c in (1, 3))
+        img.paste(part, ((c % 2) * cell, (c // 2) * cell))
+    a = np.asarray(img, np.float32) / 255.0
+    a[..., 3] = np.where(a[..., 3] > 0.4, 1.0, 0.0)
+    save(a, DECALS / "twig_atlas.png")
+    # A flat normal map: a strong one bent the normals of the dense parts of a
+    # spray behind the card, and from some angles they rendered as black knots.
+    save(normal_from_height(np.zeros(a.shape[:2], np.float32), 0.0), DECALS / "twig_atlas_nor.png")
+    save(orm(np.full(a.shape[:2], 0.85, np.float32), 0.0), DECALS / "twig_atlas_orm.png")
+
+
 def decal_maps():
     for name, (source, strength, rough, metal, _) in DECAL_RULES.items():
         path = DECALS / f"{name}.png"
@@ -598,6 +650,7 @@ def decal_maps():
 
 def run():
     grass_blades()
+    twig_atlas()
     new_decals()
     flat_sets()
     decal_maps()

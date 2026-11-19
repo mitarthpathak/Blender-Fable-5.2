@@ -1378,9 +1378,15 @@ def _tree(seed, height=9.0):
 
 def trees(coll="trees"):
     rng = random.Random(44)
-    variants = [shared(f"tree_{k}", lambda k=k: _tree(200 + k)) for k in range(3)]
+    variants = tree_variants()
     for i, (x, y, h, seed) in enumerate(plan.TREES):
-        instance(variants[seed % 3], f"tree_{i}", coll, (x, y, G), rng.uniform(0, 6.28), scale=h / 9.0)
+        instance(variants[seed % len(variants)], f"tree_{i}", coll, (x, y, G), rng.uniform(0, 6.28), scale=h / 9.0)
+
+
+def tree_variants():
+    """The six shared tree meshes (tk/trees.py: three forms, two seeds each)."""
+    from . import trees as _trees
+    return [shared(f"tree_{k}", lambda k=k: _trees.tree(200 + k)) for k in range(_trees.VARIANTS)]
 
 
 # --- Cars --------------------------------------------------------------------------------

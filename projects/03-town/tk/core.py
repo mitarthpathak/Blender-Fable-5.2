@@ -105,6 +105,7 @@ MATS: dict[str, dict] = {
     "room_wall": dict(flat="room_wall", tile=1.2),
     "house_numbers": dict(diff_png="house_numbers", tile=1.0),
     "leaf_card": dict(diff_png="leaf_sheet", tile=1.0, clip=True, two_sided=True),
+    "twig_card": dict(diff_png="twig_atlas", tile=1.0, clip=True, two_sided=True, rough=0.85),
     "sign_station": dict(diff_png="sign_station", tile=1.0),
     "sign_prices": dict(diff_png="sign_prices", tile=1.0),
     "sign_ice": dict(diff_png="sign_ice", tile=1.0),
@@ -447,17 +448,19 @@ class MeshBuilder:
             mesh.materials.append(material(k))
         idx = {k: i for i, k in enumerate(keys)}
         mesh.polygons.foreach_set("material_index", [idx[m] for m in self.mats])
-        uv = mesh.uv_layers.new(name="UVMap")
-        col = mesh.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
-        li = 0
+        mesh.uv_layers.new(name="UVMap")
+        mesh.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
         flat_uv, flat_col = [], []
         for f, fu, fc in zip(self.faces, self.uvs, self.cols):
             for k in range(len(f)):
                 flat_uv.extend(fu[k])
                 flat_col.extend(fc[k])
-                li += 1
-        uv.data.foreach_set("uv", flat_uv)
-        col.data.foreach_set("color", flat_col)
+        # Fetch both layers again by name, after both exist: in Blender 4.x adding an
+        # attribute reallocates the others, and a reference taken before it writes
+        # nowhere. (Until this was fixed every face in the town kept the default
+        # 0..1 square UVs, so no texture was at its real-world size.)
+        mesh.uv_layers["UVMap"].data.foreach_set("uv", flat_uv)
+        mesh.color_attributes["Col"].data.foreach_set("color", flat_col)
         mesh.color_attributes.active_color_index = 0
         mesh.update()
         if merge > 0:

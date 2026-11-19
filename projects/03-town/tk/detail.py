@@ -658,9 +658,9 @@ EDGE_TREES = (
 def fog_ends(rng):
     """Past each closed end of a street: dead trees, then a dark line of trees and roofs,
     so the view dissolves into the fog instead of stopping at a fence."""
-    variants = [sk.shared(f"tree_{k}", lambda k=k: sk._tree(200 + k)) for k in range(3)]
+    variants = sk.tree_variants()
     for i, (x, y, h) in enumerate(EDGE_TREES):
-        instance(variants[i % 3], f"edgetree_{i}", "trees", (x, y, G), rng.uniform(0, 6.28), scale=h / 9.0)
+        instance(variants[(i * 5 + 1) % len(variants)], f"edgetree_{i}", "trees", (x, y, G), rng.uniform(0, 6.28), scale=h / 9.0)
     mb = MeshBuilder()
     # (south of Mill Road there is no card: the mill itself stands there, tk/store.py)
     for cx, cy, rot, width in ((-44.0, -14.0, -math.pi / 2, 56.0), (52.0, -14.0, math.pi / 2, 56.0),
