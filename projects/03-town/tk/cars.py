@@ -135,6 +135,17 @@ def _wheel(flat=False):
             mb.face(q1 if side < 0 else list(reversed(q1)), "tyre", color=(0.3, 0.3, 0.3))
             mb.face(q2 if side < 0 else list(reversed(q2)), "chrome_dull", color=(0.8, 0.78, 0.74))
         mb.face(cap if side > 0 else list(reversed(cap)), "chrome_dull", color=(0.6, 0.58, 0.55))
+        # a chrome beauty ring round the steel wheel, and five lug nuts round the cap
+        outer = [Vector((v.x * 0.98, side * (w - 0.004), v.z * 0.98)) for v in rim]
+        inner = [Vector((v.x * 0.86, side * (w - 0.012), v.z * 0.86)) for v in rim]
+        for i in range(seg):
+            j = (i + 1) % seg
+            q = [outer[i], outer[j], inner[j], inner[i]]
+            mb.face(q if side < 0 else list(reversed(q)), "chrome_dull", color=(0.72, 0.7, 0.66))
+        for k in range(5):
+            a = 2 * math.pi * k / 5 + 0.3
+            mb.cylinder((math.cos(a) * 0.085, side * (w - 0.03), math.sin(a) * 0.085), (0, side * 0.025, 0), 0.012,
+                        "chrome_dull", segments=6, color=(0.55, 0.53, 0.5))
     if flat:
         for v in mb.verts:                                       # the tyre slumps onto the road
             if v.z < 0:
@@ -345,6 +356,43 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     wx = next(k[0] for k in reversed(spec["g"][:-1]) if k[1] == 0) - 0.03
     for y0 in (-0.55, 0.05):
         mb.obox((wx - 0.10, y0 + 0.25, spec["belt"] + ride + 0.10), (0.02, 0.5, 0.012), 0.12, "plastic_dark", tilt=(0.0, -0.5))
+    # rubbing strips along the doors, between the arches
+    xs0, xs1 = spec["ra"] + ARCH_R + 0.08, spec["fa"] - ARCH_R - 0.08
+    for s in (-1, 1):
+        mb.box((xs0, min(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.57 + ride),
+               (xs1, max(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.63 + ride), "plastic_dark", color=(0.55, 0.55, 0.55))
+    # the fuel filler door on the left rear quarter, a shade off the paint
+    fx = spec["ra"] + (0.52 if kind != "pickup" else 0.62)
+    mb.box((fx - 0.09, -(hw0 + 0.012), spec["belt"] + ride - 0.27), (fx + 0.09, -(hw0 + 0.004), spec["belt"] + ride - 0.11),
+           "car_paint", color=mul(col, 0.8))
+    # a radio antenna on the right front fender: bent back on the crashed pickup
+    ax, ay, az = spec["fa"] + 0.05, hw0 - 0.12, spec["belt"] + ride - 0.03
+    mb.cylinder((ax, ay, az - 0.02), (0, 0, 0.04), 0.014, "chrome_dull", segments=6)
+    if state == "crashed":
+        mb.tube([(ax, ay, az), (ax - 0.05, ay, az + 0.3), (ax - 0.45, ay + 0.05, az + 0.42)], 0.004, "chrome_dull", segments=3)
+    else:
+        mb.tube([(ax, ay, az), (ax - 0.18, ay, az + 0.78)], 0.004, "chrome_dull", segments=3)
+    # the exhaust under the back, rusted through
+    mb.cylinder((-half + 0.25, -0.45, 0.24 + ride), (-0.34, 0, 0), 0.026, "metal_rust", segments=8, caps="none")
+    mb.cylinder((-half - 0.09, -0.45, 0.24 + ride), (0.002, 0, 0), 0.026, "interior_dark", segments=8)
+    # the wagon's roof rack: two rails on six feet
+    if kind == "wagon":
+        rz = spec["roof"] + ride
+        for s in (-1, 1):
+            y = s * (hw0 - 0.32)
+            mb.box((-2.02, y - 0.018, rz + 0.06), (0.30, y + 0.018, rz + 0.09), "chrome_dull", color=(0.5, 0.5, 0.5))
+            for fx_ in (-1.98, -0.86, 0.26):
+                mb.box((fx_ - 0.03, y - 0.022, rz - 0.01), (fx_ + 0.03, y + 0.022, rz + 0.07), "plastic_dark")
+    # what the town did about it: a ticket under the wiper, and an orange tow
+    # notice stuck to the rear side glass
+    if state == "abandoned":
+        tx = next(k[0] for k in reversed(spec["g"][:-1]) if k[1] == 0) - 0.16
+        mb.obox((tx, -0.38, spec["belt"] + ride + 0.16), (0.2, 0.09, 0.004), 0.25, "trim", color=(0.95, 0.94, 0.88),
+                tilt=(0.0, -0.55))
+        # on the right rear door glass, which leans in about 20 degrees
+        nx = spec["pillars"][0] + 0.32
+        mb.obox((nx, hw0 - 0.084, spec["belt"] + ride + 0.19), (0.26, 0.004, 0.17), 0.0, "toy_plastic",
+                color=(1.3, 0.45, 0.08), tilt=(0.35, 0.0))
     # the pickup's bed: floor, inner walls and the cab's back wall
     if bed:
         x0, x1 = bed

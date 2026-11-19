@@ -124,6 +124,15 @@ metre away, in daylight as well as fog:
   porch corners), then the piles.
 - The cars have interiors behind see-through glass.
 
+## Street furniture added in the detail pass
+
+Tar snakes over both roads, a worn crosswalk over Ashgrove by the junction,
+four hydrants with yellow kerbs, litter in the gutters, a newspaper box,
+cable-TV pedestals, cones at both road closures, TV aerials and dishes on
+the roofs, window air conditioners, and dead plants on the porches. The
+cars have trim strips, antennas, exhausts, steel wheels with lug nuts, a
+roof rack on the wagon and a ticket and tow notice on the sedan.
+
 ## What each lot says
 
 | Lot | Story |

@@ -242,5 +242,23 @@ Things a merge should know:
   The tall fence boards lost their buried bottom faces. On Low, the three
   perf views draw 6 % fewer triangles (front door 323k to 304k), with the
   same draw calls.
+- **More detail** (`tk/cars.py`, `tk/detail.py` `street_extras` and
+  `house_extras`), all from the existing materials, no new textures:
+  - cars: chrome beauty rings and lug nuts on the wheels, black rubbing
+    strips between the arches, a radio antenna (bent on the crashed
+    pickup), a rusted exhaust, a fuel filler door, a roof rack on the
+    wagon, and on the abandoned sedan a ticket under the wiper and an
+    orange tow notice on the rear door glass;
+  - streets: tar snakes (sealed cracks) wandering over both roads, clear
+    of the potholes and patches; a worn crosswalk over Ashgrove west of
+    the junction; three more hydrants (`plan.HYDRANTS`) with the kerb
+    painted yellow either side; cans, bottles, cups, cardboard and bags in
+    the gutters; a newspaper box at the junction, three cable-TV
+    pedestals, cones by both road closures (two knocked over), and a
+    hubcap off the west car in the road. The box and pedestals are solid;
+  - houses: TV aerials on six roofs (one element snapped and hanging),
+    satellite dishes on 16 and 13 Ashgrove, window air conditioners at
+    16, 18 and 19, and dead plants in pots on three porches.
+  About 9,600 more triangles (348,505 in all).
 - **`lot_views.py`**: daylight Cycles views of single lots, for before and
   after checks (`blender -b town.blend --python lot_views.py -- --out DIR`).

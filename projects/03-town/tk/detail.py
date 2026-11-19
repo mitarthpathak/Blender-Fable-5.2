@@ -691,6 +691,8 @@ def build(houses):
     posters(det)
     road_marks(dec, rng)
     lot_stories(med, dec, houses, rng)
+    street_extras(det, med, dec, random.Random(79))
+    house_extras(med, houses, random.Random(80))
     gate(med, rng)
     leaf_layers(lv, houses, random.Random(78))
     from . import store
@@ -708,3 +710,272 @@ def build(houses):
             box.obox((x, y + 0.42, sk._surface_z(x, y) + 0.29), (0.62, 0.95, 0.58), math.radians(rot), "concrete")
             box.build(f"trash_can_fallen_{i}_col-convcolonly", "collision")
     fog_ends(rng)
+
+
+# --- more street detail ---------------------------------------------------------------------
+
+def _clear_of_damage(x, y, pad=0.4):
+    """Not on a pothole, a patch, a puddle or a manhole: a decal there would float or sink."""
+    for px, py, r in plan.POTHOLES + plan.PUDDLES:
+        if math.hypot(x - px, y - py) < r + pad:
+            return False
+    for mx, my in plan.MANHOLES:
+        if math.hypot(x - mx, y - my) < 0.6 + pad:
+            return False
+    for x0, y0, x1, y1 in plan.PATCHES:
+        if x0 - pad <= x <= x1 + pad and y0 - pad <= y <= y1 + pad:
+            return False
+    return True
+
+
+def _ribbon(mb, pts, width, z, mat, colour):
+    """A flat strip along a polyline on the road."""
+    for a, b in zip(pts, pts[1:]):
+        d = (b - a).normalized()
+        n = Vector((-d.y, d.x, 0)) * width / 2
+        mb.face([Vector((a.x, a.y, z)) - n, Vector((b.x, b.y, z)) - n, Vector((b.x, b.y, z)) + n, Vector((a.x, a.y, z)) + n],
+                mat, color=colour)
+
+
+def _cone(mb, x, y, z, rng, fallen=False):
+    """A traffic cone: square base, orange body, one white band. Fallen: on its side."""
+    part = MeshBuilder()
+    part.box((-0.19, -0.19, 0.0), (0.19, 0.19, 0.03), "plastic_dark")
+    part.cylinder((0, 0, 0.03), (0, 0, 0.66), 0.15, "toy_plastic", segments=10, radius_top=0.025, color=(1.25, 0.42, 0.08))
+    part.cylinder((0, 0, 0.36), (0, 0, 0.11), 0.095, "paint_white", segments=10, radius_top=0.077, caps="none",
+                  color=(0.85, 0.85, 0.82))
+    m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z")
+    if fallen:
+        m = m @ Matrix.Translation((0, 0, 0.16)) @ Matrix.Rotation(1.38, 4, "X")
+    mb.extend(part, m)
+
+
+def _litter(mb, x, y, z, kind, rng):
+    a = rng.uniform(0, math.pi)
+    d = Vector((math.cos(a), math.sin(a), 0.0))
+    if kind == "can":
+        col = [(0.7, 0.12, 0.1), (0.75, 0.75, 0.72), (0.15, 0.3, 0.6), (0.2, 0.45, 0.2)][rng.randrange(4)]
+        mb.cylinder(tuple(Vector((x, y, z + 0.033)) - d * 0.06), tuple(d * 0.12), 0.033, "metal_painted", segments=8, color=col)
+    elif kind == "crushed":
+        mb.obox((x, y, z + 0.012), (0.08, 0.07, 0.024), a, "metal_painted", color=(0.7, 0.68, 0.64))
+    elif kind == "bottle":
+        col = [(0.25, 0.45, 0.2), (0.45, 0.3, 0.12), (0.7, 0.75, 0.72)][rng.randrange(3)]
+        mb.cylinder(tuple(Vector((x, y, z + 0.035)) - d * 0.11), tuple(d * 0.17), 0.035, "glass_dirty", segments=8, color=col)
+        mb.cylinder(tuple(Vector((x, y, z + 0.035)) + d * 0.06), tuple(d * 0.07), 0.035, "glass_dirty", segments=8, radius_top=0.013, color=col)
+    elif kind == "cup":
+        mb.cylinder(tuple(Vector((x, y, z + 0.04)) - d * 0.05), tuple(d * 0.1), 0.03, "trim", segments=8, radius_top=0.042,
+                    color=(0.9, 0.88, 0.82))
+    elif kind == "card":
+        mb.obox((x, y, z + 0.008), (rng.uniform(0.25, 0.45), rng.uniform(0.2, 0.35), 0.012), a, "plywood",
+                color=jitter_color(rng, (0.62, 0.48, 0.32), 0.1), tilt=(rng.uniform(-0.1, 0.1), rng.uniform(-0.1, 0.1)))
+    else:  # bag
+        blob(mb, (x, y, z), rng.uniform(0.12, 0.2), rng.uniform(0.1, 0.16), rng.uniform(0.06, 0.12), "bag_plastic", rng,
+             colour=[(0.85, 0.85, 0.82), (0.25, 0.25, 0.27), (0.6, 0.55, 0.4)][rng.randrange(3)], rings=2, segs=8)
+
+
+def street_extras(det: Sectors, med: Sectors, dec: Sectors, rng):
+    """Tar snakes, a worn crosswalk, painted kerbs by the hydrants, litter in the
+    gutters, a newspaper box, cable boxes, cones by the closures, a lost hubcap."""
+    ag, mr = plan.ASHGROVE.road, plan.MILL.road
+    # tar snakes: old cracks sealed with black tar, wandering across both roads
+    for k in range(34):
+        on_ash = k < 22
+        for _ in range(20):
+            x = rng.uniform(ag[0] + 3, ag[2] - 3) if on_ash else rng.uniform(mr[0] + 0.4, mr[2] - 0.4)
+            y = rng.uniform(ag[1] + 0.4, ag[3] - 0.4) if on_ash else rng.uniform(mr[1] + 4, ag[1] - 1)
+            if _clear_of_damage(x, y, 0.8):
+                break
+        else:
+            continue
+        heading = rng.uniform(0, math.pi) if rng.random() < 0.5 else (0.0 if on_ash else math.pi / 2)
+        pts = [Vector((x, y, 0))]
+        for _ in range(rng.randint(8, 26)):
+            heading += rng.uniform(-0.45, 0.45)
+            q = pts[-1] + Vector((math.cos(heading), math.sin(heading), 0)) * 0.22
+            if not sk._on_road(q.x, q.y) or not _clear_of_damage(q.x, q.y, 0.3):
+                break
+            pts.append(q)
+        if len(pts) > 3:
+            _ribbon(dec.at(x, y), pts, rng.uniform(0.035, 0.06), RD + 0.005, "road_patch", (0.42, 0.42, 0.42))
+    # a crosswalk over Ashgrove just west of the junction, worn to stubs where the wheels run
+    cx = -4.4
+    y = ag[1] + 0.35
+    while y < ag[3] - 0.3:
+        x0 = cx - 1.2
+        while x0 < cx + 1.2:
+            seg = rng.uniform(0.25, 0.9)
+            x1 = min(x0 + seg, cx + 1.2)
+            if rng.random() < 0.72:
+                dec.at(cx, y).face([Vector((x0, y, RD + 0.007)), Vector((x1, y, RD + 0.007)), Vector((x1, y + 0.45, RD + 0.007)),
+                                    Vector((x0, y + 0.45, RD + 0.007))], "paint_white", color=mul((0.82, 0.82, 0.78), rng.uniform(0.6, 0.9)))
+            x0 = x1 + rng.uniform(0.03, 0.2)
+        y += 0.95
+    # yellow paint on the kerbs either side of each hydrant, mostly worn off
+    for x, y in plan.HYDRANTS:
+        m = det.at(x, y)
+        col = (0.85, 0.66, 0.16)
+        if abs(y - (ag[3] + 0.4)) < 0.9:                                  # north side of Ashgrove
+            e = ag[3]
+            m.box((x - 1.6, e - 0.012, RD), (x + 1.6, e + 0.11, SW + 0.004), "paint_marking", color=col)
+        elif abs(y - (ag[1] - 0.9)) < 0.9:                                # south side
+            e = ag[1]
+            m.box((x - 1.6, e - 0.11, RD), (x + 1.6, e + 0.012, SW + 0.004), "paint_marking", color=col)
+        else:                                                              # the east side of Mill Road
+            e = mr[2]
+            m.box((e - 0.012, y - 1.6, RD), (e + 0.11, y + 1.6, SW + 0.004), "paint_marking", color=col)
+    # litter blown into the gutters
+    kinds = ["can", "can", "crushed", "bottle", "cup", "card", "bag", "bag"]
+    gutters = [("x", ag[3] - 0.2, ag[0] + 2, ag[2] - 2), ("x", ag[1] + 0.2, ag[0] + 2, ag[2] - 2),
+               ("y", mr[0] + 0.2, mr[1] + 3, ag[1] - 2), ("y", mr[2] - 0.2, mr[1] + 3, ag[1] - 2)]
+    for _ in range(64):
+        axis, c, a0, a1 = gutters[rng.randrange(4)]
+        t = rng.uniform(a0, a1)
+        x, y = (t, c + rng.uniform(-0.12, 0.12)) if axis == "x" else (c + rng.uniform(-0.12, 0.12), t)
+        if not _clear_of_damage(x, y, 0.2):
+            continue
+        _litter(det.at(x, y), x, y, RD, kinds[rng.randrange(len(kinds))], rng)
+    # a newspaper box at the corner, its window fogged, chained to nothing
+    nb = MeshBuilder()
+    nb.box((-0.23, -0.2, 0.32), (0.23, 0.2, 0.92), "metal_painted", color=(0.2, 0.32, 0.55))
+    nb.box((-0.2, -0.205, 0.55), (0.2, -0.2, 0.86), "glass_dirty", color=(0.6, 0.62, 0.6))
+    nb.box((-0.08, -0.215, 0.36), (0.08, -0.2, 0.46), "chrome_dull")                       # coin slot box
+    nb.box((-0.24, -0.21, 0.92), (0.24, 0.21, 0.96), "metal_painted", color=(0.18, 0.28, 0.48))
+    for lx in (-0.18, 0.18):
+        for ly in (-0.15, 0.15):
+            nb.box((lx - 0.02, ly - 0.02, 0.0), (lx + 0.02, ly + 0.02, 0.32), "metal_rust")
+    _solid_prop(nb, "prop_newsbox", Matrix.Translation((7.9, -19.1, SW)) @ Matrix.Rotation(math.radians(-8), 4, "Z"),
+                (-0.25, -0.22, 0.0), (0.25, 0.22, 0.96))
+    # cable-TV pedestals at the back of the sidewalk
+    for i, (x, y, rot) in enumerate(((12.8, -8.82, 0.0), (-18.0, -19.48, math.pi), (-0.4, -27.5, math.pi / 2))):
+        pb = MeshBuilder()
+        pb.box((-0.16, -0.14, 0.0), (0.16, 0.14, 0.72), "metal_painted", color=(0.24, 0.32, 0.24))
+        pb.cylinder((0, 0, 0.72), (0, 0, 0.06), 0.15, "metal_painted", segments=10, radius_top=0.1, color=(0.22, 0.3, 0.22))
+        pb.box((-0.06, -0.145, 0.5), (0.06, -0.14, 0.58), "trim", color=(0.8, 0.78, 0.7))          # the warning label
+        _solid_prop(pb, f"prop_pedestal_{i}", Matrix.Translation((x, y, SW)) @ Matrix.Rotation(rot, 4, "Z"),
+                    (-0.17, -0.15, 0.0), (0.17, 0.15, 0.8))
+    # cones left by whoever closed the roads, two knocked over
+    for x, y, fallen in ((-27.5, -16.2, False), (-27.0, -14.3, True), (-27.8, -11.6, False),
+                         (5.6, -52.6, False), (6.2, -54.0, True), (4.6, -51.0, False)):
+        _cone(med.at(x, y), x, y, RD, rng, fallen)
+    # a hubcap off the west car, lying in the road
+    hx, hy = -25.6, -12.0
+    det.at(hx, hy).cylinder((hx, hy, RD + 0.002), (0.02, 0.0, 0.035), 0.19, "chrome_dull", segments=14, radius_top=0.12,
+                            color=(0.6, 0.58, 0.55))
+
+
+# --- more on the houses -------------------------------------------------------------------
+
+def _ridge(h, t):
+    """A point on the roof ridge, house-local, t from 0 to 1 along it, and the ridge's direction."""
+    from .house_kit import EAVE
+    w, d = h.width, h.depth
+    if h.roof == "gable_side":
+        return Vector((w * (0.1 + 0.8 * t), d / 2, EAVE + d / 2 * math.tan(math.radians(34)))), Vector((1, 0, 0))
+    if h.roof == "gable_front":
+        return Vector((w / 2, d * (0.1 + 0.8 * t), EAVE + w / 2 * math.tan(math.radians(40)))), Vector((0, 1, 0))
+    ov, pitch = 0.35, math.radians(30)
+    ez = EAVE - ov * math.tan(pitch)
+    half = min(w, d) / 2 + ov
+    rz = ez + half * math.tan(pitch)
+    if w >= d:
+        x0, x1 = -ov + half, w + ov - half
+        return Vector((x0 + (x1 - x0) * t, d / 2, rz)), Vector((1, 0, 0))
+    y0, y1 = -ov + half, d + ov - half
+    return Vector((w / 2, y0 + (y1 - y0) * t, rz)), Vector((0, 1, 0))
+
+
+def _antenna(mb, base, along, rng):
+    """A 1980s TV aerial on a mast strapped to the ridge, leaning a little."""
+    lean = Vector((rng.uniform(-0.08, 0.08), rng.uniform(-0.08, 0.08), 1.0)).normalized()
+    top = base + lean * rng.uniform(1.8, 2.4)
+    alu = (0.62, 0.62, 0.6)
+    mb.tube([base, top], 0.022, "chrome_dull", segments=5, color=alu)
+    across = Vector((-along.y, along.x, 0))
+    for level, length in ((0.0, 1.5), (-0.55, 1.0)):
+        c = top + Vector((0, 0, level))
+        a, b = c - along * length * 0.4, c + along * length * 0.6
+        mb.tube([a, b], 0.009, "chrome_dull", segments=3, color=alu)
+        n = 7 if length > 1.2 else 4
+        for k in range(n):
+            p = a.lerp(b, (k + 0.5) / n)
+            half = 0.5 - 0.045 * k
+            if rng.random() < 0.12:                      # an element snapped off, hanging
+                mb.tube([p, p + across * 0.1 + Vector((0, 0, -0.35))], 0.005, "chrome_dull", segments=3, color=alu)
+                continue
+            mb.tube([p - across * half, p + across * half], 0.005, "chrome_dull", segments=3, color=alu)
+    mb.tube([top - Vector((0, 0, 0.4)), base + across * 0.06 + Vector((0, 0, -0.4))], 0.004, "wire", segments=3)  # the lead-in
+
+
+def _dish(mb, at, facing):
+    """A small satellite dish on a wall bracket, pointing up and away."""
+    out = facing.normalized()
+    arm_end = at + out * 0.28
+    mb.tube([at, arm_end], 0.02, "metal_painted", segments=5, color=(0.7, 0.7, 0.68))
+    axis = (out * 0.6 + Vector((0, 0, 0.8))).normalized()
+    rim = arm_end + axis * 0.12
+    mb.cylinder(tuple(arm_end), tuple(axis * 0.12), 0.04, "metal_painted", segments=14, radius_top=0.3, color=(0.8, 0.8, 0.78))
+    mb.tube([rim - axis * 0.06 + out * 0.0, rim + axis * 0.38], 0.008, "metal_painted", segments=3, color=(0.6, 0.6, 0.58))
+    mb.box(tuple(rim + axis * 0.38 - Vector((0.03, 0.03, 0.03))), tuple(rim + axis * 0.38 + Vector((0.03, 0.03, 0.05))),
+           "plastic_dark")
+
+
+def _window_ac(mb, x, z, rng):
+    """A window air conditioner hanging out of a front window: house-local, front wall at y 0."""
+    beige = jitter_color(rng, (0.72, 0.68, 0.58), 0.05)
+    mb.box((x - 0.31, -0.42, z), (x + 0.31, 0.06, z + 0.4), "metal_painted", color=beige)
+    for k in range(7):
+        zz = z + 0.05 + k * 0.045
+        mb.box((x - 0.27, -0.425, zz), (x + 0.27, -0.42, zz + 0.022), "plastic_dark")
+    mb.box((x - 0.3, -0.36, z - 0.04), (x + 0.3, -0.3, z), "metal_rust")                # the bracket under it
+    mb.tube([(x - 0.25, -0.33, z - 0.02), (x - 0.25, -0.02, z - 0.3)], 0.012, "metal_rust", segments=4)
+    mb.tube([(x + 0.25, -0.33, z - 0.02), (x + 0.25, -0.02, z - 0.3)], 0.012, "metal_rust", segments=4)
+
+
+def _pot(mb, x, y, z, rng):
+    """A clay pot with a plant long dead in it."""
+    clay = jitter_color(rng, (0.6, 0.33, 0.22), 0.08)
+    mb.cylinder((x, y, z), (0, 0, 0.3), 0.13, "trim", segments=10, radius_top=0.17, color=clay)
+    mb.cylinder((x, y, z + 0.27), (0, 0, 0.04), 0.18, "trim", segments=10, color=mul(clay, 0.9))
+    mb.face([Vector((x + math.cos(a) * 0.16, y + math.sin(a) * 0.16, z + 0.28)) for a in
+             [2 * math.pi * i / 10 for i in range(10)]], "lawn_dead", color=(0.35, 0.28, 0.22))
+    for _ in range(rng.randint(4, 7)):
+        tip = Vector((x + rng.uniform(-0.2, 0.2), y + rng.uniform(-0.2, 0.2), z + rng.uniform(0.45, 0.8)))
+        mb.tube([(x, y, z + 0.28), ((x + tip.x) / 2, (y + tip.y) / 2, tip.z - 0.12), tip], 0.006, "bark", segments=3,
+                color=(0.5, 0.42, 0.32))
+
+
+# which house gets what: an aerial, a dish, an air conditioner in a front window, pots on the porch
+HOUSE_EXTRAS = {
+    "L2": ("antenna",), "L3": ("dish", "ac:ff0", "pots"), "L4": ("antenna",), "L5": ("antenna",),
+    "L6": ("antenna", "pots"), "L8": ("antenna",), "L9": ("antenna", "ac:gf1", "pots"), "L10": ("dish",),
+    "L11": ("antenna", "ac:ff1"),
+}
+
+
+def house_extras(med: Sectors, houses, rng):
+    from .house_kit import EAVE, FF_SILL, GF_SILL
+    for key, extras in HOUSE_EXTRAS.items():
+        if key not in houses:
+            continue
+        obj, hm, ramps, steps = houses[key]
+        h = next(l for l in plan.LOTS if l.key == key).house
+        local = MeshBuilder()
+        for extra in extras:
+            if extra == "antenna":
+                base, along = _ridge(h, rng.uniform(0.15, 0.3))
+                _antenna(local, base + Vector((0, 0, 0.1)), along, rng)
+            elif extra == "dish":
+                _dish(local, Vector((h.width + 0.03, h.depth * 0.3, EAVE - 0.7)), Vector((1, -0.4, 0)))
+            elif extra.startswith("ac:"):
+                tag = extra[3:]
+                windows = h.windows_ff if tag.startswith("ff") else h.windows_gf
+                i = int(tag[2:])
+                if i >= len(windows) or tag in h.boarded or tag in h.broken:
+                    continue
+                u0, width = windows[i]
+                _window_ac(local, u0 + width / 2, (FF_SILL if tag.startswith("ff") else GF_SILL) + 0.02, rng)
+            elif extra == "pots":
+                for dx in (-0.55, 1.45):
+                    _pot(local, h.door_at + dx, -0.5, -0.02, rng)
+        centre = hm @ Vector((h.width / 2, h.depth / 2, 0))
+        med.at(centre.x, centre.y).extend(local, hm)
