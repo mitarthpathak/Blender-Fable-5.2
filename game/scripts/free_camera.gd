@@ -15,6 +15,8 @@ var _pitch := 0.0
 
 func _ready() -> void:
 	near = 0.05
+	# moved every drawn frame, not in physics steps: nothing to smooth between steps
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	var e := global_transform.basis.get_euler()
 	_pitch = e.x
 	_yaw = e.y

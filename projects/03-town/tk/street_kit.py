@@ -1721,10 +1721,16 @@ def collision(curbs, houses, coll="collision"):
         mb = MeshBuilder()
         mb.box(lo, hi, "concrete")
         mb.build(f"edge_wall_{name}-convcolonly", coll)
-    # the fallen tree's trunk as a simple box
+    # the fallen tree's trunk: a beam along it as it lies, from the snapped foot
+    # up its first 9.5 m (it rises 6 degrees towards the crown), so a player who
+    # climbs on stands on the bark, not inside it, and cannot pass under it
     for kind, x, y, heading, length in plan.BLOCKERS:
         if kind == "fallen_tree":
+            m = _fallen_tree_matrix(x, y, math.radians(heading), length)
+            a, b = m @ Vector((0.0, 0.0, -0.3)), m @ Vector((0.0, 0.0, 9.5))
+            d = b - a
             mb = MeshBuilder()
-            mb.obox((x, y, RD + 0.45), (length, 0.8, 1.0), math.radians(heading), "concrete")
+            mb.obox((a + b) / 2, (d.length, 0.6, 0.6), math.atan2(d.y, d.x), "concrete",
+                    tilt=(0.0, -math.atan2(d.z, Vector((d.x, d.y)).length)))
             mb.build("fallen_tree_trunk-convcolonly", coll)
     return col

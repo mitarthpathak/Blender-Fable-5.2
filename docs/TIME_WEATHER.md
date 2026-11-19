@@ -100,9 +100,29 @@ uses the **Outdoors** group, because values that suit a room light the
 whole street's fog at once. That is why 03:00 Foggy can be exactly the old
 Night indoors and still be tuned for the street.
 
-Clear weather uses a gradient sky (`sky_gradient`, `sky_top_color`,
+Indoors, clear weather uses a gradient sky (`sky_gradient`, `sky_top_color`,
 `sky_horizon_color`); foggy weather uses the flat `background_color`,
 because in thick fog the sky is the fog. Colours in the files are sRGB.
+
+Outdoors (the town) every look, fog included, uses `scripts/sky.gdshader`
+with the preset's **Sky (town world only)** values:
+
+| Value | What it does |
+| --- | --- |
+| `sky_top_color`, `sky_horizon_color` | the gradient; the outdoor fog colour is the haze it fades into at the horizon |
+| `sky_clouds` | how much is cloud (0 clear, 1 overcast); the cover varies across the sky, so there are gaps and banks |
+| `sky_cloud_lit`, `sky_cloud_shade` | the clouds' side towards the sun or moon, and the side away |
+| `sky_light_glow` | the brightness round the sun or moon, also as a bright patch through thick cloud |
+| `sky_sun_disc`, `sky_moon_disc` | draw the key light as the sun or as the moon (with markings and a halo) |
+| `sky_stars` | stars in the gaps, fainter low down and near the moon; they twinkle |
+| `sky_town_glow` | the street lights on the haze and the cloud base, low all round (night) |
+| `outdoor_sky_fog` | how much the fog covers the sky outdoors (`fog_sky_affect`, and the volumetric fog's) |
+
+The clouds drift with `SKY_WIND` (`scripts/lighting_presets.gd`). The
+shader works out the clouds at half resolution and the discs and stars at
+full resolution; the reflection cubemap (wet roads, windows) gets the
+clouds only and updates a little each frame. `tools/sky_views.gd` renders
+every look's sky from three places in the street.
 
 ## Lightmaps
 

@@ -91,6 +91,26 @@ extends Resource
 ## draws a soft halo round each street light instead; this is its strength.
 @export_range(0.0, 2.0, 0.01) var outdoor_street_halo_low := 0.55
 
+@export_group("Sky (town world only)")
+## Outdoors the sky is scripts/sky.gdshader in every look, fog included:
+## sky_top_color and sky_horizon_color above are its gradient there, and
+## the outdoor fog colour is the haze it fades into at the horizon.
+## How much of the sky is cloud.
+@export_range(0.0, 1.0, 0.01) var sky_clouds := 0.45
+## The side of the clouds towards the sun or moon, and the side away.
+@export var sky_cloud_lit := Color(1.0, 0.97, 0.92)
+@export var sky_cloud_shade := Color(0.5, 0.53, 0.58)
+## The soft brightness round the sun or moon (also through thick cloud).
+@export_range(0.0, 4.0, 0.01) var sky_light_glow := 0.5
+## Draw the key light as the sun, or as the moon (0 hides it).
+@export_range(0.0, 1.0, 0.01) var sky_sun_disc := 0.0
+@export_range(0.0, 1.0, 0.01) var sky_moon_disc := 0.0
+@export_range(0.0, 1.0, 0.01) var sky_stars := 0.0
+## The street lights on the haze and the cloud base, low all round.
+@export var sky_town_glow := Color(0.0, 0.0, 0.0)
+## How much the fog covers the sky outdoors (the house uses distance_fog_sky_affect).
+@export_range(0.0, 1.0, 0.01) var outdoor_sky_fog := 0.3
+
 @export_group("Practical lights")
 ## Multiplier on the indoor lamps (table lamps, porch light, flicker bulb, TV).
 @export_range(0.0, 4.0, 0.01) var lamp_energy_scale := 1.0

@@ -84,6 +84,12 @@ func _ready() -> void:
 
 	_pivot = Node3D.new()
 	_pivot.position = Vector3(0.0, 1.5, 0.0)
+	# The body moves in physics steps and is drawn in between them (physics
+	# interpolation, project.godot), so walking looks even at any frame rate.
+	# The mouse turns the camera between steps: that must show at once, not be
+	# smoothed over a step, so the pivot (and the arm and camera on it) are
+	# not interpolated themselves; they ride on the body's drawn position.
+	_pivot.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	add_child(_pivot)
 
 	_arm = SpringArm3D.new()
@@ -138,6 +144,10 @@ func set_first_person(on: bool) -> void:
 	first_person = on
 	if rig:
 		rig.first_person = on
+		# In first person the body turns with the view at once, like the camera
+		# (see _ready), or the rifle would sway against the view while turning.
+		rig.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF if on \
+			else Node.PHYSICS_INTERPOLATION_MODE_INHERIT
 	else:
 		_body_mesh.visible = not on
 	_arm.position = Vector3.ZERO if on else SHOULDER

@@ -104,11 +104,24 @@ up in code, so a fresh export from Blender needs no hand edits:
 | SSAO, glow, normal maps, decals, mipmaps, probes | on | on |
 | Render scale | 100% | 77% with FSR upscaling |
 | MSAA | 2x | off |
+| Edge smoothing | TAA | TAA (or SMAA: `-- --aa=smaa`, or `edges = "smaa"` under `[graphics]` in the settings file) |
 | Shadows | 4096 atlas, all lamps | 2048 atlas, moon and one lamp |
 | Upstairs fill lights | full | a quarter |
 
 Low is aimed at Intel UHD 620 class graphics. If it is still too slow there,
 start the game with `--rendering-method gl_compatibility`.
+
+TAA is what keeps things thinner than a pixel steady: twig cards, power
+lines, picket tops, glints on the wet road. SMAA only softens edges.
+
+**Smooth motion.** Physics runs at 60 Hz and the screen is drawn between
+the steps (`physics/common/physics_interpolation` in `project.godot`), so
+walking looks even at any frame rate; without it, at 37 FPS the camera
+moved 2.7 cm on one frame and 5.3 cm on the next. The camera pivot (and,
+in first person, the body) is not interpolated itself, so the mouse turns
+the view at once. Doors swing in physics steps; the free camera and the
+falling leaves follow the drawn camera every frame.
+`tools/smooth_check.gd` measures it (`SMOOTH` lines).
 
 ## Baked lighting
 

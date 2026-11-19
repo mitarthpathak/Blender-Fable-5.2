@@ -17,6 +17,7 @@ var _count_low := 70
 
 
 func _ready() -> void:
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF      # moved every frame in _process
 	lifetime = LIFETIME
 	preprocess = LIFETIME              # the air is already full of them on the first frame
 	amount = _count_high
@@ -79,4 +80,5 @@ func set_quality(high: bool) -> void:
 func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam:
-		global_position = cam.global_position + Vector3(0.0, HEIGHT_ABOVE, 0.0)
+		# follows the camera where it is drawn (between physics steps), every frame
+		global_position = cam.get_global_transform_interpolated().origin + Vector3(0.0, HEIGHT_ABOVE, 0.0)

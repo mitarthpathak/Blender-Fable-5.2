@@ -36,6 +36,9 @@ var player: CharacterBody3D
 var world_env: WorldEnvironment
 var moon: DirectionalLight3D
 var quality := "high"
+## Edge smoothing: "taa" (temporal; also calms twigs, wires and glints) or "smaa" (cheaper,
+## edges only). High always uses TAA. Settings [graphics] edges, or -- --aa=smaa.
+var edges := "taa"
 
 var _doors: Array[Node3D] = []
 var _door_open := {}
@@ -198,7 +201,9 @@ func toggle_door(door: Node3D) -> void:
 	_door_open[door] = not is_open
 	if _door_tweens.has(door) and is_instance_valid(_door_tweens[door]):
 		(_door_tweens[door] as Tween).kill()
-	var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# in physics steps, so the door is drawn smoothly in between (physics interpolation)
+	var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT) \
+		.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	tween.tween_property(door, "rotation:y", target, 0.9)
 	_door_tweens[door] = tween
 
@@ -319,6 +324,13 @@ func set_quality(level: String) -> void:
 	viewport.scaling_3d_scale = 1.0 if high else 0.77
 	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if high else Viewport.SCALING_3D_MODE_FSR
 	viewport.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+	# Smooth edges. Temporal AA calms what MSAA and edge filters cannot: twig
+	# cards, power lines and picket tops thinner than a pixel, glints on wet
+	# ground. Low uses it too unless `edges` asks for SMAA, a cheaper filter
+	# that only softens edges.
+	var taa := high or edges != "smaa"
+	viewport.use_taa = taa
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if taa else Viewport.SCREEN_SPACE_AA_SMAA
 	viewport.positional_shadow_atlas_size = 4096 if high else 2048
 	RenderingServer.directional_shadow_atlas_set_size(4096 if high else 2048, true)
 	if moon:
@@ -339,9 +351,12 @@ func _load_quality() -> void:
 	var level := BuildFlavor.default_quality()
 	if config.load(BuildFlavor.settings_file()) == OK:
 		level = config.get_value("graphics", "quality", level)
+		edges = config.get_value("graphics", "edges", edges)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--quality="):
 			level = arg.get_slice("=", 1)
+		elif arg.begins_with("--aa="):
+			edges = arg.get_slice("=", 1)
 	set_quality(level)
 
 

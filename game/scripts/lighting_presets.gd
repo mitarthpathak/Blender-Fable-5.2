@@ -36,6 +36,8 @@ const BRIGHTNESS_MAX := 2.0
 const FADE_SECONDS := 4.0
 ## Real seconds per game hour while the clock runs.
 const SECONDS_PER_HOUR := 120.0
+## How fast the town's clouds drift, in sky noise tiles per second (scripts/sky.gdshader).
+const SKY_WIND := Vector2(0.0035, 0.0012)
 
 ## Fixed views for --preset-shots, in Godot axes (Blender x, z, -y).
 const SHOT_VIEWS := {
@@ -65,6 +67,9 @@ var _fade_from_basis := Basis.IDENTITY
 var _fade := 1.0                # 0..1; 1 = no cross-fade running
 var _clock_tick := 0.0
 var _sky: Sky
+var _town_sky: Sky
+var _town_sky_material: ShaderMaterial
+var _sky_time := 0.0
 var _toast: Label
 var _toast_time := 0.0
 var _panel: PanelContainer
@@ -327,6 +332,7 @@ func clock_text() -> String:
 
 
 func _process(delta: float) -> void:
+	_drift_sky(delta)
 	if _toast_time > 0.0:
 		_toast_time -= delta
 		_toast.modulate.a = clampf(_toast_time / 0.5, 0.0, 1.0)
@@ -360,6 +366,54 @@ func _process(delta: float) -> void:
 				_save_settings()
 
 
+## The town's sky: scripts/sky.gdshader with this look's values. The clouds'
+## drift is moved on in _process (see _drift_sky).
+func _push_town_sky(env: Environment, p: LightingPreset) -> void:
+	if not _town_sky:
+		var noise := NoiseTexture2D.new()
+		noise.width = 256
+		noise.height = 256
+		noise.seamless = true
+		noise.generate_mipmaps = true
+		var fast := FastNoiseLite.new()
+		fast.noise_type = FastNoiseLite.TYPE_PERLIN
+		fast.frequency = 0.02
+		fast.fractal_octaves = 3
+		noise.noise = fast
+		_town_sky_material = ShaderMaterial.new()
+		_town_sky_material.shader = load("res://scripts/sky.gdshader")
+		_town_sky_material.set_shader_parameter("noise_tex", noise)
+		_town_sky = Sky.new()
+		_town_sky.sky_material = _town_sky_material
+		_town_sky.radiance_size = Sky.RADIANCE_SIZE_64
+		# the clouds move a little every frame: spread the reflection update over frames
+		_town_sky.process_mode = Sky.PROCESS_MODE_INCREMENTAL
+	var m := _town_sky_material
+	m.set_shader_parameter("top_color", p.sky_top_color)
+	m.set_shader_parameter("horizon_color", p.sky_horizon_color)
+	m.set_shader_parameter("haze_color", p.outdoor_distance_fog_color)
+	m.set_shader_parameter("cloud_cover", p.sky_clouds)
+	m.set_shader_parameter("cloud_lit", p.sky_cloud_lit)
+	m.set_shader_parameter("cloud_shade", p.sky_cloud_shade)
+	m.set_shader_parameter("light_glow", p.sky_light_glow)
+	m.set_shader_parameter("sun_disc", p.sky_sun_disc)
+	m.set_shader_parameter("moon_disc", p.sky_moon_disc)
+	m.set_shader_parameter("stars", p.sky_stars)
+	m.set_shader_parameter("town_glow", p.sky_town_glow)
+	env.sky = _town_sky
+	env.background_mode = Environment.BG_SKY
+
+
+## Clouds drift with the wind; the stars twinkle. Slow enough that the
+## reflections, updated over several frames, keep up.
+func _drift_sky(delta: float) -> void:
+	if not _town_sky_material:
+		return
+	_sky_time += delta
+	_town_sky_material.set_shader_parameter("drift", SKY_WIND * _sky_time)
+	_town_sky_material.set_shader_parameter("sky_time", fmod(_sky_time, 1000.0))
+
+
 ## Push a look into the environment, the key light, the lamps, the probes and
 ## the glowing materials. Safe to call any number of times.
 func _push(p: LightingPreset, key_basis: Basis) -> void:
@@ -368,7 +422,9 @@ func _push(p: LightingPreset, key_basis: Basis) -> void:
 	var high: bool = main.quality == "high"
 	var env: Environment = main.world_env.environment
 	env.background_color = p.background_color
-	if p.sky_gradient:
+	if outdoor:
+		_push_town_sky(env, p)
+	elif p.sky_gradient:
 		if not _sky:
 			_sky = Sky.new()
 			_sky.sky_material = ProceduralSkyMaterial.new()
@@ -394,7 +450,9 @@ func _push(p: LightingPreset, key_basis: Basis) -> void:
 	env.volumetric_fog_gi_inject = p.volumetric_fog_gi_inject
 	env.fog_light_color = p.outdoor_distance_fog_color if outdoor else p.distance_fog_color
 	env.fog_density = p.outdoor_distance_fog_density if outdoor else p.distance_fog_density
-	env.fog_sky_affect = p.distance_fog_sky_affect
+	env.fog_sky_affect = p.outdoor_sky_fog if outdoor else p.distance_fog_sky_affect
+	if outdoor:
+		env.volumetric_fog_sky_affect = p.outdoor_sky_fog
 	var exposure := (p.outdoor_exposure_high if high else p.outdoor_exposure_low) if outdoor \
 		else (p.exposure_high if high else p.exposure_low)
 	env.tonemap_exposure = exposure * brightness
