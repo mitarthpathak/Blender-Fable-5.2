@@ -199,6 +199,8 @@ def build_town():
     street_kit.blockers("blockers")
     detail.build(houses)                 # street detail, lot stories, the fog ends
     yards.build(houses)                  # shrubs, long grass and back-yard clutter on every house lot
+    # the yards are not flat (street_kit.lawn_offset): lift what stands in them onto the ground
+    street_kit.settle_on_lawn(("grass_", "weed_", "shrub_", "tree_", "leaf_pile_", "trash_can_y", "yard_drum_", "mailbox_"))
     street_kit.collision(curbs, houses, "collision")
     house_kit.kit_reference("kit")
     # the glowing window in L3 and its porch light

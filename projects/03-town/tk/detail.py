@@ -857,6 +857,28 @@ def street_extras(det: Sectors, med: Sectors, dec: Sectors, rng):
     for x, y, fallen in ((-27.5, -16.2, False), (-27.0, -14.3, True), (-27.8, -11.6, False),
                          (5.6, -52.6, False), (6.2, -54.0, True), (4.6, -51.0, False)):
         _cone(med.at(x, y), x, y, RD, rng, fallen)
+    # the sidewalks: slabs heaved by roots and frost, one edge standing proud, and cracks
+    for _ in range(14):
+        name, (sx0, sy0, sx1, sy1) = plan.SIDEWALKS[rng.randrange(len(plan.SIDEWALKS))]
+        along_x = (sx1 - sx0) > (sy1 - sy0)
+        for _try in range(10):
+            x = rng.uniform(sx0 + 1.0, sx1 - 1.0) if along_x else (sx0 + sx1) / 2
+            y = (sy0 + sy1) / 2 if along_x else rng.uniform(sy0 + 1.0, sy1 - 1.0)
+            if all(math.hypot(x - hx, y - hy) > 2.0 for hx, hy in plan.HYDRANTS) and \
+                    all(math.hypot(x - p_.x, y - p_.y) > 1.5 for p_ in plan.POLES):
+                break
+        size = (1.5, (sy1 - sy0) - 0.06) if along_x else ((sx1 - sx0) - 0.06, 1.5)
+        lift = rng.uniform(0.025, 0.045)
+        tilt = (rng.choice((-1, 1)) * lift / size[1], 0.0) if along_x else (0.0, rng.choice((-1, 1)) * lift / size[0])
+        det.at(x, y).obox((x, y, SW - 0.03 + lift / 2), (size[0], size[1], 0.06), 0.0, "sidewalk",
+                          color=jitter_color(rng, (0.9, 0.9, 0.88), 0.05), tilt=tilt)
+        dec.at(x, y).card((x + rng.uniform(-0.4, 0.4), y, SW + lift + 0.004), 0.9, 0.5, rng.uniform(0, 3.1), "decal_crack",
+                          flat=True)
+    for _ in range(26):
+        name, (sx0, sy0, sx1, sy1) = plan.SIDEWALKS[rng.randrange(len(plan.SIDEWALKS))]
+        x, y = rng.uniform(sx0 + 0.3, sx1 - 0.3), rng.uniform(sy0 + 0.2, sy1 - 0.2)
+        dec.at(x, y).card((x, y, SW + 0.005), rng.uniform(0.6, 1.4), rng.uniform(0.3, 0.7), rng.uniform(0, 3.1), "decal_crack",
+                          flat=True)
     # a hubcap off the west car, lying in the road
     hx, hy = -25.6, -12.0
     det.at(hx, hy).cylinder((hx, hy, RD + 0.002), (0.02, 0.0, 0.035), 0.19, "chrome_dull", segments=14, radius_top=0.12,

@@ -26,6 +26,7 @@ from mathutils import Matrix, Vector
 
 import plan
 from .core import MeshBuilder, instance, jitter_color, mul
+from .detail import blob
 from . import street_kit as sk
 from .street_kit import G, Sectors
 
@@ -271,6 +272,86 @@ def build(houses, coll="props"):
                          scale=rng.uniform(0.55, 0.8))
                 counts["trees"] += 1
                 break
+
+    # 4b. long grass where a mower never reached: tight along every lot line and
+    # round the foot of each house, thinning out into the yard
+    edge = 0
+    for lot in plan.LOTS:
+        if not lot.house:
+            continue
+        h = lot.house
+        x0, y0, x1, y1 = lot.rect
+        hx0, hy0, hx1, hy1 = plan.house_rect(h)
+        runs = [((x0 + 0.25, y0 + 0.25), (x1 - 0.25, y0 + 0.25)), ((x0 + 0.25, y1 - 0.25), (x1 - 0.25, y1 - 0.25)),
+                ((x0 + 0.25, y0 + 0.25), (x0 + 0.25, y1 - 0.25)), ((x1 - 0.25, y0 + 0.25), (x1 - 0.25, y1 - 0.25)),
+                ((hx0 - 0.3, hy0 - 0.3), (hx1 + 0.3, hy0 - 0.3)), ((hx0 - 0.3, hy1 + 0.3), (hx1 + 0.3, hy1 + 0.3)),
+                ((hx0 - 0.3, hy0 - 0.3), (hx0 - 0.3, hy1 + 0.3)), ((hx1 + 0.3, hy0 - 0.3), (hx1 + 0.3, hy1 + 0.3))]
+        W = _frame(h)
+        px0, py0, px1, py1 = _porch_box(h)
+        porch = [W(px0 - 0.3, py0 - 0.3), W(px1 + 0.3, py1)]
+        porch_rect = (min(p.x for p in porch), min(p.y for p in porch), max(p.x for p in porch), max(p.y for p in porch))
+        door = W(h.door_at + 0.45, -3.0)
+        front = sk.lot_front(lot)
+        path_rect = (door.x - 1.0, min(door.y, y0 if front == "s" else y1), door.x + 1.0, max(door.y, y0 if front == "s" else y1)) \
+            if front in ("s", "n") else (min(door.x, x1), door.y - 1.0, max(door.x, x1), door.y + 1.0)
+        for (ax, ay), (bx, by) in runs:
+            length = math.hypot(bx - ax, by - ay)
+            for k in range(int(length / 0.7)):
+                t = (k + rng.random()) / max(1, int(length / 0.7))
+                gx, gy = ax + (bx - ax) * t + rng.uniform(-0.25, 0.25), ay + (by - ay) * t + rng.uniform(-0.25, 0.25)
+                if not _inside(gx, gy, lot.rect) or _inside(gx, gy, porch_rect) or _inside(gx, gy, path_rect):
+                    continue
+                if any(_inside(gx, gy, (sx0, sy0, sx1, sy1)) for _, (sx0, sy0, sx1, sy1) in plan.SIDEWALKS):
+                    continue
+                instance(clumps[rng.randrange(3)], f"grass_e{edge}", "grass", (gx, gy, G), rng.uniform(0, 6.28),
+                         scale=rng.uniform(0.9, 1.5))
+                edge += 1
+    counts["edge_grass"] = edge
+
+    # 4c. the open ground of every lot, the player's included: tufts of grass,
+    # fallen twigs, drifts of leaves, stones and molehills, so no yard reads
+    # as a flat sheet. Nothing on the houses, porches, paths or house-file pieces.
+    det = Sectors("detail_yard")
+    dec = Sectors("decals_yard")
+    zones = sk._zones()
+    litter = 0
+    for lot in plan.LOTS:
+        x0, y0, x1, y1 = lot.rect
+        area = (x1 - x0) * (y1 - y0)
+        for _ in range(int(area / 2.2)):
+            x, y = rng.uniform(x0 + 0.3, x1 - 0.3), rng.uniform(y0 + 0.3, y1 - 0.3)
+            if any(_inside(x, y, z, 0.25) for z in zones):
+                continue
+            z = G + sk.lawn_offset(x, y)
+            r = rng.random()
+            if r < 0.55:
+                instance(clumps[rng.randrange(3)], f"grass_o{litter}", "grass", (x, y, G), rng.uniform(0, 6.28),   # settled later
+                         scale=rng.uniform(0.5, 1.1))
+            elif r < 0.72:                                        # a fallen twig with a fork
+                a = rng.uniform(0, 6.28)
+                L = rng.uniform(0.35, 1.1)
+                d = Vector((math.cos(a), math.sin(a), 0.0))
+                p0 = Vector((x, y, z + 0.015))
+                p1 = p0 + d * L
+                m = det.at(x, y)
+                m.tube([p0, p0.lerp(p1, 0.5) + Vector((0, 0, 0.02)), p1], 0.012, "bark", segments=4, radii=[0.014, 0.01, 0.005],
+                       color=(0.5, 0.43, 0.35))
+                side = Vector((-d.y, d.x, 0)) * rng.choice((-1, 1))
+                m.tube([p0.lerp(p1, 0.4), p0.lerp(p1, 0.55) + side * L * 0.25 + Vector((0, 0, 0.03))], 0.006, "bark", segments=3,
+                       color=(0.48, 0.41, 0.33))
+            elif r < 0.88:                                        # leaves drifted into a hollow
+                dec.at(x, y).card((x, y, z + 0.008), rng.uniform(0.5, 1.2), rng.uniform(0.4, 0.9), rng.uniform(0, 3.14),
+                                  "decal_leaves", flat=True)
+            elif r < 0.95:                                        # a stone
+                blob(det.at(x, y), (x, y, z - 0.02), rng.uniform(0.05, 0.12), rng.uniform(0.04, 0.1), rng.uniform(0.03, 0.07),
+                     "concrete", rng, colour=jitter_color(rng, (0.6, 0.58, 0.54), 0.1), rings=2, segs=7)
+            else:                                                 # a molehill of bare earth
+                blob(det.at(x, y), (x, y, z - 0.03), rng.uniform(0.14, 0.22), rng.uniform(0.12, 0.2), rng.uniform(0.06, 0.1),
+                     "lawn_dead", rng, colour=(0.4, 0.33, 0.26), rings=3, segs=9)
+            litter += 1
+    det.build("props")
+    dec.build("ground_detail")
+    counts["open_ground"] = litter
 
     # 5. leaves and weeds banked along the foot of the tall board fences
     piles = [sk.shared(f"leaf_pile_{k}", lambda k=k: sk._leaf_pile(k)) for k in range(3)]

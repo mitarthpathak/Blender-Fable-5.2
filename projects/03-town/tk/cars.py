@@ -20,7 +20,7 @@ from __future__ import annotations
 import math
 import random
 
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, noise
 
 from .core import MeshBuilder, jitter_color, mul
 
@@ -100,21 +100,61 @@ def _section(spec, x, ride):
             if p[i].z < arch:
                 p[i].z = arch
                 p[i].y = hw - 0.004
-    return p, g, arch, hw
+    fine, bands = _refine(p)
+    return p, g, arch, hw, fine, bands
 
 
-def _quad(mb, a, b, c, d, mat, colour):
+def _catmull(p0, p1, p2, p3, t):
+    t2, t3 = t * t, t * t * t
+    return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+
+
+def _refine(p, steps=3):
+    """The section rounded: a Catmull-Rom spline through the seven points, each
+    band cut in `steps`. The spline passes through the points, so the belt
+    line and the glass edges stay where they were; the panels between them
+    swell and the roof gets a crown. Returns the points and, for each segment,
+    the band (0..5) it belongs to."""
+    n = len(p)
+    out, bands = [p[0].copy()], []
+    for i in range(n - 1):
+        a = p[i - 1] if i > 0 else p[0] * 2 - p[1]
+        d = p[i + 2] if i + 2 < n else Vector((p[-2].x, -p[-2].y, p[-2].z))     # mirrored: flat across the centre
+        if (p[i + 1] - p[i]).length < 1e-4:
+            for _ in range(steps):
+                out.append(p[i + 1].copy())
+                bands.append(i)
+            continue
+        for k in range(1, steps + 1):
+            q = _catmull(a, p[i], p[i + 1], d, k / steps)
+            q.x = p[i].x
+            out.append(q)
+            bands.append(i)
+    return out, bands
+
+
+def _quad(mb, a, b, c, d, mat, colour, uv_axes=None):
+    """uv_axes: two axis indices to map the texture continuously over many
+    small quads (the glass); otherwise each face is projected on its own."""
     if (b - a).cross(d - a).length < 1e-6 and (c - b).cross(d - c).length < 1e-6:
         return
-    mb.face([a, b, c, d], mat, color=colour)
+    uvs = None
+    if uv_axes:
+        i, j = uv_axes
+        uvs = [(p[i] / 1.1, p[j] / 0.55) for p in (a, b, c, d)]
+    mb.face([a, b, c, d], mat, color=colour, uvs=uvs)
 
 
 def _wheel(flat=False):
     """Tyre and hubcap, axle along Y, centred on the origin."""
     mb = MeshBuilder()
     r, w = WHEEL_R, 0.10
-    rings = [(-w, r - 0.05), (-w * 0.8, r - 0.008), (-w * 0.3, r), (w * 0.3, r), (w * 0.8, r - 0.008), (w, r - 0.05)]
-    seg = 18
+    # sidewall, a rounded shoulder, and a tread with two grooves round it
+    rings = [(-w, r - 0.05), (-w * 0.96, r - 0.026), (-w * 0.84, r - 0.009), (-w * 0.66, r - 0.001), (-w * 0.40, r),
+             (-w * 0.36, r - 0.007), (-w * 0.30, r - 0.007), (-w * 0.26, r), (w * 0.26, r), (w * 0.30, r - 0.007),
+             (w * 0.36, r - 0.007), (w * 0.40, r), (w * 0.66, r - 0.001), (w * 0.84, r - 0.009), (w * 0.96, r - 0.026),
+             (w, r - 0.05)]
+    seg = 26
     grey = (0.42, 0.42, 0.42)
     for (y0, r0), (y1, r1) in zip(rings, rings[1:]):
         for i in range(seg):
@@ -246,7 +286,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     xs = _stations(spec)
     secs = [_section(spec, x, ride) for x in xs]
     bed = spec.get("bed")
-    for (x0, (a, g0, arch0, _)), (x1, (b, g1, arch1, _)) in zip(zip(xs, secs), zip(xs[1:], secs[1:])):
+    for (x0, (a7, g0, arch0, _, a, bands)), (x1, (b7, g1, arch1, _, b, _b)) in zip(zip(xs, secs), zip(xs[1:], secs[1:])):
         xm = (x0 + x1) / 2
         gm = (g0 + g1) / 2
         in_pillar = any(abs(xm - p) < 0.05 for p in spec["pillars"])
@@ -256,29 +296,43 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
             def P(pts, i):
                 v = pts[i]
                 return Vector((v.x, v.y * side, v.z))
-            for i in range(6):
-                q = [P(a, i), P(b, i), P(b, i + 1), P(a, i + 1)]
+            for j, i in enumerate(bands):
+                q = [P(a, j), P(b, j), P(b, j + 1), P(a, j + 1)]
                 if side > 0:                                     # wound to face out: a game engine culls back faces
                     q.reverse()
                 centre = (q[0] + q[1] + q[2] + q[3]) / 4
                 if i < 3:
+                    # rust comes through in patches (smooth noise), worst along the sills and round the arches
                     near_arch = arch0 > 0 or arch1 > 0
-                    rusty = rng.random() < rust_level * (0.75 if (i == 0 or near_arch) else 0.12)
+                    low = 1.0 - min(1.0, max(0.0, (centre.z - 0.25) / 0.45))
+                    n = noise.noise(Vector((centre.x * 2.6, centre.z * 3.2 + side * 7.0, seed * 0.37)))
+                    rusty = n + 0.55 * low + (0.25 if near_arch else 0.0) > 1.15 - 0.75 * rust_level
                     if rusty:
                         _quad(mb, *q, "metal_rust", jitter_color(rng, (0.75, 0.68, 0.6), 0.12))
                     else:
                         _quad(mb, *q, "car_paint", tone(centre))
                 elif i == 3:                                     # belt to glass top
                     glass = gm > 0.6 and not in_pillar and not sloped
-                    _quad(mb, *q, "car_glass" if glass else "car_paint", None if glass else tone(centre))
+                    _quad(mb, *q, "car_glass" if glass else "car_paint", None if glass else tone(centre),
+                          uv_axes=(0, 2) if glass else None)
                     if glass:
+                        # the rubber seal along the bottom and the top of the side glass
+                        first, last = j == 0 or bands[j - 1] != 3, j + 1 >= len(bands) or bands[j + 1] != 3
+                        lo0, lo1, up0, up1 = P(a, j), P(b, j), P(a, j + 1), P(b, j + 1)
+                        out = Vector((0, 0.004 * side, 0))
+                        for pair in ([((lo0, lo1), (up0, up1))] if first else []) + ([((up0, up1), (lo0, lo1))] if last else []):
+                            (e0, e1), (o0, o1) = pair
+                            strip = [e0 + out, e1 + out, e1.lerp(o1, 0.22) + out, e0.lerp(o0, 0.22) + out]
+                            if (strip[1] - strip[0]).cross(strip[3] - strip[0]).y * side < 0:
+                                strip.reverse()                  # facing out of the car
+                            _quad(mb, *strip, "plastic_dark", (0.5, 0.5, 0.5))
                         continue
                 elif i == 4:                                     # roof rail, or the rail of the bed
                     _quad(mb, *q, "car_paint", tone(centre, top=gm < 0.1))
                 elif in_bed:
                     continue                                     # open bed
                 elif sloped and gm > 0.08:
-                    _quad(mb, *q, "car_glass", None)
+                    _quad(mb, *q, "car_glass", None, uv_axes=(1, 2))
                     continue
                 else:
                     _quad(mb, *q, "car_paint", tone(centre, top=True))
@@ -288,7 +342,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                     _quad(mb, *inner, "car_interior", (0.9, 0.88, 0.84) if i >= 4 else (1.0, 1.0, 1.0))
             # wheel-arch liner behind the cut
             if arch0 > 0 or arch1 > 0:
-                za, zb_ = max(arch0, a[0].z), max(arch1, b[0].z)
+                za, zb_ = max(arch0, a7[0].z), max(arch1, b7[0].z)
                 ya = (hw0 - 0.004) * side
                 yi = (hw0 - 0.34) * side
                 q = [Vector((x0, ya, za)), Vector((x1, ya, zb_)), Vector((x1, yi, zb_)), Vector((x0, yi, za))]
@@ -296,12 +350,13 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                 q = [Vector((x0, yi, 0.12)), Vector((x1, yi, 0.12)), Vector((x1, yi, zb_)), Vector((x0, yi, za))]
                 mb.face(q if side > 0 else list(reversed(q)), "interior_dark")
         # floor pan (it faces up: this is the carpet seen through the glass)
-        mb.face([Vector((x0, a[0].y, a[0].z)), Vector((x0, -a[0].y, a[0].z)), Vector((x1, -b[0].y, b[0].z)),
-                 Vector((x1, b[0].y, b[0].z))], "car_interior", color=(0.7, 0.68, 0.64))
+        mb.face([Vector((x0, a7[0].y, a7[0].z)), Vector((x0, -a7[0].y, a7[0].z)), Vector((x1, -b7[0].y, b7[0].z)),
+                 Vector((x1, b7[0].y, b7[0].z))], "car_interior", color=(0.7, 0.68, 0.64))
     # nose and tail panels
-    for pts, front in ((secs[-1][0], True), (secs[0][0], False)):
+    for sec, front in ((secs[-1], True), (secs[0], False)):
+        pts = sec[4]
         loop = [Vector((v.x, v.y, v.z)) for v in pts] + [Vector((v.x, -v.y, v.z)) for v in reversed(pts[:-1])]
-        mb.face(loop if front else list(reversed(loop)), "car_paint", color=tone(pts[3]))
+        mb.face(loop if front else list(reversed(loop)), "car_paint", color=tone(sec[0][3]))
 
     _interior(mb, spec, kind, ride, rng, state)
 
@@ -432,7 +487,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     # dirt and wet leaves settled on the flat tops
     tops = [(x, s) for x, s in zip(xs, secs) if abs(x) < half - 0.4]
     for _ in range(5 if state != "crashed" else 3):
-        x, (pts, g, _, _) = tops[rng.randrange(len(tops))]
+        x, (pts, g, _, _, _, _) = tops[rng.randrange(len(tops))]
         if bed and bed[0] < x < bed[1]:
             continue
         if 0.05 < g < 0.95:
@@ -440,6 +495,18 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
         y = rng.uniform(-0.45, 0.45)
         mb.card((x, y, pts[6].z + 0.012), rng.uniform(0.5, 0.9), rng.uniform(0.4, 0.8), rng.uniform(0, 3.1),
                 "decal_leaves", flat=True)
+    # dents: a few soft pushes into the side panels (more on the wrecks)
+    for _ in range({"abandoned": 2, "crashed": 5, "on_blocks": 4}[state]):
+        side = rng.choice((-1, 1))
+        c = Vector((rng.uniform(spec["ra"] + ARCH_R + 0.15, spec["fa"] - ARCH_R - 0.15), side * hw0,
+                    rng.uniform(0.45, spec["belt"] + ride - 0.05)))
+        radius, depth = rng.uniform(0.16, 0.32), rng.uniform(0.012, 0.03)
+        for v in mb.verts:
+            if v.y * side < hw0 - 0.08:
+                continue
+            d2 = ((v.x - c.x) ** 2 + (v.z - c.z) ** 2) / (radius * radius)
+            if d2 < 4.0:
+                v.y -= side * depth * math.exp(-d2 * 1.5)
     if state == "crashed":
         fa = spec["fa"]
         for v in mb.verts:                                       # the front end pushed back and up

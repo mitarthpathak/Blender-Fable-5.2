@@ -460,5 +460,5 @@ must sit beside the `.exe`. The two `HouseInterior` files already tracked in
 `town.gd` instances the town's repeated meshes as MultiMeshes. The yard and
 verge clutter (`CHUNKED_FADE`: grass, weeds, shrubs, leaf piles, drums) is
 split into 16 m chunks, each culled past its distance (42 to 55 m on High,
-0.7 of that on Low). They are culled, not faded: a fading MultiMesh is drawn
+0.6 of that on Low). They are culled, not faded: a fading MultiMesh is drawn
 again in the transparent pass, which cost more than the culling saved.

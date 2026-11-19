@@ -14,10 +14,10 @@ import math
 import random
 
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, noise as _noise
 
 import plan
-from .core import MeshBuilder, collection, instance, jitter_color, lerp, light, mul
+from .core import MeshBuilder, collection, ground_grime, instance, jitter_color, lerp, light, mul
 
 G = plan.GROUND
 SW = plan.SIDEWALK_Z
@@ -141,6 +141,107 @@ def road_with_potholes(mb: MeshBuilder, rect, cell, colour_fn):
             face([B[k], B[k2], bowl_s[k2], bowl_s[k]], "road_patch", 0.55)          # broken edge
             face([bowl_s[k], bowl_s[k2], Vector((px, py, RD - POTHOLE_DEPTH))], "road_patch", 0.4)
 
+# --- uneven yards ---------------------------------------------------------------------------
+
+LAWN_BUMP = 0.075        # metres: how far the yards rise and fall
+LAWN_CELL = 0.75
+# The player's lot comes from the house file: what must stay at lawn level there.
+L1_FLAT = ((-0.3, -0.3, 7.6, 8.3), (0.08, -2.86, 3.92, -0.3), (0.9, -8.6, 2.7, -2.8), (1.0, 8.3, 2.6, 10.0),
+           (3.3, 8.3, 7.6, 9.5), (8.2, 14.6, 11.3, 17.6), (3.7, 15.3, 7.5, 17.1), (-3.3, 11.1, -2.1, 16.5))
+_FLAT: list | None = None
+_HOUSES: list | None = None
+
+
+def _zones():
+    """Rectangles that stay flat: each house and its porch, the front path, and
+    the house file's own yard pieces on L1."""
+    global _FLAT, _HOUSES
+    if _FLAT is None:
+        _FLAT, _HOUSES = list(L1_FLAT), []          # (L1's lawn runs on under the house file's floor)
+        for lot in plan.LOTS:
+            h = lot.house
+            if not h:
+                continue
+            (ox, oy), (ax, ay), (bx, by) = plan.house_frame(h)
+
+            def rect(l0, m0, l1, m1):
+                xs = [ox + ax * l + bx * m for l in (l0, l1) for m in (m0, m1)]
+                ys = [oy + ay * l + by * m for l in (l0, l1) for m in (m0, m1)]
+                return (min(xs), min(ys), max(xs), max(ys))
+            house = rect(-0.3, -0.3, h.width + 0.3, h.depth + 0.3)
+            _HOUSES.append(house)
+            _FLAT.append(house)
+            _FLAT.append(rect(h.door_at - 1.1, -3.3, h.door_at + 2.0, 0.0) if h.porch == "entry"
+                         else rect(-0.4, -3.5, h.width + 0.4, 0.0))
+            if h.porch == "wrap":
+                _FLAT.append(rect(-0.4, 0.0, h.width + 0.4, h.depth * 0.6))
+            door = rect(h.door_at + 0.45, -3.0, h.door_at + 0.45, -3.0)
+            x0, y0, x1, y1 = lot.rect
+            front = lot_front(lot)
+            if front == "s":
+                _FLAT.append((door[0] - 1.0, y0, door[0] + 1.0, door[1]))
+            elif front == "n":
+                _FLAT.append((door[0] - 1.0, door[1], door[0] + 1.0, y1))
+            else:
+                _FLAT.append((door[0], door[1] - 1.0, x1, door[1] + 1.0))
+    return _FLAT
+
+
+def lawn_offset(x: float, y: float) -> float:
+    """How far the yard's surface is above lawn level (G) at x, y: soft rises and
+    hollows a few centimetres deep, back to level at the lot edges, round the
+    houses, porches and paths. Zero outside the lots."""
+    lot = next((l for l in plan.LOTS if l.rect[0] <= x <= l.rect[2] and l.rect[1] <= y <= l.rect[3]), None)
+    if lot is None:
+        return 0.0
+    x0, y0, x1, y1 = lot.rect
+    d = min(x - x0, x1 - x, y - y0, y1 - y)
+    for r in _zones():
+        dx, dy = max(r[0] - x, 0.0, x - r[2]), max(r[1] - y, 0.0, y - r[3])
+        d = min(d, math.hypot(dx, dy))
+        if d <= 0.0:
+            return 0.0
+    t = min(1.0, d / 1.4)
+    t = t * t * (3 - 2 * t)
+    h = 0.62 * _noise.noise(Vector((x * 0.2, y * 0.2, 1.7))) + 0.38 * _noise.noise(Vector((x * 0.8, y * 0.8, 5.3)))
+    return LAWN_BUMP * t * max(h, -0.2)
+
+
+def lawn_grid(mb: MeshBuilder, lot, mat, tint, n):
+    """A lot's lawn on a fine grid, following lawn_offset, with patches of bare
+    earth and damp in the vertex colour. Cells under a house are left out."""
+    _zones()
+    x0, y0, x1, y1 = lot.rect
+    nx, ny = max(1, round((x1 - x0) / LAWN_CELL)), max(1, round((y1 - y0) / LAWN_CELL))
+    xs = [x0 + (x1 - x0) * i / nx for i in range(nx + 1)]
+    ys = [y0 + (y1 - y0) * j / ny for j in range(ny + 1)]
+    pt = {(i, j): Vector((xs[i], ys[j], G + lawn_offset(xs[i], ys[j]))) for i in range(nx + 1) for j in range(ny + 1)}
+
+    def colour(p):
+        patch = _noise.noise(Vector((p.x * 0.16, p.y * 0.16, 9.1)))         # bare, trodden earth
+        damp = _noise.noise(Vector((p.x * 0.5, p.y * 0.5, 3.3)))
+        k = 1.0 - 0.42 * max(0.0, patch - 0.1) / 0.9 - 0.14 * max(0.0, damp)
+        k *= 1.0 + 1.6 * (p.z - G)                                            # the rises a shade lighter, drier
+        return mul(mul(tint, n(p)), k)
+    for i in range(nx):
+        for j in range(ny):
+            cx, cy = (xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2
+            if any(h[0] + 0.45 < cx < h[2] - 0.45 and h[1] + 0.45 < cy < h[3] - 0.45 for h in _HOUSES):
+                continue
+            q = [pt[i, j], pt[i + 1, j], pt[i + 1, j + 1], pt[i, j + 1]]
+            mb.face(q, mat)
+            mb.cols[-1] = [(*colour(p), 1.0) for p in q]
+
+
+def settle_on_lawn(prefixes):
+    """Lift every placed object whose name starts with one of `prefixes` by the
+    yard's height under it, so nothing sinks into a rise."""
+    import bpy
+    for o in bpy.data.objects:
+        if o.name.startswith(prefixes) and "colonly" not in o.name:
+            o.location.z += lawn_offset(o.location.x, o.location.y)
+
+
 def ground(coll="ground"):
     rng = random.Random(5)
     noise = {}
@@ -157,7 +258,7 @@ def ground(coll="ground"):
     for lot in plan.LOTS:
         mat = "lawn_leafy" if lot.key == "L7" else {"kept": "lawn_kept", "overgrown": "lawn_overgrown", "dead": "lawn_dead"}[lot.lawn]
         tint = (0.50, 0.48, 0.38) if mat == "lawn_dead" else (0.85, 0.85, 0.80)   # damp, not bleached
-        grid_quads(lawn, lot.rect, G, mat, 2.0, lambda p, t=tint: mul(t, n(p)))
+        lawn_grid(lawn, lot, mat, tint, n)
         covered.append(lot.rect)
     bx0, by0, bx1, by1 = plan.BUILD
     # verge strips: north of the north lots, the corners outside the lots, south of Mill lots
@@ -556,20 +657,46 @@ def picket_run(mb, a, b, rng, gap=None, wear=0.4, colour=(0.95, 0.93, 0.88)):
     if gap is not None:
         g = (Vector((*gap, 0)) - a).dot(u)
         pieces = [(0.0, g - 0.85), (g + 0.85, length)]
+    nrm = Vector((-u.y, u.x, 0))
+    grey = (0.62, 0.6, 0.55)                                     # bare wood where the paint has gone
     for s0, s1 in pieces:
         if s1 - s0 < 0.3:
             continue
-        for zr in (0.25, 0.72):
-            c = a + u * ((s0 + s1) / 2)
-            mb.obox((c.x, c.y, G + zr + 0.03), (s1 - s0, 0.04, 0.06), rot, "trim", color=mul(colour, 0.9))
+        # posts every 2.4 m, rails between them that sag a little; a whole bay may lean
+        n_bays = max(1, round((s1 - s0) / 2.4))
+        bay = (s1 - s0) / n_bays
+        bay_lean = [rng.uniform(-0.05, 0.05) if rng.random() < wear * 0.5 else 0.0 for _ in range(n_bays)]
+        for k in range(n_bays):
+            for zr in (0.25, 0.72):
+                sag = rng.uniform(0.0, 0.025) * wear
+                for half_ in (0, 1):
+                    ca = a + u * (s0 + k * bay + half_ * bay / 2)
+                    c = ca + u * (bay / 4)
+                    mb.obox((c.x, c.y, G + zr + 0.03 - sag * (0.5 if half_ == 0 else 0.5)), (bay / 2, 0.04, 0.06),
+                            rot, "trim", color=mul(colour, 0.9), tilt=(0.0, (sag if half_ == 0 else -sag) / max(bay, 0.1)))
+        for k in range(1, n_bays):
+            p = a + u * (s0 + k * bay) + nrm * 0.045
+            mb.obox((p.x, p.y, G + 0.5), (0.085, 0.085, 1.0), rot, "trim", color=mul(colour, 0.82))
         s = s0
         while s < s1:
-            if rng.random() > 0.06 + 0.1 * wear:
+            bay_i = min(n_bays - 1, int((s - s0) / bay))
+            r = rng.random()
+            if r < 0.04 + 0.08 * wear:                            # gone: lying in the grass in front
+                if rng.random() < 0.5:
+                    p = a + u * s - nrm * rng.uniform(0.2, 0.7)
+                    mb.obox((p.x, p.y, G + 0.015), (0.075, 0.9, 0.025), rot + rng.uniform(-0.6, 0.6), "trim",
+                            color=mul(grey, 0.85))
+            else:
                 p = a + u * s
                 h = 0.95 + rng.uniform(-0.03, 0.03)
+                if rng.random() < 0.05 * wear:                    # snapped off
+                    h = rng.uniform(0.35, 0.7)
                 lean = rng.uniform(-0.06, 0.06) if rng.random() < wear * 0.3 else 0.0
-                c = jitter_color(rng, colour, 0.08)
+                lean += bay_lean[bay_i]
+                peel = min(1.0, max(0.0, rng.gauss(wear * 0.6, 0.25)))
+                c = jitter_color(rng, tuple(colour[i] * (1 - peel) + grey[i] * peel for i in range(3)), 0.06)
                 picket = MeshBuilder()
+                picket.grime = ground_grime(-0.04, 0.35, 0.42)          # splash-back and moss at the foot
                 picket.box((-0.0375, -0.0125, 0.0), (0.0375, 0.0125, h - 0.06), "trim", color=c, skip="+z-z")
                 tip = [Vector((-0.0375, -0.0125, h - 0.06)), Vector((0.0375, -0.0125, h - 0.06)), Vector((0.0, -0.0125, h))]
                 back = [Vector((v.x, 0.0125, v.z)) for v in tip]
@@ -612,15 +739,27 @@ def tall_fence_run(mb, a, b, rng, height=2.2):
     nrm = Vector((-u.y, u.x, 0))
     rot = math.atan2(u.y, u.x)
     s = 0.0
+    last_missing = False
     while s < length:
         w = min(0.15, length - s)
         p = a + u * (s + w / 2)
         h = height + rng.uniform(-0.04, 0.04)
         lean = rng.uniform(-0.015, 0.015)
+        r = rng.random()
+        if r < 0.012 and not last_missing and 0.3 < s < length - 0.3:    # one board gone (15 cm: no way through)
+            last_missing = True
+            s += 0.15
+            continue
+        last_missing = False
+        if r > 0.985:                                                # broken off at the top
+            h = rng.uniform(1.2, 1.8)
+        tone = (0.8, 0.76, 0.7)
+        if 0.05 < r < 0.08:                                          # a replacement board, not yet greyed
+            tone = (1.05, 0.92, 0.75)
         # no bottom face: it is in the ground. (The edges stay: without them the
         # 6 mm gaps between boards show the sky at a slant.)
         mb.obox((p.x, p.y, G + h / 2), (w - 0.006, 0.022, h), rot, "wood_weathered",
-                color=jitter_color(rng, (0.8, 0.76, 0.7), 0.1), tilt=(lean, 0.0), skip="-z")
+                color=jitter_color(rng, tone, 0.1), tilt=(lean, 0.0), skip="-z")
         s += 0.15
     n = max(1, int(length / 2.4))
     for i in range(n + 1):
@@ -645,6 +784,7 @@ def lot_front(lot) -> str:
 def fences(coll="fences"):
     rng = random.Random(21)
     pk, cl, tall = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    tall.grime = ground_grime(G, 0.55, 0.5)                       # damp and moss along the foot
     for lot in plan.LOTS:
         x0, y0, x1, y1 = lot.rect
         if lot_front(lot) == "s":
@@ -766,22 +906,41 @@ def _hydrant():
 
 
 def _leaf_pile(seed):
+    """Leaves banked where the wind left them: a low, lumpy, ragged mound,
+    damp and dark, with single leaves lying on it and blown out round its edge
+    so it has no clean outline."""
     rng = random.Random(seed)
     mb = MeshBuilder()
-    rings, segs = 4, 12
-    r0 = rng.uniform(0.6, 0.9)
-    hgt = rng.uniform(0.18, 0.3)
+    rings, segs = 6, 16
+    r0 = rng.uniform(0.6, 0.95)
+    hgt = rng.uniform(0.09, 0.15)
+    lobes = [(rng.uniform(0.08, 0.2), rng.randint(2, 5), rng.uniform(0, 6.28)) for _ in range(3)]
     pts = [[None] * segs for _ in range(rings + 1)]
     for i in range(rings + 1):
         t = i / rings
         for j in range(segs):
             a = 2 * math.pi * j / segs
-            rr = r0 * (1 - t ** 1.6) * rng.uniform(0.85, 1.15)
-            pts[i][j] = Vector((math.cos(a) * rr * 1.2, math.sin(a) * rr, hgt * math.sin(t * math.pi / 2)))
+            edge = 1.0 + sum(amp * math.sin(k * a + ph) for amp, k, ph in lobes)
+            rr = r0 * edge * (1 - t ** 1.4)
+            z = hgt * math.sin(t * math.pi / 2) * (1.0 if i in (0, rings) else rng.uniform(0.7, 1.25))
+            pts[i][j] = Vector((math.cos(a) * rr * 1.2, math.sin(a) * rr, z))
     for i in range(rings):
         for j in range(segs):
             k = (j + 1) % segs
-            mb.face([pts[i][j], pts[i][k], pts[i + 1][k], pts[i + 1][j]], "leaves", color=(0.62, 0.52, 0.42))
+            tone = mul((0.46, 0.38, 0.3), rng.uniform(0.8, 1.1))
+            mb.face([pts[i][j], pts[i][k], pts[i + 1][k], pts[i + 1][j]], "leaves", color=tone)
+    tones = [(0.95, 0.8, 0.55), (0.8, 0.62, 0.4), (0.6, 0.48, 0.34), (0.45, 0.38, 0.3)]
+    for _ in range(30):
+        a, t = rng.uniform(0, 6.28), rng.random() ** 0.6 * 1.35
+        x, y = math.cos(a) * r0 * t * 1.2, math.sin(a) * r0 * t
+        z = (hgt * math.cos(min(t, 1.0) * math.pi / 2) if t < 1 else 0.0) + 0.012
+        size = rng.uniform(0.07, 0.13)
+        m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z") @ Matrix.Rotation(rng.uniform(-0.4, 0.4), 4, "X")
+        q = [m @ Vector(v) for v in ((-size / 2, -size * 0.6, 0), (size / 2, -size * 0.6, 0), (size / 2, size * 0.6, 0), (-size / 2, size * 0.6, 0))]
+        cell = rng.randrange(4)
+        cu, cv = (cell % 2) * 0.5, (cell // 2) * 0.5
+        mb.face(q, "leaf_card", uvs=[(cu, cv), (cu + 0.5, cv), (cu + 0.5, cv + 0.5), (cu, cv + 0.5)],
+                color=mul(tones[rng.randrange(4)], rng.uniform(0.55, 0.95)))
     return mb
 
 

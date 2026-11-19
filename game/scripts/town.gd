@@ -49,7 +49,7 @@ const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jers
 ## distance: the shrub_ entry in FADE_PREFIXES never reached them.
 const CHUNKED_FADE := {"grass_": 42.0, "weed_": 42.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
 const CHUNK := 16.0
-const LOW_CHUNK_FADE := 0.7
+const LOW_CHUNK_FADE := 0.6
 
 const SODIUM := Color(1.0, 0.55, 0.20)
 const WINDOW_WARM := Color(1.0, 0.62, 0.34)

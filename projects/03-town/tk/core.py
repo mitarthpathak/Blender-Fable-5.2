@@ -57,7 +57,7 @@ MATS: dict[str, dict] = {
     "bark": dict(set="bark_brown_02", tile=1.2),
     "wood_weathered": dict(set="weathered_planks", tile=1.5),
     "metal_rust": dict(set="rusty_metal_02", tile=1.2),
-    "car_paint": dict(set="rusty_metal_02", diff="carpaint_neutral", tile=1.2),
+    "car_paint": dict(set="rusty_metal_02", diff="carpaint_neutral", tile=2.6),
     "manhole": dict(set="metal_plate", tile=0.8),
     "barrier_concrete": dict(set="dirty_concrete", tile=2.0),
     "tyre": dict(set="rubber_tiles", tile=0.6),

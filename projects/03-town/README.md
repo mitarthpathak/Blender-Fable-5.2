@@ -260,5 +260,30 @@ Things a merge should know:
     satellite dishes on 16 and 13 Ashgrove, window air conditioners at
     16, 18 and 19, and dead plants in pots on three porches.
   About 9,600 more triangles (348,505 in all).
+- **Realism pass**:
+  - cars: the body section is a Catmull-Rom spline through its seven
+    points (19 instead of 7), so panels swell, shoulders round off and the
+    roof has a crown; rubber seals round the side glass; a rounded tyre
+    with tread grooves (26 segments); rust in coherent patches (noise)
+    along the sills and arches; soft dents in the side panels; glass UVs
+    continuous across the panel; the paint texture at a 2.6 m tile;
+  - yards are not flat: `street_kit.lawn_offset` raises and lowers every
+    lot's lawn by up to 7.5 cm (two octaves of noise) on a 0.75 m grid,
+    back to level round the houses, porches, paths, the lot lines and the
+    house file's yard pieces; bare and damp patches in the vertex colour;
+    `settle_on_lawn` lifts the shrubs, grass, trees and yard props onto it;
+  - the open ground of every lot, L1 included: grass tufts, fallen twigs,
+    drifted leaves, stones and molehills (about 1,100); long grass along
+    every lot line and round each house (about 1,200 clumps);
+  - picket fences: posts every 2.4 m, sagging rails, leaning bays, peeled
+    and bare grey pickets, snapped and fallen ones, grime at the foot;
+    board fences: replacement boards, broken tops, the odd board gone (one
+    at a time, so nobody gets through), moss and damp at the foot;
+  - leaf piles: low, lumpy and ragged, with single leaves lying on them
+    and blown round the edge, instead of a smooth dome;
+  - sidewalks: slabs heaved by roots, one edge standing proud, and cracks.
+  About 412,000 triangles. On Low the perf views draw 376k triangles in
+  1,020 draw calls at the front door (was 304k, 874); the long grass is
+  culled at 0.6 of its range there.
 - **`lot_views.py`**: daylight Cycles views of single lots, for before and
   after checks (`blender -b town.blend --python lot_views.py -- --out DIR`).
