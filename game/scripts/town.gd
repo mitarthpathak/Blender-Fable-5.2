@@ -364,11 +364,13 @@ func _setup_town(town: Node3D) -> Dictionary:
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if n.begins_with("decals_") and mi.mesh:
 			# Standing water mirrors the moon straight at a camera looking south; without
-			# screen-space reflections that is a flat white patch. Halve its specular.
+			# screen-space reflections that is a flat white patch. Halve its specular, and
+			# drop the direct-light highlight (it was a white crescent on Mill Road at night).
 			for surface in mi.mesh.get_surface_count():
 				var water := mi.mesh.surface_get_material(surface) as BaseMaterial3D
 				if water and water.resource_name == "puddle":
 					water.metallic_specular = 0.22
+					water.specular_mode = BaseMaterial3D.SPECULAR_DISABLED   # no direct highlight; the sky still reflects
 		if n.begins_with("ground_lawns"):
 			_lawn_material(mi)
 		if _starts(n, TRIMESH_PREFIXES):

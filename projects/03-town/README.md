@@ -301,8 +301,16 @@ house file's shed rather than being cut round it, and every run (and every
 front picket and chain-link run) is clipped round every building footprint,
 porch with its steps and wrap-porch arm (`building_rects()`), keeping 0.3 m.
 
+No tall board fence stands in a front yard (`front_yards()`: from the street
+to 1.5 m behind the house front): the lot-line fences stop there, as they do
+on a real street, except the four perimeter fences that close off the town
+(59 m and longer in `plan.BLOCKERS`). The one between L4's back yard and L6
+used to run along y -40 right to the Mill Road sidewalk, beside L6's
+picket fence.
+
 `build.py` then tests every fence piece against those footprints (0.1 m for
-the fence's own thickness) and every tree trunk, prints `FENCE_HIT` lines and
+the fence's own thickness), every front yard (tall fences) and every tree
+trunk, prints `FENCE_HIT` lines and
 stops the build without saving if there is one. It reports
 `FENCE_CHECK 39 fence pieces, 0 hits`; run against the old hand-placed L4
 runs it reports both of them.

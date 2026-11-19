@@ -860,14 +860,35 @@ def building_rects():
 _FIXED = ("shed_L1",)
 
 
-def _clip_run(a, b, margin=FENCE_CLEAR):
+def front_yards():
+    """The front yard of every kit-house lot (from the street to 1.5 m behind the
+    house front, less 10 cm so the fence returning across to the house stays):
+    no tall board fence stands in one."""
+    out = []
+    for lot in plan.LOTS:
+        h = lot.house
+        if not h:
+            continue
+        x0, y0, x1, y1 = lot.rect
+        hx0, hy0, hx1, hy1 = plan.house_rect(h)
+        front = lot_front(lot)
+        if front == "s":
+            out.append(((x0, y0, x1, hy0 + 1.5 - 0.1), f"front_yard_{lot.key}"))
+        elif front == "n":
+            out.append(((x0, hy1 - 1.5 + 0.1, x1, y1), f"front_yard_{lot.key}"))
+        else:
+            out.append(((hx1 - 1.5 + 0.1, y0, x1, y1), f"front_yard_{lot.key}"))
+    return out
+
+
+def _clip_run(a, b, margin=FENCE_CLEAR, rects=None):
     """An axis-aligned run a-b with every building (plus margin) cut out of it."""
     (ax, ay), (bx, by) = a, b
     horizontal = abs(ay - by) < 1e-6
     c = ay if horizontal else ax
     lo, hi = sorted((ax, bx) if horizontal else (ay, by))
     pieces = [(lo, hi)]
-    for (x0, y0, x1, y1), name in building_rects():
+    for (x0, y0, x1, y1), name in (rects if rects is not None else building_rects()):
         p0, p1, q0, q1 = (x0, x1, y0, y1) if horizontal else (y0, y1, x0, x1)
         if not (q0 - margin < c < q1 + margin):
             continue
@@ -905,7 +926,9 @@ def fence_layout():
         if kind == "fence_tall":
             h = math.radians(heading)
             d = Vector((math.cos(h), math.sin(h))) * length / 2
-            add((round(x - d.x, 3), round(y - d.y, 3)), (round(x + d.x, 3), round(y + d.y, 3)), fixed=True)
+            # the four long ones close off the town ("edge"): never cut for a front yard
+            add((round(x - d.x, 3), round(y - d.y, 3)), (round(x + d.x, 3), round(y + d.y, 3)),
+                fixed="edge" if length >= 55.0 else True)
 
     def by_street(a, b):
         mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
@@ -984,6 +1007,7 @@ def fence_layout():
     for axis in ("x", "y"):
         for cl in clusters[axis]:
             c = coord[axis, cl[0][0]]
+            edge = any(l[3] == "edge" for l in cl)
             spans = sorted((l[1], l[2]) for l in cl)
             merged = [list(spans[0])]
             for s0, s1 in spans[1:]:
@@ -994,8 +1018,9 @@ def fence_layout():
             for s0, s1 in merged:
                 a, b = ((s0, c), (s1, c)) if axis == "x" else ((c, s0), (c, s1))
                 for p0, p1 in _clip_run(a, b):
-                    runs.append((p0, p1))
-                    FENCE_SEGMENTS.append((p0, p1, "tall"))
+                    for q0, q1 in ([(p0, p1)] if edge else _clip_run(p0, p1, margin=0.05, rects=front_yards())):
+                        runs.append((q0, q1))
+                        FENCE_SEGMENTS.append((q0, q1, "edge" if edge else "tall"))
     return runs
 
 
@@ -1013,6 +1038,16 @@ def fence_check(radius_trunk=0.3):
             if min(ax, bx) - t < x1 and max(ax, bx) + t > x0 and min(ay, by) - t < y1 and max(ay, by) + t > y0:
                 print(f"FENCE_HIT {kind} ({ax:.2f}, {ay:.2f})-({bx:.2f}, {by:.2f}) runs through {name}")
                 hits += 1
+        if kind == "tall":
+            horizontal = abs(ay - by) < 1e-6
+            for (x0, y0, x1, y1), name in front_yards():
+                # along the run it must overlap the yard; across it, within 5 cm of it (a lot line counts)
+                p0, p1, q0, q1 = (x0, x1, y0, y1) if horizontal else (y0, y1, x0, x1)
+                lo, hi = (min(ax, bx), max(ax, bx)) if horizontal else (min(ay, by), max(ay, by))
+                c = ay if horizontal else ax
+                if lo < p1 - 0.06 and hi > p0 + 0.06 and q0 - 0.05 <= c <= q1 + 0.05:
+                    print(f"FENCE_HIT tall ({ax:.2f}, {ay:.2f})-({bx:.2f}, {by:.2f}) stands in {name}")
+                    hits += 1
         for o in bpy.data.objects:
             if not (o.name.startswith(("tree_", "edgetree_")) and o.type == "MESH"):
                 continue
