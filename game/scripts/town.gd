@@ -74,7 +74,8 @@ var _flicker_emission := 1.0
 var _noise := FastNoiseLite.new()
 var _time := 0.0
 var _quality := ""
-var _chunks: Array = []          # [MultiMeshInstance3D, fade distance on High]
+var _chunks: Array = []          # [MultiMeshInstance3D, fade distance on High, is grass]
+var _leaves: FallingLeaves       # scripts/falling_leaves.gd
 var _shadow_timer := 0.0
 
 
@@ -94,6 +95,10 @@ func _ready() -> void:
 	var stats := _setup_town(town)
 	_add_view_cameras()
 	_make_halos()
+	_wet_ground(town)
+	_leaves = FallingLeaves.new()
+	_leaves.name = "FallingLeaves"
+	add_child(_leaves)
 	_noise.frequency = 1.0
 	print("town ready: %d collision bodies, %d meshes kept, %d instanced into %d multimeshes (%d of them culled chunks), %d street lights" % [
 		stats["bodies"], stats["meshes"], stats["instanced"], stats["multimeshes"], stats.get("chunks", 0), _street_lights.size()])
@@ -232,7 +237,38 @@ const LOW_SCALE := 0.58
 var fixed_scale := false           # set by --scale=
 
 
+## Late autumn, after rain (docs/ART_BIBLE.md: "wet surfaces"): the roads,
+## patches, sidewalks and concrete are damp. Darker, and smoother, so the
+## street lights and the moon put a sheen on them. Roughness here multiplies
+## each texture's own roughness channel; the third number is the specular.
+## The puddles keep their own settings.
+const WET := {"road": [0.8, 0.62, 0.42], "road_patch": [0.82, 0.66, 0.42], "sidewalk": [0.86, 0.75, 0.42],
+	"concrete": [0.88, 0.8, 0.45]}
+
+
+func _wet_ground(town: Node3D) -> void:
+	var done := {}
+	for mi in town.find_children("*", "MeshInstance3D", true, false):
+		var mesh := (mi as MeshInstance3D).mesh
+		if mesh == null:
+			continue
+		for surface in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(surface) as StandardMaterial3D
+			if mat == null or done.has(mat) or not WET.has(mat.resource_name):
+				continue
+			done[mat] = true
+			var w: Array = WET[mat.resource_name]
+			mat.albedo_color = mat.albedo_color * w[0]
+			mat.albedo_color.a = 1.0
+			mat.roughness = mat.roughness * w[1]
+			# less specular than dry: at full strength the moon turned a whole street
+			# into one cold white sheet; the street lights' pools still show
+			mat.metallic_specular = w[2]
+
+
 func _apply_quality(high: bool) -> void:
+	if _leaves:
+		_leaves.set_quality(high)
 	for lamp in _street_lights:
 		lamp.omni_range = 24.0 if high else 16.0
 	var filter := RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW

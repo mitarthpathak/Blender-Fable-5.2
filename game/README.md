@@ -462,3 +462,16 @@ verge clutter (`CHUNKED_FADE`: grass, weeds, shrubs, leaf piles, drums) is
 split into 16 m chunks, each culled past its distance (42 to 55 m on High,
 0.6 of that on Low). They are culled, not faded: a fading MultiMesh is drawn
 again in the transparent pass, which cost more than the culling saved.
+
+## Wet ground and falling leaves
+
+- `town.gd` `_wet_ground`: the roads, road patches, sidewalks and concrete
+  are damp after rain (the art bible's "wet surfaces"): albedo times about
+  0.8, roughness times 0.62 to 0.8, specular 0.42 to 0.45 (`WET`). At full
+  specular the moon turned the whole of Mill Road into one white sheet;
+  now it lays a wet strip down the middle and the street lights leave dim
+  orange pools.
+- `scripts/falling_leaves.gd`: dry leaves drifting down round the camera
+  (GPU particles, the town's `leaf_sheet` atlas, 150 on High and 70 on Low).
+  No wind, so they fall slowly and flutter and spin rather than blow along.
+  The emitter follows the active camera; a fallen leaf stays where it fell.

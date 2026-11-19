@@ -34,6 +34,7 @@ const VIEWS := {
 	"tree_street": [Vector3(-2.0, 1.6, 15.5), Vector3(-9.0, 4.0, 5.5), 60.0],
 	"tree_base": [Vector3(-7.4, 1.3, 7.2), Vector3(-9.0, 0.4, 5.5), 60.0],
 	"tree_edge": [Vector3(-20.0, 1.7, 14.2), Vector3(-34.0, 6.0, 12.0), 65.0],
+	"leaves_fall": [Vector3(-3.0, 1.6, 12.0), Vector3(-7.0, 2.4, 6.0), 55.0],
 }
 
 
