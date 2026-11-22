@@ -401,6 +401,12 @@ def lot_stories(det: Sectors, dec: Sectors, houses, rng):
     corner_stories(det, dec, rng)
 
 
+def _is_kit(key):
+    """Lot `key` exists and holds a kit house (not the hospital, villa, cottage or shop)."""
+    lot = next((l for l in plan.LOTS if l.key == key), None)
+    return bool(lot and lot.house and lot.house.kind == "kit")
+
+
 def _house_local(key):
     """For lot `key`'s kit house: a function from house-local (x along the
     front, y back from it, world z) to world, and the same as a matrix. Local
@@ -460,107 +466,110 @@ def corner_stories(det: Sectors, dec: Sectors, rng):
     p = W(6.95, -2.3, G + 0.004)
     dec.at(p.x, p.y).card((p.x, p.y, p.z), 0.7, 0.45, rng.uniform(0, 3), "decal_oil", flat=True)                   # the spill
 
-    # L9, 18 Ashgrove: someone kept a garden. A raised bed gone to weed, its
-    # tomato stakes leaning, a watering can, the bird bath's bowl in the grass.
-    h, W, M = _house_local("L9")
-    story = MeshBuilder()
-    bx0, by0, bx1, by1 = 5.3, -7.2, 7.9, -5.9
-    wood = (0.6, 0.55, 0.47)
-    story.box((bx0, by0, G), (bx1, by0 + 0.05, G + 0.28), "wood_weathered", color=wood)
-    story.box((bx0, by1 - 0.05, G), (bx1, by1, G + 0.28), "wood_weathered", color=wood)
-    story.box((bx0, by0, G), (bx0 + 0.05, by1, G + 0.28), "wood_weathered", color=wood)
-    story.box((bx1 - 0.05, by0, G), (bx1, by1, G + 0.28), "wood_weathered", color=wood)
-    story.face([Vector((bx0 + 0.05, by0 + 0.05, G + 0.22)), Vector((bx1 - 0.05, by0 + 0.05, G + 0.22)),
-                Vector((bx1 - 0.05, by1 - 0.05, G + 0.22)), Vector((bx0 + 0.05, by1 - 0.05, G + 0.22))],
-               "lawn_dead", color=(0.42, 0.36, 0.3))
-    tops = []
-    for k in range(5):                                   # stakes, some leaning, one fallen
-        sx = bx0 + 0.35 + k * 0.48
-        sy = (by0 + by1) / 2 + rng.uniform(-0.15, 0.15)
-        if k == 3:
-            story.obox((sx, sy - 0.2, G + 0.24), (0.025, 1.2, 0.025), 0.3, "wood_weathered", color=(0.66, 0.6, 0.5))
-            continue
-        lean = Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.2, 0.2), 1.15))
-        top = Vector((sx, sy, G + 0.2)) + lean
-        story.tube([(sx, sy, G + 0.2), tuple(top)], 0.013, "wood_weathered", segments=4, color=(0.66, 0.6, 0.5))
-        tops.append(top - Vector((0, 0, 0.25)))
-    story.tube(tops, 0.003, "wire", segments=3)          # the twine between them, slack
-    for k in range(6):                                   # dead vines round the stakes
-        t = tops[k % len(tops)]
-        story.tube([(t.x, t.y, G + 0.22), (t.x + rng.uniform(-0.2, 0.2), t.y + rng.uniform(-0.15, 0.15), G + 0.6),
-                    (t.x + rng.uniform(-0.1, 0.1), t.y, t.z)], 0.007, "bark", segments=3, color=(0.5, 0.45, 0.36))
-    can_x, can_y = 4.9, -5.0                             # the watering can, on its side
-    story.cylinder((can_x, can_y, G + 0.13), (0.3, 0.0, 0.0), 0.13, "metal_painted", segments=10, color=(0.36, 0.42, 0.36))
-    story.tube([(can_x + 0.28, can_y, G + 0.12), (can_x + 0.55, can_y - 0.08, G + 0.16)], 0.02, "metal_painted", segments=5,
-               color=(0.36, 0.42, 0.36))
-    story.tube([(can_x + 0.02, can_y, G + 0.24), (can_x + 0.15, can_y, G + 0.3), (can_x + 0.27, can_y, G + 0.24)], 0.012,
-               "metal_painted", segments=4, color=(0.33, 0.38, 0.33))
-    bb_x, bb_y = 1.2, -6.4                               # bird bath: the pedestal up, the bowl knocked off
-    story.cylinder((bb_x, bb_y, G), (0, 0, 0.7), 0.11, "concrete", segments=10, radius_top=0.08, color=(0.62, 0.6, 0.56))
-    story.cylinder((bb_x, bb_y, G), (0, 0, 0.06), 0.2, "concrete", segments=10, color=(0.6, 0.58, 0.54))
-    story.cylinder((bb_x + 0.65, bb_y - 0.2, G + 0.02), (0.03, 0.0, 0.12), 0.32, "concrete", segments=12, radius_top=0.36,
-                   color=(0.6, 0.58, 0.55))
-    c = W(5.0, -6.0)
-    det.at(c.x, c.y).extend(story, M)
+    if _is_kit("L9"):      # the story is about a kit house; the lot holds another building now
+        # L9, 18 Ashgrove: someone kept a garden. A raised bed gone to weed, its
+        # tomato stakes leaning, a watering can, the bird bath's bowl in the grass.
+        h, W, M = _house_local("L9")
+        story = MeshBuilder()
+        bx0, by0, bx1, by1 = 5.3, -7.2, 7.9, -5.9
+        wood = (0.6, 0.55, 0.47)
+        story.box((bx0, by0, G), (bx1, by0 + 0.05, G + 0.28), "wood_weathered", color=wood)
+        story.box((bx0, by1 - 0.05, G), (bx1, by1, G + 0.28), "wood_weathered", color=wood)
+        story.box((bx0, by0, G), (bx0 + 0.05, by1, G + 0.28), "wood_weathered", color=wood)
+        story.box((bx1 - 0.05, by0, G), (bx1, by1, G + 0.28), "wood_weathered", color=wood)
+        story.face([Vector((bx0 + 0.05, by0 + 0.05, G + 0.22)), Vector((bx1 - 0.05, by0 + 0.05, G + 0.22)),
+                    Vector((bx1 - 0.05, by1 - 0.05, G + 0.22)), Vector((bx0 + 0.05, by1 - 0.05, G + 0.22))],
+                   "lawn_dead", color=(0.42, 0.36, 0.3))
+        tops = []
+        for k in range(5):                                   # stakes, some leaning, one fallen
+            sx = bx0 + 0.35 + k * 0.48
+            sy = (by0 + by1) / 2 + rng.uniform(-0.15, 0.15)
+            if k == 3:
+                story.obox((sx, sy - 0.2, G + 0.24), (0.025, 1.2, 0.025), 0.3, "wood_weathered", color=(0.66, 0.6, 0.5))
+                continue
+            lean = Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.2, 0.2), 1.15))
+            top = Vector((sx, sy, G + 0.2)) + lean
+            story.tube([(sx, sy, G + 0.2), tuple(top)], 0.013, "wood_weathered", segments=4, color=(0.66, 0.6, 0.5))
+            tops.append(top - Vector((0, 0, 0.25)))
+        story.tube(tops, 0.003, "wire", segments=3)          # the twine between them, slack
+        for k in range(6):                                   # dead vines round the stakes
+            t = tops[k % len(tops)]
+            story.tube([(t.x, t.y, G + 0.22), (t.x + rng.uniform(-0.2, 0.2), t.y + rng.uniform(-0.15, 0.15), G + 0.6),
+                        (t.x + rng.uniform(-0.1, 0.1), t.y, t.z)], 0.007, "bark", segments=3, color=(0.5, 0.45, 0.36))
+        can_x, can_y = 4.9, -5.0                             # the watering can, on its side
+        story.cylinder((can_x, can_y, G + 0.13), (0.3, 0.0, 0.0), 0.13, "metal_painted", segments=10, color=(0.36, 0.42, 0.36))
+        story.tube([(can_x + 0.28, can_y, G + 0.12), (can_x + 0.55, can_y - 0.08, G + 0.16)], 0.02, "metal_painted", segments=5,
+                   color=(0.36, 0.42, 0.36))
+        story.tube([(can_x + 0.02, can_y, G + 0.24), (can_x + 0.15, can_y, G + 0.3), (can_x + 0.27, can_y, G + 0.24)], 0.012,
+                   "metal_painted", segments=4, color=(0.33, 0.38, 0.33))
+        bb_x, bb_y = 1.2, -6.4                               # bird bath: the pedestal up, the bowl knocked off
+        story.cylinder((bb_x, bb_y, G), (0, 0, 0.7), 0.11, "concrete", segments=10, radius_top=0.08, color=(0.62, 0.6, 0.56))
+        story.cylinder((bb_x, bb_y, G), (0, 0, 0.06), 0.2, "concrete", segments=10, color=(0.6, 0.58, 0.54))
+        story.cylinder((bb_x + 0.65, bb_y - 0.2, G + 0.02), (0.03, 0.0, 0.12), 0.32, "concrete", segments=12, radius_top=0.36,
+                       color=(0.6, 0.58, 0.55))
+        c = W(5.0, -6.0)
+        det.at(c.x, c.y).extend(story, M)
 
-    # L10, 13 Ashgrove: nobody took the papers in. They lie on the steps and
-    # the porch in their bags; round the back, two sheets are still on the line.
-    h, W, M = _house_local("L10")
-    story = MeshBuilder()
-    for k in range(9):                                   # rolled newspapers in faded bags
-        on_porch = k < 4
-        lx = h.door_at + 0.45 + rng.uniform(-0.9, 0.9)
-        ly = rng.uniform(-1.6, -0.5) if on_porch else rng.uniform(-3.8, -2.9)
-        z = -0.02 if on_porch else G
-        a = rng.uniform(0, math.pi)
-        d = Vector((math.cos(a), math.sin(a), 0.0)) * 0.3
-        story.cylinder((lx - d.x / 2, ly - d.y / 2, z + 0.035), tuple(d), 0.035, "bag_plastic", segments=6,
-                       color=jitter_color(rng, (0.75, 0.72, 0.62), 0.15))
-    for lx in (0.6, 6.9):                                # the washing line, two T-posts
-        story.cylinder((lx, 13.2, G), (0, 0, 2.0), 0.03, "metal_rust", segments=6)
-        story.box((lx - 0.03, 12.75, G + 1.96), (lx + 0.03, 13.65, G + 2.02), "metal_rust")
-    for y in (12.85, 13.55):
-        story.tube([(0.6, y, G + 1.98), (3.75, y, G + 1.86), (6.9, y, G + 1.98)], 0.003, "wire", segments=3)
-    for x0, x1, y, hang, col in ((1.2, 2.9, 12.85, 1.15, (0.78, 0.76, 0.7)), (4.0, 5.6, 13.55, 0.95, (0.55, 0.62, 0.66))):
-        # a sheet pegged along the sagging line: 4 x 2 quads, bellied by the wind and hanging lower in the middle
-        cols, rows = 4, 2
-        grid = []
-        for r in range(rows + 1):
-            v = r / rows
-            line = []
-            for c in range(cols + 1):
-                u = c / cols
-                x = x0 + (x1 - x0) * u
-                top = G + 1.98 - 0.12 * (x - 0.6) / 3.15 - 0.04 * math.sin(math.pi * u)
-                line.append(Vector((x, y + 0.12 * v * math.sin(math.pi * u) + 0.03 * math.sin(3.0 * u + y),
-                                    top - hang * v - 0.06 * v * math.sin(math.pi * u))))
-            grid.append(line)
-        for r in range(rows):
-            for c in range(cols):
-                quad = [grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]]
-                story.face(quad, "fabric", color=mul(col, 1.0 - 0.06 * r))
-                story.face(list(reversed(quad)), "fabric", color=mul(col, 0.8))           # the back of the sheet
-    story.obox((2.2, 14.3, G + 0.13), (0.6, 0.42, 0.26), 0.4, "toy_plastic", color=(0.62, 0.6, 0.55), skip="+z",
-               tilt=(1.2, 0.0))                          # the laundry basket, tipped over
-    c = W(3.7, 4.0)
-    det.at(c.x, c.y).extend(story, M)
+    if _is_kit("L10"):      # the story is about a kit house; the lot holds another building now
+        # L10, 13 Ashgrove: nobody took the papers in. They lie on the steps and
+        # the porch in their bags; round the back, two sheets are still on the line.
+        h, W, M = _house_local("L10")
+        story = MeshBuilder()
+        for k in range(9):                                   # rolled newspapers in faded bags
+            on_porch = k < 4
+            lx = h.door_at + 0.45 + rng.uniform(-0.9, 0.9)
+            ly = rng.uniform(-1.6, -0.5) if on_porch else rng.uniform(-3.8, -2.9)
+            z = -0.02 if on_porch else G
+            a = rng.uniform(0, math.pi)
+            d = Vector((math.cos(a), math.sin(a), 0.0)) * 0.3
+            story.cylinder((lx - d.x / 2, ly - d.y / 2, z + 0.035), tuple(d), 0.035, "bag_plastic", segments=6,
+                           color=jitter_color(rng, (0.75, 0.72, 0.62), 0.15))
+        for lx in (0.6, 6.9):                                # the washing line, two T-posts
+            story.cylinder((lx, 13.2, G), (0, 0, 2.0), 0.03, "metal_rust", segments=6)
+            story.box((lx - 0.03, 12.75, G + 1.96), (lx + 0.03, 13.65, G + 2.02), "metal_rust")
+        for y in (12.85, 13.55):
+            story.tube([(0.6, y, G + 1.98), (3.75, y, G + 1.86), (6.9, y, G + 1.98)], 0.003, "wire", segments=3)
+        for x0, x1, y, hang, col in ((1.2, 2.9, 12.85, 1.15, (0.78, 0.76, 0.7)), (4.0, 5.6, 13.55, 0.95, (0.55, 0.62, 0.66))):
+            # a sheet pegged along the sagging line: 4 x 2 quads, bellied by the wind and hanging lower in the middle
+            cols, rows = 4, 2
+            grid = []
+            for r in range(rows + 1):
+                v = r / rows
+                line = []
+                for c in range(cols + 1):
+                    u = c / cols
+                    x = x0 + (x1 - x0) * u
+                    top = G + 1.98 - 0.12 * (x - 0.6) / 3.15 - 0.04 * math.sin(math.pi * u)
+                    line.append(Vector((x, y + 0.12 * v * math.sin(math.pi * u) + 0.03 * math.sin(3.0 * u + y),
+                                        top - hang * v - 0.06 * v * math.sin(math.pi * u))))
+                grid.append(line)
+            for r in range(rows):
+                for c in range(cols):
+                    quad = [grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]]
+                    story.face(quad, "fabric", color=mul(col, 1.0 - 0.06 * r))
+                    story.face(list(reversed(quad)), "fabric", color=mul(col, 0.8))           # the back of the sheet
+        story.obox((2.2, 14.3, G + 0.13), (0.6, 0.42, 0.26), 0.4, "toy_plastic", color=(0.62, 0.6, 0.55), skip="+z",
+                   tilt=(1.2, 0.0))                          # the laundry basket, tipped over
+        c = W(3.7, 4.0)
+        det.at(c.x, c.y).extend(story, M)
 
-    # L11, 19 Ashgrove: cleared out in a hurry. The upstairs window was broken
-    # from outside (the brick is on the porch, in the glass); an armchair and a
-    # rolled rug were dumped in the side yard for a pickup that never came.
-    h, W, M = _house_local("L11")
-    story = MeshBuilder()
-    win_x = h.windows_ff[0][0] + h.windows_ff[0][1] / 2
-    story.obox((win_x + 0.3, -1.3, -0.02 + 0.035), (0.2, 0.09, 0.065), 0.7, "brick", color=(0.55, 0.32, 0.25))
-    _armchair(ac := MeshBuilder(), (0.36, 0.4, 0.3))
-    # in the side yard in front of the fence that returns to the house 1.5 m behind its front (they
-    # stood on that fence line before), where the street can see them
-    story.extend(ac, Matrix.Translation((h.width + 1.0, 0.45, G)) @ Matrix.Rotation(2.2, 4, "Z") @ Matrix.Rotation(0.08, 4, "X"))
-    story.cylinder((h.width + 1.7, -2.1, G + 0.17), (0.1, 1.75, 0.0), 0.17, "fabric", segments=10, color=(0.42, 0.22, 0.18))
-    c = W(h.width + 1.0, 2.0)
-    det.at(c.x, c.y).extend(story, M)
-    p = W(win_x + 0.1, -1.1, -0.02 + 0.006)
-    dec.at(p.x, p.y).card((p.x, p.y, p.z), 1.1, 0.8, rng.uniform(0, 3), "decal_shards", flat=True)
+    if _is_kit("L11"):      # the story is about a kit house; the lot holds another building now
+        # L11, 19 Ashgrove: cleared out in a hurry. The upstairs window was broken
+        # from outside (the brick is on the porch, in the glass); an armchair and a
+        # rolled rug were dumped in the side yard for a pickup that never came.
+        h, W, M = _house_local("L11")
+        story = MeshBuilder()
+        win_x = h.windows_ff[0][0] + h.windows_ff[0][1] / 2
+        story.obox((win_x + 0.3, -1.3, -0.02 + 0.035), (0.2, 0.09, 0.065), 0.7, "brick", color=(0.55, 0.32, 0.25))
+        _armchair(ac := MeshBuilder(), (0.36, 0.4, 0.3))
+        # in the side yard in front of the fence that returns to the house 1.5 m behind its front (they
+        # stood on that fence line before), where the street can see them
+        story.extend(ac, Matrix.Translation((h.width + 1.0, 0.45, G)) @ Matrix.Rotation(2.2, 4, "Z") @ Matrix.Rotation(0.08, 4, "X"))
+        story.cylinder((h.width + 1.7, -2.1, G + 0.17), (0.1, 1.75, 0.0), 0.17, "fabric", segments=10, color=(0.42, 0.22, 0.18))
+        c = W(h.width + 1.0, 2.0)
+        det.at(c.x, c.y).extend(story, M)
+        p = W(win_x + 0.1, -1.1, -0.02 + 0.006)
+        dec.at(p.x, p.y).card((p.x, p.y, p.z), 1.1, 0.8, rng.uniform(0, 3), "decal_shards", flat=True)
 
 
 # --- layered leaf litter -------------------------------------------------------------------
@@ -987,7 +996,7 @@ HOUSE_EXTRAS = {
 def house_extras(med: Sectors, houses, rng):
     from .house_kit import EAVE, FF_SILL, GF_SILL
     for key, extras in HOUSE_EXTRAS.items():
-        if key not in houses:
+        if key not in houses or not _is_kit(key):        # aerials and dishes sit on kit roofs and walls
             continue
         obj, hm, ramps, steps = houses[key]
         h = next(l for l in plan.LOTS if l.key == key).house

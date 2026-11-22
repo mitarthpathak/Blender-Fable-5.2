@@ -122,6 +122,14 @@ class KitHouse:
     rooms: tuple[tuple[str, str], ...] = ()
     chimney: float = -1.0         # position along the ridge, 0..1; below 0 for none
     screen_door: bool = True
+    # What builds it: "kit" (house_kit.build_house) or one of the buildings
+    # with a builder of their own (house_kit.BUILDERS: hospital, villa,
+    # cottage, shop). Those use only the footprint fields above.
+    kind: str = "kit"
+    # Non-kit buildings: what stands in front of the walls at ground level
+    # (steps, ramps, a canopy's posts), local x0, y0, x1, y1 with y < 0 in
+    # front. Fences keep clear of it as of a kit house's porch.
+    apron: tuple[float, float, float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -165,19 +173,16 @@ LOTS = (
                  windows_ff=((1.0, 1.0), (4.1, 1.0), (7.0, 1.0)), lit="ff2", chimney=0.18,
                  rooms=(("ff2", "bedroom"), ("gf1", "living"))),
         lawn="overgrown", fence="picket", gate_at=19.4),
-    Lot("L4", "15 Ashgrove Street", (-20.0, -40.0, -1.6, -19.7),
-        "Corner house, hip roof. Closed up, a window broken; yet one lamp burns upstairs.",
-        KitHouse(8.4, 7.6, "n", (-6.4, -27.0), "hip", "wrap", "putty",
-                 wear=0.7, door_at=3.6, windows_gf=((1.0, 1.2), (6.2, 1.2)),
-                 windows_ff=((1.1, 1.0), (6.3, 1.0)), boarded=("gf1",), broken=("ff0",), chimney=0.5,
-                 rooms=(("ff1", "bedroom"),)),
+    Lot("L4", "15 Ashgrove Street", (-15.5, -40.0, -1.6, -19.7),
+        "A one-storey cottage on the corner of Mill Road. Closed up, a window broken; yet one lamp burns.",
+        KitHouse(7.0, 6.6, "n", (-5.2, -25.0), "gable_front", "entry", "putty",
+                 wear=0.7, door_at=2.9, storeys=1, kind="cottage", apron=(1.9, -1.8, 4.8, 0.0)),
         lawn="overgrown", fence="none"),
-    Lot("L5", "17 Ashgrove Street", (8.6, -40.0, 27.0, -19.7),
-        "Corner house, front gable, a faded sale sign. Empty.",
-        KitHouse(7.4, 9.4, "n", (20.4, -26.2), "gable_front", "full", "mustard",
-                 trim="trim_grey", wear=0.6, door_at=4.8, windows_gf=((1.0, 1.0), (2.6, 1.0)),
-                 windows_ff=((1.4, 1.0), (4.8, 1.0)), boarded=("ff0",), chimney=-1.0),
-        lawn="dead", fence="chainlink", gate_at=15.1),
+    Lot("L5", "17 Ashgrove Street", (8.6, -40.0, 38.5, -19.7),
+        "Halden Ridge Community Hospital, closed: two storeys of brick and ribbon windows, the emergency bay at the east end.",
+        KitHouse(22.0, 13.0, "n", (33.0, -23.5), "flat", "entry", "putty", trim="trim_grey",
+                 wear=0.75, door_at=9.5, kind="hospital", apron=(0.0, -3.6, 22.0, 0.0)),
+        lawn="dead", fence="none"),
     Lot("L6", "3 Mill Road", (-20.0, -58.0, -1.6, -40.0),
         "Faces Mill Road. Oxblood paint, side-gable roof, boarded throughout.",
         KitHouse(8.8, 7.6, "e", (-6.2, -53.4), "gable_side", "entry", "oxblood",
@@ -197,23 +202,15 @@ LOTS = (
                  windows_ff=((1.0, 1.0), (4.2, 1.2)), boarded=("gf0", "gf1", "ff0", "ff1"), chimney=0.7),
         lawn="dead", fence="picket", gate_at=-27.7),
     Lot("L9", "18 Ashgrove Street", (28.0, -8.6, 38.5, 18.0),
-        "The last house on the east end, past the fallen tree. Faded blue, curtains still up.",
-        KitHouse(8.0, 8.0, "s", (29.2, 0.4), "gable_side", "full", "dusty_blue",
-                 trim="trim_grey", wear=0.55, door_at=3.3, windows_gf=((1.0, 1.3), (5.4, 1.3)),
-                 windows_ff=((1.0, 1.0), (3.5, 1.0), (6.0, 1.0)), broken=("ff2",), chimney=0.2),
-        lawn="overgrown", fence="picket", gate_at=33.1),
-    Lot("L10", "13 Ashgrove Street", (-30.5, -40.0, -20.0, -19.7),
-        "A small sage house on the south-west corner, closed up.",
-        KitHouse(7.6, 8.0, "n", (-21.8, -24.4), "gable_side", "entry", "sage",
-                 wear=0.7, door_at=3.2, windows_gf=((1.0, 1.2), (5.4, 1.2)),
-                 windows_ff=((1.0, 1.0), (5.6, 1.0)), boarded=("gf0",), chimney=0.8),
-        lawn="overgrown", fence="picket", gate_at=-25.6),
-    Lot("L11", "19 Ashgrove Street", (27.0, -40.0, 38.5, -19.7),
-        "Oxblood, front gable, on the south-east corner. One window broken.",
-        KitHouse(7.8, 8.6, "n", (37.0, -24.0), "gable_front", "full", "oxblood",
-                 wear=0.65, door_at=4.6, windows_gf=((1.0, 1.0), (2.6, 1.0)),
-                 windows_ff=((1.4, 1.0), (4.9, 1.0)), boarded=("gf1",), broken=("ff0",), chimney=-1.0),
-        lawn="dead", fence="none"),
+        "Ridge Stationery & Books, past the fallen tree: the shop below, a flat above, the awning torn.",
+        KitHouse(8.4, 10.0, "s", (29.0, 0.4), "gable_front", "entry", "dusty_blue", trim="trim_grey",
+                 wear=0.6, door_at=3.7, kind="shop", apron=(0.0, -2.2, 8.4, 0.0)),
+        lawn="overgrown", fence="picket", gate_at=33.2),
+    Lot("L10", "13 Ashgrove Street", (-30.5, -40.0, -15.5, -19.7),
+        "The villa on the south-west corner: hip roof, a portico with a balcony, shutters hanging off. Closed up.",
+        KitHouse(12.4, 11.0, "n", (-17.0, -23.2), "hip", "entry", "sage",
+                 wear=0.5, door_at=5.7, chimney=0.3, kind="villa", apron=(3.0, -2.8, 9.4, 0.0)),
+        lawn="overgrown", fence="picket", gate_at=-23.2),
 )
 
 HOUSES = tuple(lot for lot in LOTS if lot.house)

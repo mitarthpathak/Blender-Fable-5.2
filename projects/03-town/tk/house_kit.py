@@ -12,7 +12,9 @@ material, and stores the kit pieces themselves in a hidden "kit" collection.
 
 from __future__ import annotations
 
+import importlib
 import math
+import os
 import random
 
 from mathutils import Matrix, Vector
@@ -618,12 +620,51 @@ def build_house(lot, rng: random.Random):
     return mb, m, ramps, lit_points, steps
 
 
+# Buildings with a builder of their own (plan.KitHouse.kind): module in tk/ and
+# function. Each takes (lot, rng) and returns what build_house returns.
+BUILDERS = {
+    "hospital": ("hospital", "build_hospital"),
+    "villa": ("villa", "build_villa"),
+    "cottage": ("villa", "build_cottage"),
+    "shop": ("shop", "build_shop"),
+}
+
+
+def _stand_in(lot, rng):
+    """A plain block on the footprint, for building the town before a builder
+    exists (TOWN_STAND_INS=1). Never shipped: without the variable a missing
+    builder is an error."""
+    h = lot.house
+    top = 3.0 if h.storeys == 1 else 6.4
+    mb = MeshBuilder()
+    mb.box((0.0, 0.0, GROUND), (h.width, h.depth, top), "concrete", color=(0.6, 0.6, 0.6))
+    (ox, oy), (ax, ay), (bx, by) = plan.house_frame(h)
+    m = Matrix(((ax, bx, 0, ox), (ay, by, 0, oy), (0, 0, 1, 0), (0, 0, 0, 1)))
+    y0 = h.apron[1] if h.apron else -1.0
+    return mb, m, [], [], (h.door_at, h.door_at + DOOR_W, y0)
+
+
+def builder(kind: str):
+    """The function that builds a plan.KitHouse of this kind."""
+    if kind == "kit":
+        return build_house
+    module, name = BUILDERS[kind]
+    try:
+        return getattr(importlib.import_module(f".{module}", __package__), name)
+    except (ModuleNotFoundError, AttributeError):
+        if os.environ.get("TOWN_STAND_INS") == "1":
+            print(f"STAND_IN {kind}: no tk/{module}.py {name}() yet, a plain block instead")
+            return _stand_in
+        raise
+
+
 def kit_houses(coll="houses"):
-    """Build every kit house in plan.HOUSES. Returns {lot key: (object, matrix, ramps, steps)}."""
+    """Build every house in plan.HOUSES (kit houses and the buildings with their own
+    builder). Returns {lot key: (object, matrix, ramps, steps)}."""
     out = {}
     for i, lot in enumerate(plan.HOUSES):
         rng = random.Random(100 + i)
-        mb, m, ramps, lit_points, steps = build_house(lot, rng)
+        mb, m, ramps, lit_points, steps = builder(lot.house.kind)(lot, rng)
         world = MeshBuilder()
         world.extend(mb, m)
         obj = world.build(f"house_{lot.key}", coll)

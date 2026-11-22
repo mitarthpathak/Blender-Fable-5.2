@@ -920,6 +920,9 @@ def building_rects():
         if not h:
             continue
         out.append((plan.house_rect(h), f"house_{lot.key}"))
+        if h.apron:                       # a building with its own builder: its steps, ramp, canopy posts
+            out.append((_rect_of(h, *h.apron), f"porch_{lot.key}"))
+            continue
         if h.porch == "entry":
             x0, x1, depth = h.door_at - 0.9, h.door_at + DOOR_W + 0.9, 1.7
         else:
