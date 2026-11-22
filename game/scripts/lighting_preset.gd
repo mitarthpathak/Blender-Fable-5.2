@@ -90,6 +90,10 @@ extends Resource
 ## Low quality has no volumetric fog, so nothing glows round a lamp. The town
 ## draws a soft halo round each street light instead; this is its strength.
 @export_range(0.0, 2.0, 0.01) var outdoor_street_halo_low := 0.55
+## High's global illumination (SDFGI) outdoors. At night it carries the
+## sodium street lights' bounce up every wall in sight and turns the whole
+## street orange; lower keeps the moon's cold light on what the lamps miss.
+@export_range(0.0, 4.0, 0.01) var outdoor_sdfgi_energy := 1.0
 
 @export_group("Sky (town world only)")
 ## Outdoors the sky is scripts/sky.gdshader in every look, fog included:

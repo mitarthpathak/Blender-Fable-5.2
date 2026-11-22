@@ -70,6 +70,7 @@ var _sky: Sky
 var _town_sky: Sky
 var _town_sky_material: ShaderMaterial
 var _sky_time := 0.0
+var _no_save := false             # self-tests: leave the settings file alone
 var _toast: Label
 var _toast_time := 0.0
 var _panel: PanelContainer
@@ -123,6 +124,11 @@ func _ready() -> void:
 ## `-- --look-selftest`: fade through all eight looks, run the clock, toggle the
 ## free camera and the menu. Prints TEST lines and quits; needs no rendering.
 func _look_selftest() -> void:
+	# A test must not change the player's settings (the clock below would save
+	# itself as running), and a clock left running in them must not move the
+	# looks under the test.
+	_no_save = true
+	set_frozen(true, false)
 	var ok := true
 	for tid in TIME_IDS:
 		for w in WEATHERS:
@@ -461,7 +467,7 @@ func _push(p: LightingPreset, key_basis: Basis) -> void:
 	env.glow_bloom = p.glow_bloom
 	env.adjustment_saturation = p.saturation
 	env.adjustment_contrast = p.contrast
-	env.sdfgi_energy = p.sdfgi_energy
+	env.sdfgi_energy = p.outdoor_sdfgi_energy if outdoor else p.sdfgi_energy
 	env.sdfgi_read_sky_light = p.sdfgi_read_sky_light and not outdoor
 
 	# The key light is the sun by day and the moon at night: always dynamic.
@@ -634,6 +640,8 @@ func _load_settings() -> void:
 
 ## Load what is there first, so the [graphics] section main.gd writes is kept.
 func _save_settings() -> void:
+	if _no_save:
+		return
 	var config := ConfigFile.new()
 	config.load(BuildFlavor.settings_file())
 	config.set_value(SECTION, "time", snappedf(time_hours, 0.01))
