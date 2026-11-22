@@ -266,7 +266,7 @@ SERVICE_DROPS = (
     ("P7", -6.2, -50.2, 5.2),      # 3 Mill Road
     ("P7", 16.4, -52.4, 3.3),      # Ridge Gas & Grocery
     ("P1", -25.7, -0.8, 5.2),      # 10 Ashgrove
-    ("P4", 33.2, 0.4, 5.2),        # 18 Ashgrove
+    ("P4", 32.03, 0.32, 5.70),     # 18 Ashgrove: the shop's weatherhead
 )
 
 LAMP_HEIGHT = 6.40 - 0.45      # lamp height above the sidewalk, as on the house pole
