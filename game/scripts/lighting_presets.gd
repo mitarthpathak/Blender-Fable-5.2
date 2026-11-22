@@ -467,7 +467,7 @@ func _push(p: LightingPreset, key_basis: Basis) -> void:
 	env.glow_bloom = p.glow_bloom
 	env.adjustment_saturation = p.saturation
 	env.adjustment_contrast = p.contrast
-	env.sdfgi_energy = p.outdoor_sdfgi_energy if outdoor else p.sdfgi_energy
+	env.sdfgi_energy = p.sdfgi_energy
 	env.sdfgi_read_sky_light = p.sdfgi_read_sky_light and not outdoor
 
 	# The key light is the sun by day and the moon at night: always dynamic.
