@@ -48,17 +48,20 @@ the front door opens, lit by the streetlight on pole P5.
 | L1 | 14 Ashgrove Street | **The player's house.** The only building with an inside. Picket fence, path to the porch, mailbox, two trash cans at the curb. |
 | L2 | 12 Ashgrove Street | Abandoned since the mill closed. Front-gable, faded blue. Ground floor boarded, one upstairs window smashed. Dead lawn. |
 | L3 | 16 Ashgrove Street | Side-gable with a full-width porch, sage green. **One upstairs window glows dimly** behind a blind. |
-| L4 | 15 Ashgrove Street | Corner house on the south side, hip roof, wrap-around porch, putty grey. Closed up. |
-| L5 | 17 Ashgrove Street | Corner house, front gable, faded mustard, chain-link fence and a sale sign. Empty. An abandoned sedan with flat tyres sits at the curb in front. |
+| L4 | 15 Ashgrove Street | A one-storey cottage on the corner of Mill Road, putty, a hooded stoop. Closed up, one window broken, yet a lamp burns in the front room (`tk/villa.py`, `build_cottage`). |
+| L5 | 17 Ashgrove Street | **Halden Ridge Community Hospital**, closed: two storeys of buff brick and ribbon windows, chained glass doors under a canopy, the emergency bay with its red EMERGENCY panel at the east end. One ward lamp still burns upstairs (`tk/hospital.py`). It takes the old L5 and L11 together. An abandoned sedan with flat tyres sits at the curb in front. |
 | L6 | 3 Mill Road | Faces Mill Road. Oxblood paint, side-gable, boarded throughout. |
 | L7 | 4 Mill Road | Vacant lot behind chain-link: a dead station wagon on blocks, weeds, leaves, a bare tree. Its south half is the closed **Ridge Gas & Grocery**. |
 | L8 | 10 Ashgrove Street | West end, north side. Narrow front-gable house, putty, every window boarded. |
-| L9 | 18 Ashgrove Street | East end, north side, past the fallen tree. Side-gable, faded blue, one window broken. |
-| L10 | 13 Ashgrove Street | West end, south side. Small side-gable house, sage, closed up. |
-| L11 | 19 Ashgrove Street | East end, south side. Front gable, oxblood, one window boarded and one broken. |
+| L9 | 18 Ashgrove Street | East end, north side, past the fallen tree. **Ridge Stationery & Books**: a false-fronted shop with a torn striped awning, books dim in the windows, a flat above with a stair at the back (`tk/shop.py`). |
+| L10 | 13 Ashgrove Street | West end, south side. **The villa**: hip roof with a bracketed cornice, a portico of four columns carrying a balcony, a bay window, shutters hanging off. Closed up (`tk/villa.py`, `build_villa`). |
 
-L8 to L11 fill the four corners at the ends of Ashgrove, inside the edge
-fences, which were bare verge until the town was finished.
+L8 to L10 and the hospital's east end fill the four corners at the ends of
+Ashgrove, inside the edge fences, which were bare verge until the town was
+finished. The hospital, the villa, the cottage and the shop have builders of
+their own (`plan.KitHouse.kind`, `house_kit.BUILDERS`); the other houses come
+from the kit. Each new builder has a preview in `projects/03-town/previews/`
+that renders it alone.
 
 Only the player's house opens. Every other house has a walkable porch, a
 locked front door (and a screen door), sash windows with casings, gutters and
@@ -145,9 +148,6 @@ roof rack on the wagon and a ticket and tow notice on the sedan.
 | 3 Mill Road | An empty dog house, a chain, a bowl, and a BEWARE OF DOG sign on the fence. |
 | 4 Mill Road | The vacant lot: a station wagon on blocks, tyres, pallets, a mattress. |
 | 10 Ashgrove | The boarding-up was never finished: spare plywood leaning on the front wall, a sawhorse still out, a ladder in the grass, a paint can on its side. |
-| 18 Ashgrove | Someone kept a garden: a raised bed gone to weed, its tomato stakes leaning, a watering can, the bird bath's bowl knocked off into the grass. |
-| 13 Ashgrove | Nobody took the papers in: they lie on the steps and the porch in their bags. Round the back two sheets are still on the line. |
-| 19 Ashgrove | Cleared out in a hurry: the upstairs window was broken from outside (the brick is on the porch, in the glass); an armchair and a rolled rug wait in the side yard for a pickup that never came. |
 
 ## Where the player walks
 

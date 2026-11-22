@@ -163,7 +163,11 @@ def _clear(x, y, blocked):
 
 
 def _porch_box(h):
-    """The porch, its steps and the path, in house-local coordinates (x0, y0, x1, y1)."""
+    """The porch, its steps and the path, in house-local coordinates (x0, y0, x1, y1).
+    For a building with its own builder, its apron (paving, steps, ramp, canopy posts)."""
+    if h.apron:
+        ax0, ay0, ax1, _ = h.apron
+        return (ax0 - 0.2, ay0 - 0.2, ax1 + 0.2, 0.0)
     if h.porch == "entry":
         return (h.door_at - 1.1, -2.9, h.door_at + 0.9 + 1.1, 0.0)
     return (-0.4, -3.2, h.width + 0.4, 0.0)

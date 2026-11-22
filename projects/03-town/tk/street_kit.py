@@ -171,8 +171,12 @@ def _zones():
             house = rect(-0.3, -0.3, h.width + 0.3, h.depth + 0.3)
             _HOUSES.append(house)
             _FLAT.append(house)
-            _FLAT.append(rect(h.door_at - 1.1, -3.3, h.door_at + 2.0, 0.0) if h.porch == "entry"
-                         else rect(-0.4, -3.5, h.width + 0.4, 0.0))
+            if h.apron:                     # a building with its own builder: flat under its apron
+                ax0, ay0, ax1, _ = h.apron
+                _FLAT.append(rect(ax0 - 0.4, ay0 - 0.5, ax1 + 0.4, 0.0))
+            else:
+                _FLAT.append(rect(h.door_at - 1.1, -3.3, h.door_at + 2.0, 0.0) if h.porch == "entry"
+                             else rect(-0.4, -3.5, h.width + 0.4, 0.0))
             if h.porch == "wrap":
                 _FLAT.append(rect(-0.4, 0.0, h.width + 0.4, h.depth * 0.6))
             door = rect(h.door_at + 0.45, -3.0, h.door_at + 0.45, -3.0)

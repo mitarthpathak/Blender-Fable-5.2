@@ -299,9 +299,11 @@ BLOCKERS = (
 # Bare trees: x, y, height, seed.
 TREES = (
     (-9.0, -5.5, 9.0, 1), (9.5, -5.0, 8.0, 2), (23.0, -4.2, 10.0, 3), (-18.5, 12.0, 11.0, 4),
-    (-11.0, -23.0, 9.5, 5), (24.0, -23.5, 8.5, 6), (-16.0, -47.0, 10.0, 7), (20.5, -44.0, 9.0, 8),
+    (-11.0, -23.0, 9.5, 5), (-13.8, -36.0, 8.5, 6), (-16.0, -47.0, 10.0, 7), (20.5, -44.0, 9.0, 8),
+    # tree_5 moved behind the cottage and tree_13 to the hospital's back corner: they stood
+    # where the hospital's canopy and its back wall are now
     (25.2, -45.4, 7.5, 9), (3.2, 14.2, 9.5, 10),     # tree_9: L1 back yard, clear of the back steps and cans
-    (-25.0, 12.5, 10.0, 11), (34.5, 12.0, 9.0, 12), (-27.5, -35.5, 9.5, 13), (31.0, -36.0, 8.5, 14),
+    (-25.0, 12.5, 10.0, 11), (34.5, 12.0, 9.0, 12), (-27.5, -35.5, 9.5, 13), (36.6, -37.8, 8.5, 14),
 )
 
 # (north side posts at y -8.78: at -8.55 the box reached through the picket fence at -8.35)
