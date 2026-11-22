@@ -2,20 +2,21 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b06r1u3uldimw"
-path="res://.godot/imported/town_lot_l11_back.png-7eb035d859037a1feee6f09a5bbc84b1.ctex"
+uid="uid://bwwkbk026mys0"
+path.s3tc="res://.godot/imported/moss.png-a9f3122c162e9e0302c9caa3fa953a7d.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
-source_file="res://screenshots/town_lot_l11_back.png"
-dest_files=["res://.godot/imported/town_lot_l11_back.png-7eb035d859037a1feee6f09a5bbc84b1.ctex"]
+source_file="res://assets/town/textures/moss.png"
+dest_files=["res://.godot/imported/moss.png-a9f3122c162e9e0302c9caa3fa953a7d.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
