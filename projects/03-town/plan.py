@@ -261,8 +261,8 @@ SERVICE_DROPS = (
     ("P2", 0.2, -0.3, 5.4),
     ("P1", -15.0, -0.6, 5.2),
     ("P3", 16.0, 0.2, 5.2),
-    ("P5", -7.0, -27.0, 5.2),      # 15 Ashgrove
-    ("P5", 13.4, -26.2, 5.2),      # 17 Ashgrove, across Mill Road
+    ("P5", -5.13, -28.3, 3.8),     # 15 Ashgrove: the cottage's mast through its east eave
+    # (17 Ashgrove, the hospital, is fed underground)
     ("P7", -6.2, -50.2, 5.2),      # 3 Mill Road
     ("P7", 16.4, -52.4, 3.3),      # Ridge Gas & Grocery
     ("P1", -25.7, -0.8, 5.2),      # 10 Ashgrove
