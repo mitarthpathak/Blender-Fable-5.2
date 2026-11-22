@@ -76,6 +76,7 @@ var _time := 0.0
 var _quality := ""
 var _chunks: Array = []          # [MultiMeshInstance3D, fade distance on High, is grass]
 var _leaves: FallingLeaves       # scripts/falling_leaves.gd
+var _life: TownLife              # scripts/town_life.gd: moths at the lamps, crows by day
 var _shadow_timer := 0.0
 
 
@@ -99,6 +100,10 @@ func _ready() -> void:
 	_leaves = FallingLeaves.new()
 	_leaves.name = "FallingLeaves"
 	add_child(_leaves)
+	_life = TownLife.new()
+	_life.name = "TownLife"
+	add_child(_life)
+	_life.setup(_street_lights)
 	_noise.frequency = 1.0
 	print("town ready: %d collision bodies, %d meshes kept, %d instanced into %d multimeshes (%d of them culled chunks), %d street lights" % [
 		stats["bodies"], stats["meshes"], stats["instanced"], stats["multimeshes"], stats.get("chunks", 0), _street_lights.size()])
@@ -149,7 +154,10 @@ func _setup_lights(town: Node) -> void:
 			# have to hold their pools against the moon, so they are stronger.
 			lamp.light_color = SODIUM
 			lamp.light_energy = 9.0
-			lamp.omni_range = 24.0
+			# 16 m on High and Low alike: at 24 m (High used to) each lamp lit the
+			# whole of every facade near it and the night street went orange;
+			# at 16 m they make pools and the moon keeps the rest cold.
+			lamp.omni_range = 16.0
 			lamp.omni_attenuation = 1.1
 			lamp.light_volumetric_fog_energy = 3.0
 			lamp.shadow_enabled = true
@@ -221,12 +229,18 @@ func _process(delta: float) -> void:
 			_update_shadows(main)
 			_update_mill(main)
 		_update_halos()
+	if _life:
+		var daylight := 0.0
+		var presets := main.get_node_or_null("LightingPresets") if main else null
+		if presets:
+			daylight = (presets as LightingPresets).preset().sky_sun_disc
+		_life.update(delta, daylight)
 
 
 ## Low is aimed at Intel UHD 620 class graphics, where the street costs per
 ## pixel, not per triangle (an empty scene runs at about 70 FPS there, the
 ## house alone at 23 from its own front door). So in the town, Low also:
-## - gives the street lights a shorter reach and no shadows (the moon keeps its shadow),
+## - gives the street lights no shadows (the moon keeps its shadow),
 ## - uses the cheapest soft-shadow filter,
 ## - renders at LOW_SCALE instead of main.gd's 0.77.
 ## The scale is set once per quality change. Changing it every few frames
@@ -269,8 +283,6 @@ func _wet_ground(town: Node3D) -> void:
 func _apply_quality(high: bool) -> void:
 	if _leaves:
 		_leaves.set_quality(high)
-	for lamp in _street_lights:
-		lamp.omni_range = 24.0 if high else 16.0
 	var filter := RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW
 	RenderingServer.directional_soft_shadow_filter_set_quality(filter)
 	RenderingServer.positional_soft_shadow_filter_set_quality(filter)
