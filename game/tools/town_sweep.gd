@@ -12,10 +12,13 @@ extends SceneTree
 ## and a SWEEP summary. Positions are Godot x and z (plan y = -z).
 
 ## Kit house footprints and the player's house, plan x0, y0, x1, y1 (projects/03-town/plan.py).
+## (Inside one the player falls: the walls are a shell with no floor, and the
+## player cannot get in.) L4 is the cottage, L5 the hospital, L9 the shop and
+## L10 the villa.
 const HOUSES := [
-	[-0.6, -0.6, 7.9, 8.6], [-16.9, -0.9, -8.7, 8.7], [14.7, -0.1, 24.5, 8.3], [-15.1, -34.9, -6.1, -26.7],
-	[12.7, -35.9, 20.7, -25.9], [-14.1, -53.7, -5.9, -44.3], [-29.5, -1.1, -21.9, 7.9], [28.9, 0.1, 37.5, 8.7],
-	[-29.7, -32.7, -21.5, -24.1], [28.9, -32.9, 37.3, -23.7], [8.0, 14.4, 11.4, 17.7],
+	[-0.6, -0.6, 7.9, 8.6], [-16.9, -0.9, -8.7, 8.7], [14.7, -0.1, 24.5, 8.3], [-12.5, -31.9, -4.9, -24.7],
+	[10.7, -36.8, 33.3, -23.2], [-14.1, -53.7, -5.9, -44.3], [-29.5, -1.1, -21.9, 7.9], [28.7, 0.1, 37.7, 10.7],
+	[-29.7, -34.5, -16.7, -22.9], [8.0, 14.4, 11.4, 17.7],
 ]
 
 
