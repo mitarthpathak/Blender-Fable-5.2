@@ -26,6 +26,30 @@ def surface(x, y):
     return z - 0.34*ditch - 0.09*dip
 
 
+def valley_tree(seed):
+    """Thin dead alders, with forked tips and roots visible on the ditch bank."""
+    rng=random.Random(798+seed)
+    mb=MeshBuilder()
+    lean=rng.uniform(-0.7,0.7)
+    trunk=[Vector((lean*(i/5)**2,0.13*math.sin(i),i*1.44)) for i in range(6)]
+    mb.tube(trunk,0.23,"bark",segments=7,radii=(0.29,0.21,0.16,0.12,0.072,0.025))
+    for i in range(5):
+        a=i*math.tau/5
+        mb.tube([(0,0,0.4),(0.31*math.cos(a),0.31*math.sin(a),0.06),
+                 (0.67*math.cos(a),0.67*math.sin(a),-0.09)],0.07,"bark",segments=4,radii=(0.13,0.08,0.016))
+    for k in range(12):
+        base=trunk[2+k%3]+Vector((0,0,rng.uniform(-0.4,0.55)))
+        a=k*2.4+rng.uniform(-0.42,0.42)
+        d=Vector((math.cos(a),math.sin(a),rng.uniform(0.48,1.7)))
+        elbow=base+d*rng.uniform(0.54,1.35)
+        tip=elbow+d*0.56+Vector((0,0,rng.uniform(0.6,1.5)))
+        mb.tube([base,elbow,tip],0.07,"bark",segments=5,radii=(0.10,0.06,0.015))
+        for j in (-1,1):
+            v=Vector((math.cos(a+j*0.65),math.sin(a+j*0.65),rng.uniform(0.7,1.5)))
+            mb.tube([elbow,elbow+v*0.6,elbow+v+Vector((0,0,0.3))],0.04,"bark",segments=3,radii=(0.045,0.022,0.005))
+    return mb
+
+
 def road():
     rng = random.Random(3248)
     mesh, marks = MeshBuilder(), MeshBuilder()
@@ -55,6 +79,14 @@ def road():
         x=nx
     marks.build("detail_mill_asphalt","ground_detail",origin=(3,-88,-2))
     rail=MeshBuilder()
+    # Splintered rails still attached to the post and two fallen boards point
+    # through the opening. Keep the narrow passage clear of collision.
+    for h in (0.61,1.43):
+        rail.tube([(6.06,-57.42,plan.GROUND+h),(6.24,-57.62,plan.GROUND+h-0.13),
+                   (6.41,-57.83,plan.GROUND+h-0.27)],0.052,"wood_weathered",segments=4,radii=(0.061,0.052,0.009))
+    for k in range(2):
+        rail.obox((6.02-0.21*k,-58.2,plan.ROAD_Z+0.023),(0.14,1.62,0.038),0.18+0.16*k,"wood_weathered")
+
     for y in range(-63,-120,-2):
         if -89 <= y <= -85:
             continue
@@ -66,7 +98,7 @@ def road():
             rail.tube([(beam_x(y),y,z+height),(beam_x(y-2),y-2,GROUND(y-2)+height)],
                       0.084,"metal_painted",segments=5,color=GREY)
     rail.build("barrier_mill_guardrail","props",origin=(7,-90,-2))
-    forest=sk.tree_variants()
+    forest=[sk.shared(f"valley_tree_{i}",lambda i=i: valley_tree(i)) for i in range(3)]
     ribbons=MeshBuilder()
     for i in range(64):
         y=-63-i//2*1.83+rng.uniform(-0.55,0.55)
