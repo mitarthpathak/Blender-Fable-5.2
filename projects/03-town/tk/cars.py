@@ -1,5 +1,5 @@
 """Abandoned cars: an original late-1980s / 1990s sedan, station wagon and
-pickup. No real make, no badges, blank plates.
+pickup. No real make, no badges, local plates.
 
 Each body is a loft: a seven-point half cross-section (rocker, door bulge,
 belt line, glass, roof rail, roof centre) swept along the car's length, with
@@ -27,6 +27,7 @@ from .core import MeshBuilder, jitter_color, mul
 NEUTRAL = 0.75
 WHEEL_R = 0.31
 ARCH_R = 0.37
+FLAT_AXLE_Z = WHEEL_R - 0.053    # the collapsed tread just clears the steel rim
 
 # kind: length, width, front axle x, rear axle x, belt height, roof height,
 # and the greenhouse as (x, g) knots from tail to nose: g = 0 body top, 1 full roof.
@@ -187,10 +188,14 @@ def _wheel(flat=False):
             mb.cylinder((math.cos(a) * 0.085, side * (w - 0.03), math.sin(a) * 0.085), (0, side * 0.025, 0), 0.012,
                         "chrome_dull", segments=6, color=(0.55, 0.53, 0.5))
     if flat:
-        for v in mb.verts:                                       # the tyre slumps onto the road
-            if v.z < 0:
-                v.y *= 1.0 + 0.22 * min(1.0, -v.z / r)
-                v.z = max(v.z * 0.62, -r * 0.60)
+        for face, mat in zip(mb.faces, mb.mats):
+            if mat != "tyre":
+                continue
+            for index in face:
+                v = mb.verts[index]
+                load = min(1.0, max(0.0, (-v.z / r - 0.42) / 0.58))
+                v.y *= 1.0 + 0.32 * load * load
+                v.z = max(v.z, -FLAT_AXLE_Z)
     return mb
 
 
@@ -280,10 +285,25 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
         if p.z < 0.75:
             k *= 0.62 + 0.38 * max(0.0, (p.z - 0.2) / 0.55)
         if top:
-            k *= 0.70 + 0.12 * rng.random()
+            # Chalky dust on upward-facing paint, mottled over several panels.
+            dust = 0.36 + 0.30 * noise.noise(Vector((p.x * 1.8, p.y * 2.4, seed * 0.1)))
+            return tuple(_lerp(c, d, dust) for c, d in zip(col, (0.67, 0.56, 0.43)))
+        runoff = noise.noise(Vector((p.x * 11.0, p.z * 1.1, seed + p.y)))
+        k *= 1.0 - max(0.0, 0.84 - p.z) * (0.52 + 0.65 * runoff)
         return (col[0] * k, col[1] * k, col[2] * k)
 
+    # The stripped wagon was left with the near rear door hanging open. Build
+    # its skin, lining, glass and hardware in car space, then swing them together.
+    door = MeshBuilder()
+    open_door = kind == "wagon" and state == "on_blocks"
+    latch, hinge = spec["doors"][:2]
+
+    def panel(x, side):
+        return door if open_door and side == 1 and latch <= x < hinge else mb
+
     xs = _stations(spec)
+    if open_door:
+        xs = sorted(set(xs) | {latch, hinge})
     secs = [_section(spec, x, ride) for x in xs]
     bed = spec.get("bed")
     for (x0, (a7, g0, arch0, _, a, bands)), (x1, (b7, g1, arch1, _, b, _b)) in zip(zip(xs, secs), zip(xs[1:], secs[1:])):
@@ -301,6 +321,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                 if side > 0:                                     # wound to face out: a game engine culls back faces
                     q.reverse()
                 centre = (q[0] + q[1] + q[2] + q[3]) / 4
+                skin = panel(xm, side) if i < 4 else mb
                 if i < 3:
                     # rust comes through in patches (smooth noise), worst along the sills and round the arches
                     near_arch = arch0 > 0 or arch1 > 0
@@ -308,12 +329,19 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                     n = noise.noise(Vector((centre.x * 2.6, centre.z * 3.2 + side * 7.0, seed * 0.37)))
                     rusty = n + 0.55 * low + (0.25 if near_arch else 0.0) > 1.15 - 0.75 * rust_level
                     if rusty:
-                        _quad(mb, *q, "metal_rust", jitter_color(rng, (0.75, 0.68, 0.6), 0.12))
+                        _quad(skin, *q, "metal_rust", jitter_color(rng, (0.75, 0.68, 0.6), 0.12))
                     else:
-                        _quad(mb, *q, "car_paint", tone(centre))
+                        _quad(skin, *q, "car_paint", tone(centre))
                 elif i == 3:                                     # belt to glass top
                     glass = gm > 0.6 and not in_pillar and not sloped
-                    _quad(mb, *q, "car_glass" if glass else "car_paint", None if glass else tone(centre),
+                    # Small teeth of safety glass in the lower seal of the west wreck.
+                    if glass and kind == "sedan" and state == "crashed" and side == -1 and -0.15 < xm < 0.35:
+                        if bands[j - 1] != 3:
+                            lower_a, lower_b = P(a, j), P(b, j)
+                            tooth = lower_a.lerp(lower_b, 0.33).lerp(P(b, j + 1), 0.25 + 0.65 * abs(math.sin(47 * xm)))
+                            skin.face([lower_a, lower_b, tooth], "glass_dirty", color=(0.65, 0.84, 0.79))
+                        continue
+                    _quad(skin, *q, "car_glass" if glass else "car_paint", None if glass else tone(centre),
                           uv_axes=(0, 2) if glass else None)
                     if glass:
                         # the rubber seal along the bottom and the top of the side glass
@@ -325,21 +353,21 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                             strip = [e0 + out, e1 + out, e1.lerp(o1, 0.22) + out, e0.lerp(o0, 0.22) + out]
                             if (strip[1] - strip[0]).cross(strip[3] - strip[0]).y * side < 0:
                                 strip.reverse()                  # facing out of the car
-                            _quad(mb, *strip, "plastic_dark", (0.5, 0.5, 0.5))
+                            _quad(skin, *strip, "plastic_dark", (0.5, 0.5, 0.5))
                         continue
                 elif i == 4:                                     # roof rail, or the rail of the bed
-                    _quad(mb, *q, "car_paint", tone(centre, top=gm < 0.1))
+                    _quad(skin, *q, "car_paint", tone(centre, top=gm < 0.1))
                 elif in_bed:
                     continue                                     # open bed
                 elif sloped and gm > 0.08:
-                    _quad(mb, *q, "car_glass", None, uv_axes=(1, 2))
+                    _quad(skin, *q, "car_glass", None, uv_axes=(1, 2))
                     continue
                 else:
-                    _quad(mb, *q, "car_paint", tone(centre, top=True))
+                    _quad(skin, *q, "car_paint", tone(centre, top=True))
                 # the inside of the same panel: headlining and door cards, a little inboard
                 if gm > 0.02:
                     inner = [Vector((v.x, v.y * 0.985, v.z - (0.014 if i >= 4 else 0.0))) for v in reversed(q)]
-                    _quad(mb, *inner, "car_interior", (0.9, 0.88, 0.84) if i >= 4 else (1.0, 1.0, 1.0))
+                    _quad(skin, *inner, "car_interior", (0.9, 0.88, 0.84) if i >= 4 else (1.0, 1.0, 1.0))
             # wheel-arch liner behind the cut
             if arch0 > 0 or arch1 > 0:
                 za, zb_ = max(arch0, a7[0].z), max(arch1, b7[0].z)
@@ -381,7 +409,7 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
         mb.box((half, y0, zg + 0.01), (half + 0.016, y1, zg + 0.16), lamp)
         y0, y1 = sorted((s * 0.69, s * 0.75))
         mb.box((half, y0, zg + 0.01), (half + 0.014, y1, zg + 0.16), "lamp_red", color=(1.6, 1.2, 0.5))   # amber
-    # tail lamps and a blank plate
+    # Tail lamps
     zt = belt_r - 0.24
     for s in (-1, 1):
         y0, y1 = (0.36, hw0 - 0.12) if s > 0 else (-(hw0 - 0.12), -0.36)
@@ -412,20 +440,37 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
             y = s * (hw0 + 0.014)
             q = [Vector((dx - 0.006, y, 0.36 + ride)), Vector((dx + 0.006, y, 0.36 + ride)),
                  Vector((dx + 0.006, y * 0.985, spec["belt"] + ride - 0.01)), Vector((dx - 0.006, y * 0.985, spec["belt"] + ride - 0.01))]
-            mb.face(q if s < 0 else list(reversed(q)), "interior_dark")
+            panel(dx, s).face(q if s < 0 else list(reversed(q)), "interior_dark")
     for dx in spec["doors"][:-1]:
         for s in (-1, 1):
-            mb.box((dx + 0.08, min(s * hw0, s * (hw0 + 0.022)), spec["belt"] + ride - 0.13),
+            panel(dx + 0.1, s).box((dx + 0.08, min(s * hw0, s * (hw0 + 0.022)), spec["belt"] + ride - 0.13),
                    (dx + 0.22, max(s * hw0, s * (hw0 + 0.022)), spec["belt"] + ride - 0.10), "chrome_dull")
     # wipers on the windshield base
-    wx = next(k[0] for k in reversed(spec["g"][:-1]) if k[1] == 0) - 0.03
-    for y0 in (-0.55, 0.05):
-        mb.obox((wx - 0.10, y0 + 0.25, spec["belt"] + ride + 0.10), (0.02, 0.5, 0.012), 0.12, "plastic_dark", tilt=(0.0, -0.5))
+    cab_front = max(x for x, g in spec["g"] if g == 1)
+    cowl_foot = min(x for x, g in spec["g"] if x > cab_front and g == 0)
+
+    def top_point(x, y, lift):
+        section = _section(spec, x, ride)[4]
+        for outer, inner in zip(section[15:], section[16:]):
+            if inner.y <= abs(y) <= outer.y:
+                t = (abs(y) - inner.y) / (outer.y - inner.y)
+                return Vector((x, y, _lerp(inner.z, outer.z, t) + lift))
+        return Vector((x, y, section[15].z + lift))
+
+    for y in (-0.54, 0.03):
+        blade = [top_point(cowl_foot - 0.14 + 0.04*t, y + 0.48*t, 0.012) for t in (0, 0.5, 1)]
+        mb.tube(blade, 0.012, "plastic_dark", segments=5)
+        mb.tube([top_point(cowl_foot + 0.017, y + 0.08, 0.008), blade[1]], 0.008, "chrome_dull", segments=4)
     # rubbing strips along the doors, between the arches
     xs0, xs1 = spec["ra"] + ARCH_R + 0.08, spec["fa"] - ARCH_R - 0.08
     for s in (-1, 1):
-        mb.box((xs0, min(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.57 + ride),
-               (xs1, max(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.63 + ride), "plastic_dark", color=(0.55, 0.55, 0.55))
+        cuts = [xs0, xs1]
+        if open_door and s == 1:
+            cuts = sorted(cuts + [x for x in (latch, hinge) if xs0 < x < xs1])
+        for a, b in zip(cuts, cuts[1:]):
+            panel((a + b) / 2, s).box((a, min(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.57 + ride),
+                                     (b, max(s * (hw0 - 0.01), s * (hw0 + 0.024)), 0.63 + ride),
+                                     "plastic_dark", color=(0.55, 0.55, 0.55))
     # the fuel filler door on the left rear quarter, a shade off the paint
     fx = spec["ra"] + (0.52 if kind != "pickup" else 0.62)
     mb.box((fx - 0.09, -(hw0 + 0.012), spec["belt"] + ride - 0.27), (fx + 0.09, -(hw0 + 0.004), spec["belt"] + ride - 0.11),
@@ -448,8 +493,13 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     ws_foot = min(x for x in zero_knots if x > cab1)
     for s in (-1, 1):
         y_in, y_out = s * (hw0 - 0.032), s * (hw0 - 0.004)
-        mb.box((rear_foot + 0.04, min(y_in, y_out), spec["belt"] + ride - 0.012), (ws_foot - 0.04, max(y_in, y_out),
-               spec["belt"] + ride + 0.014), "chrome_dull", color=(0.75, 0.74, 0.7))
+        cuts = [rear_foot + 0.04, ws_foot - 0.04]
+        if open_door and s == 1:
+            cuts = [cuts[0], latch, hinge, cuts[1]]
+        for a, b in zip(cuts, cuts[1:]):
+            panel((a + b) / 2, s).box((a, min(y_in, y_out), spec["belt"] + ride - 0.012),
+                                     (b, max(y_in, y_out), spec["belt"] + ride + 0.014),
+                                     "chrome_dull", color=(0.75, 0.74, 0.7))
     # side marker lamps: amber at the front of the front wings, red at the back of the rear quarters
     for mx, lamp, colour in ((half - 0.22, "lamp_red", (1.6, 1.2, 0.5)), (-half + 0.22, "lamp_red", None)):
         pts, _g, _a, _hw, _f, _b = _section(spec, mx, ride)
@@ -469,20 +519,33 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                     color=(0.85, 0.82, 0.76), tilt=(0.0, 0.25))
         else:
             mb.box((cab1 - 0.22, y0, rz_in - 0.035), (cab1 - 0.04, y1, rz_in - 0.01), "car_interior", color=(0.85, 0.82, 0.76))
-    # wet leaves caught at the foot of the windshield, round the wipers
-    tones = [(0.95, 0.8, 0.55), (0.8, 0.62, 0.4), (0.6, 0.48, 0.34), (0.45, 0.38, 0.3)]
-    for _ in range(rng.randint(6, 12)):
-        lx = ws_foot + rng.uniform(0.0, 0.22)
-        ly = rng.uniform(-hw0 + 0.25, hw0 - 0.25)
-        lz = _section(spec, lx, ride)[0][6].z + 0.012
-        size = rng.uniform(0.07, 0.12)
-        m = Matrix.Translation((lx, ly, lz)) @ Matrix.Rotation(rng.uniform(0, 6.28), 4, "Z") @ Matrix.Rotation(rng.uniform(-0.3, 0.3), 4, "X")
-        q = [m @ Vector(v) for v in ((-size / 2, -size * 0.6, 0), (size / 2, -size * 0.6, 0), (size / 2, size * 0.6, 0),
-                                     (-size / 2, size * 0.6, 0))]
-        c = rng.randrange(4)
-        cu, cv = (c % 2) * 0.5, (c // 2) * 0.5
-        mb.face(q, "leaf_card", uvs=[(cu, cv), (cu + 0.5, cv), (cu + 0.5, cv + 0.5), (cu, cv + 0.5)],
-                color=mul(tones[rng.randrange(4)], rng.uniform(0.5, 0.85)))
+    # Curled ochre and russet leaves bank against the wipers and blow over
+    # the hood and roof. Sample the loft so the leaves follow the crown.
+    leaf_rng = random.Random(seed + 901)
+    palette = ((0.42, 0.17, 0.045), (0.70, 0.38, 0.10), (0.36, 0.24, 0.105))
+    for area, count in (("cowl", 26), ("roof", 10), ("hood", 5)):
+        for _ in range(count):
+            if area == "cowl":
+                lx = ws_foot + leaf_rng.uniform(-0.068, 0.12)
+                ly = leaf_rng.uniform(-0.54, 0.54)
+            elif area == "roof":
+                lx = leaf_rng.uniform(cab0 + 0.14, cab1 - 0.09)
+                ly = leaf_rng.uniform(-0.46, 0.46)
+            else:
+                lx = leaf_rng.uniform(ws_foot + 0.14, half - 0.22)
+                ly = leaf_rng.uniform(-0.50, 0.50)
+            angle = leaf_rng.uniform(0, math.tau)
+            length = leaf_rng.uniform(0.070, 0.138)
+            width = length * leaf_rng.uniform(0.29, 0.43)
+            rim = []
+            for u, v in ((-0.52, 0), (-0.18, -0.55), (0.19, -0.48), (0.52, 0), (0.08, 0.52), (-0.25, 0.42)):
+                x = lx + length*u*math.cos(angle) - width*v*math.sin(angle)
+                y = ly + length*u*math.sin(angle) + width*v*math.cos(angle)
+                rim.append(top_point(x, y, 0.005))
+            mid = top_point(lx, ly, 0.013)
+            colour = leaf_rng.choice(palette)
+            for i, edge in enumerate(rim):
+                mb.face([edge, rim[(i+1) % len(rim)], mid], "trim", color=mul(colour, 0.82 if i < 3 else 1.0))
     # a crashed car's windshield is cracked from where a head or the pole hit it
     if state == "crashed":
         xa, xb = cab1 + 0.12 * (ws_foot - cab1), cab1 + 0.88 * (ws_foot - cab1)
@@ -491,6 +554,18 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
         y0, y1 = -0.66, 0.02
         mb.face([Vector((xb, y0, zb)), Vector((xb, y1, zb)), Vector((xa, y1, za)), Vector((xa, y0, za))],
                 "glass_crack", uvs=[(0, 0), (1, 0), (1, 1), (0, 1)])
+        impact_x = cab1 + 0.50 * (ws_foot - cab1)
+        impact_y = -0.29
+        fractures = random.Random(seed + 33)
+        for k in range(9):
+            angle = (k + fractures.uniform(-0.26, 0.26)) * math.tau / 9
+            reach = fractures.uniform(0.11, 0.22)
+            points = [top_point(impact_x + math.cos(angle) * reach * step,
+                                impact_y + math.sin(angle) * reach * step + fractures.uniform(-0.008, 0.008),
+                                0.016) for step in (0.0, 0.38, 0.70, 1.0)]
+            for a, b in zip(points, points[1:]):
+                edge = Vector((-(b.y-a.y), b.x-a.x, 0)).normalized() * 0.0025
+                mb.quad(a-edge, b-edge, b+edge, a+edge, "chrome_dull", color=(0.72, 0.75, 0.77))
     # the wagon's roof rack: two rails on six feet
     if kind == "wagon":
         rz = spec["roof"] + ride
@@ -502,9 +577,15 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
     # what the town did about it: a ticket under the wiper, and an orange tow
     # notice stuck to the rear side glass
     if state == "abandoned":
-        tx = next(k[0] for k in reversed(spec["g"][:-1]) if k[1] == 0) - 0.16
-        mb.obox((tx, -0.38, spec["belt"] + ride + 0.16), (0.2, 0.09, 0.004), 0.25, "trim", color=(0.95, 0.94, 0.88),
-                tilt=(0.0, -0.55))
+        tx = cowl_foot - 0.16
+        def paper(x, y, size_x, size_y, lift, mat, colour):
+            mb.face([top_point(tx + x + u, y + v, lift) for u, v in
+                     ((0, 0), (size_x, 0), (size_x, size_y), (0, size_y))], mat, color=colour)
+
+        paper(-0.14, -0.39, 0.20, 0.14, 0.006, "trim", (1.0, 0.84, 0.44))
+        paper(-0.12, -0.38, 0.035, 0.12, 0.008, "car_paint", (0.65, 0.19, 0.09))
+        for line in range(3):
+            paper(-0.068 + line * 0.026, -0.374, 0.005, 0.085, 0.008, "plastic_dark", (0.6, 0.57, 0.49))
         # on the right rear door glass, which leans in about 20 degrees
         nx = spec["pillars"][0] + 0.32
         mb.obox((nx, hw0 - 0.084, spec["belt"] + ride + 0.19), (0.26, 0.004, 0.17), 0.0, "toy_plastic",
@@ -530,6 +611,17 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
         for k in range(3):
             mb.obox((x0 + 1.2, -0.35 + 0.16 * k, zf + 0.03 + 0.01 * k), (1.5, 0.14, 0.03), rng.uniform(-0.08, 0.08),
                     "wood_weathered", color=(0.7, 0.66, 0.6))
+        # An old red fuel can wedged against the cab, with pressed ribs and a handle.
+        cx, cy = x1 - 0.28, 0.37
+        red = (0.68, 0.13, 0.07)
+        mb.obox((cx, cy, zf + 0.20), (0.32, 0.18, 0.40), 0, "car_paint", color=red)
+        for sy in (-0.092, 0.092):
+            for slope in (-1, 1):
+                mb.tube([(cx-0.12, cy+sy, zf+0.21-slope*0.12), (cx+0.12, cy+sy, zf+0.21+slope*0.12)],
+                        0.009, "car_paint", segments=4, color=red)
+        mb.tube([(cx-0.09, cy, zf+0.39), (cx-0.07, cy, zf+0.48), (cx+0.06, cy, zf+0.48),
+                 (cx+0.08, cy, zf+0.39)], 0.019, "metal_painted", segments=6, color=red)
+        mb.cylinder((cx-0.12, cy+0.04, zf+0.40), (0, 0, 0.029), 0.031, "plastic_dark", segments=8)
     # wheels, or the blocks a car sits on once they are gone
     for axle, front in ((spec["fa"], True), (spec["ra"], False)):
         for s in (-1, 1):
@@ -540,22 +632,21 @@ def car(kind: str, paint, seed: int, state: str = "abandoned") -> MeshBuilder:
                            "barrier_concrete", color=(0.6, 0.58, 0.55))
                 mb.cylinder((axle, y - s * 0.05, WHEEL_R + ride + 0.02), (0, s * 0.06, 0), 0.13, "metal_rust", segments=10)
                 continue
-            is_flat = flat and (rng.random() < 0.7 or state == "crashed" and front)
+            is_flat = flat and (state == "abandoned" or front or rng.random() < 0.7)
             w = _wheel(flat=is_flat)
             steer = (0.42 if front and state == "crashed" else 0.0)
-            z = WHEEL_R * (0.62 if is_flat else 1.0) + (0.10 if state == "on_blocks" else 0.0)
+            z = (FLAT_AXLE_Z if is_flat else WHEEL_R) + (0.10 if state == "on_blocks" else 0.0)
             mb.extend(w, Matrix.Translation((axle, y, z)) @ Matrix.Rotation(steer, 4, "Z"))
-    # dirt and wet leaves settled on the flat tops
-    tops = [(x, s) for x, s in zip(xs, secs) if abs(x) < half - 0.4]
-    for _ in range(5 if state != "crashed" else 3):
-        x, (pts, g, _, _, _, _) = tops[rng.randrange(len(tops))]
-        if bed and bed[0] < x < bed[1]:
-            continue
-        if 0.05 < g < 0.95:
-            continue                                             # not on the glass slopes
-        y = rng.uniform(-0.45, 0.45)
-        mb.card((x, y, pts[6].z + 0.012), rng.uniform(0.5, 0.9), rng.uniform(0.4, 0.8), rng.uniform(0, 3.1),
-                "decal_leaves", flat=True)
+    if open_door:
+        # Exposed latch edge, hinge jamb and upper weatherstrip.
+        for x in (latch, hinge):
+            section = _section(spec, x, ride)[0]
+            door.quad(section[0], section[3], section[3] - Vector((0, 0.055, 0)),
+                      section[0] - Vector((0, 0.055, 0)), "plastic_dark")
+            door.tube([section[3], section[4]], 0.017, "plastic_dark", segments=5)
+        door.tube([_section(spec, x, ride)[0][4] for x in (latch, hinge)], 0.019, "plastic_dark", segments=5)
+        pivot = Vector((hinge, hw0 - 0.04, 0))
+        mb.extend(door, Matrix.Translation(pivot) @ Matrix.Rotation(math.radians(-42), 4, "Z") @ Matrix.Translation(-pivot))
     # dents: a few soft pushes into the side panels (more on the wrecks)
     for _ in range({"abandoned": 2, "crashed": 5, "on_blocks": 4}[state]):
         side = rng.choice((-1, 1))

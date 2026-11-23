@@ -80,6 +80,11 @@ def road_with_potholes(mb: MeshBuilder, rect, cell, colour_fn):
     rng = random.Random(int(rect[0] * 7 + rect[1] * 13) & 0xFFFF)
     x0, y0, x1, y1 = rect
     nx, ny = max(1, round((x1 - x0) / cell)), max(1, round((y1 - y0) / cell))
+    # Sample across both wheel paths, keeping the long dimension coarse.
+    if x1 - x0 > y1 - y0:
+        ny = round((y1 - y0) / 0.22)
+    else:
+        nx = round((x1 - x0) / 0.22)
     xs = [x0 + (x1 - x0) * i / nx for i in range(nx + 1)]
     ys = [y0 + (y1 - y0) * j / ny for j in range(ny + 1)]
     taken = set()
@@ -282,6 +287,87 @@ def settle_on_lawn(prefixes):
             o.location.z += lawn_offset(o.location.x, o.location.y)
 
 
+def _sidewalk(mb, key, rect):
+    x0, y0, x1, y1 = rect
+    along_x = key.startswith("ashgrove")
+    a, b, lo, hi = (x0, x1, y0, y1) if along_x else (y0, y1, x0, x1)
+    if key in ("ashgrove_n", "mill_e"):
+        lo += plan.CURB_W
+    else:
+        hi -= plan.CURB_W
+    repairs = {int((at - a) // 2): kind for walk, at, kind in plan.SIDEWALK_REPAIRS if walk == key}
+    rng = random.Random(key)
+
+    def point(t, d, z):
+        return (t, d, z) if along_x else (d, t, z)
+
+    def surface(t0, t1, d0, d1, z0, z1, mat, tint):
+        pts = [point(t0, d0, z0), point(t1, d0, z1), point(t1, d1, z1), point(t0, d1, z0)]
+        mb.face(pts if along_x else pts[::-1], mat, color=tint)
+
+    # Continuous compacted bed shows through the saw cuts and the removed slabs.
+    surface(a, b, lo, hi, SW - 0.012, SW - 0.012, "road_patch", (0.52, 0.43, 0.32))
+    for i in range(math.ceil((b - a) / 2)):
+        t0, t1 = a + 2 * i + 0.008, min(b, a + 2 * (i + 1)) - 0.008
+        if t1 <= t0:
+            continue
+        if repairs.get(i) == "missing":
+            # Broken concrete left in the compacted bed, flush enough to walk over.
+            for _ in range(28):
+                u = rng.uniform(t0 + 0.15, t1 - 0.15)
+                v = rng.uniform(lo + 0.12, hi - 0.12)
+                r = rng.uniform(0.022, 0.105)
+                chip = [point(u-r, v-r/3, SW-0.009), point(u+r/3, v-r/2, SW-0.005),
+                        point(u+r, v+r/4, SW-0.006), point(u-r/4, v+r, SW-0.008)]
+                mb.face(chip if along_x else chip[::-1], "concrete", color=jitter_color(rng, (0.76, 0.67, 0.55), 0.30))
+            continue
+        lip = 0.016 if repairs.get(i) == "lifted" else 0.0
+        tint = jitter_color(rng, (0.86, 0.84, 0.80), 0.08)
+        surface(t0, t1, lo, hi, SW, SW + lip, "sidewalk", tint)
+        if lip:
+            face = [point(t1, lo, SW - 0.012), point(t1, hi, SW - 0.012),
+                    point(t1, hi, SW + lip), point(t1, lo, SW + lip)]
+            mb.face(face if along_x else face[::-1], "concrete", color=tint)
+            # A branching hairline follows the plane of the raised flag.
+            for u, v, run, drift in ((0.38, 0.0, 0.48, 0.44), (0.86, 0.44, -0.21, 0.35),
+                                     (0.65, 0.79, 0.34, 0.49), (0.86, 0.44, 0.37, 0.16)):
+                pts = [point(t0 + t, lo + d, SW + lip * t / (t1 - t0) + 0.001)
+                       for t, d in ((u, v), (u + 0.014, v), (u + run + 0.009, v + drift), (u + run, v + drift))]
+                mb.face(pts if along_x else pts[::-1], "road_patch", color=(0.28, 0.26, 0.22))
+
+
+def _kerb(mb, a, b, sign, rng):
+    along_x = a[1] == b[1]
+    length = math.dist(a, b)
+    # Wind all sections so the top faces up and the vertical face looks at the road.
+    reverse = sign > 0 if along_x else sign < 0
+
+    def point(t, inset, z):
+        return (a[0] + t, a[1] - sign * inset, z) if along_x else (a[0] - sign * inset, a[1] + t, z)
+
+    def skin(points, tint):
+        mb.face(points[::-1] if reverse else points, "concrete", color=tint)
+
+    t = 0.0
+    while t < length:
+        end = min(t + rng.uniform(1.1, 1.65), length)
+        c = rng.uniform(0.68, 0.91)
+        tint = (c, c, c * 0.95)
+        # A spall removes a shallow wedge of the front arris.
+        profiles = [(t, 0.006, 0.006)]
+        if end - t > 0.7 and rng.random() < 0.48:
+            cut = t + rng.uniform(0.20, 0.46)
+            profiles.extend([(cut, 0.006, 0.006), (cut + 0.07, 0.067, 0.050),
+                             (cut + rng.uniform(0.15, 0.22), 0.038, 0.028), (cut + 0.24, 0.006, 0.006)])
+        profiles.append((end, 0.006, 0.006))
+        for (u, wi, h), (v, wj, k) in zip(profiles, profiles[1:]):
+            skin([point(u, 0, RD), point(v, 0, RD), point(v, 0, SW-k), point(u, 0, SW-h)], tint)
+            skin([point(u, 0, SW-h), point(v, 0, SW-k), point(v, wj, SW), point(u, wi, SW)],
+                 mul(tint, 0.70) if max(h, k) > 0.01 else tint)
+            skin([point(u, wi, SW), point(v, wj, SW), point(v, plan.CURB_W, SW), point(u, plan.CURB_W, SW)], tint)
+        t = end
+
+
 def ground(coll="ground"):
     rng = random.Random(5)
     noise = {}
@@ -325,7 +411,13 @@ def ground(coll="ground"):
 
     def road_col(p):
         # darker, damper towards the curbs; lighter wheel tracks
-        c = 0.85 * n(p)
+        ash = p.y >= plan.ASHGROVE.road[1]
+        street = plan.ASHGROVE if ash else plan.MILL
+        along, across = (p.x, p.y) if ash else (p.y, p.x)
+        offset = 0.08 * math.sin(along * 0.38)
+        lane = abs(across - street.centre - offset) - street.road_w / 4
+        track = math.exp(-((abs(lane) - 0.71) / 0.30) ** 2)
+        c = (0.72 + 0.35 * track) * (0.96 + 0.04 * math.sin(along * 0.7 + across))
         return (c, c * 1.0, c * 1.03)
     road_with_potholes(road, plan.ASHGROVE.road, 3.0, road_col)
     mill = plan.MILL.road
@@ -334,7 +426,7 @@ def ground(coll="ground"):
 
     side = MeshBuilder()
     for key, r in plan.SIDEWALKS:
-        grid_quads(side, r, SW, "sidewalk", 2.0, lambda p: (0.92 * n(p),) * 3)
+        _sidewalk(side, key, r)
         x0, y0, x1, y1 = r
         # the 5 cm step down to the lawn on the far side from the road
         if key == "ashgrove_n":
@@ -350,24 +442,9 @@ def ground(coll="ground"):
     curbs = [((ag[0], ag[3]), (ag[2], ag[3]), -1), ((ag[0], ag[1]), (mr[0], ag[1]), 1),
              ((mr[2], ag[1]), (ag[2], ag[1]), 1), ((mr[0], mr[1]), (mr[0], ag[1]), 1),
              ((mr[2], mr[1]), (mr[2], ag[1]), -1)]
-    for (ax, ay), (bx, by), s in curbs:
-        if ay == by:          # runs along x; s = -1: road is below (south), +1: road is above (north)
-            yf = ay
-            yb = ay + (plan.CURB_W if s < 0 else -plan.CURB_W)
-            side.quad((ax, yf, RD), (bx, yf, RD), (bx, yf, SW), (ax, yf, SW), "concrete",
-                      color=(0.8, 0.8, 0.78)) if s > 0 else \
-                side.quad((bx, yf, RD), (ax, yf, RD), (ax, yf, SW), (bx, yf, SW), "concrete", color=(0.8, 0.8, 0.78))
-            side.quad((ax, min(yf, yb), SW + 0.003), (bx, min(yf, yb), SW + 0.003), (bx, max(yf, yb), SW + 0.003),
-                      (ax, max(yf, yb), SW + 0.003), "concrete", color=(0.85, 0.85, 0.83))
-        else:                 # runs along y; s = +1: road to the east, -1: road to the west
-            xf = ax
-            xb = ax - plan.CURB_W * s * -1 if False else ax + (-plan.CURB_W if s > 0 else plan.CURB_W)
-            if s > 0:
-                side.quad((xf, by, RD), (xf, ay, RD), (xf, ay, SW), (xf, by, SW), "concrete", color=(0.8, 0.8, 0.78))
-            else:
-                side.quad((xf, ay, RD), (xf, by, RD), (xf, by, SW), (xf, ay, SW), "concrete", color=(0.8, 0.8, 0.78))
-            side.quad((min(xf, xb), ay, SW + 0.003), (max(xf, xb), ay, SW + 0.003), (max(xf, xb), by, SW + 0.003),
-                      (min(xf, xb), by, SW + 0.003), "concrete", color=(0.85, 0.85, 0.83))
+    kerb_rng = random.Random(1241)
+    for a, b, sign in curbs:
+        _kerb(side, a, b, sign, kerb_rng)
     # front paths: the player's house, and each kit house from its steps to the sidewalk
     x0, y0, x1, y1 = plan.HOUSE_FRONT_PATH
     side.box((x0, y0, G), (x1, y1, G + 0.025), "concrete", skip="-z", color=(0.82, 0.8, 0.76))
@@ -444,15 +521,45 @@ def road_damage(coll="ground_detail"):
         length = (x1 - x0) if along_x else (y1 - y0)
         mk.face([Vector((x0, y0, z)), Vector((x1, y0, z)), Vector((x1, y1, z)), Vector((x0, y1, z))], mat,
                 uvs=[(0, 0), (0, length), (1, length), (1, 0)] if along_x else [(0, 0), (1, 0), (1, length), (0, length)])
+    paint_rng = random.Random(122)
     for xa, xb in ((plan.BUILD[0], plan.MILL.road[0] - 1.0), (plan.MILL.road[2] + 1.0, plan.BUILD[2])):
         for off in (0.07, -0.17):
-            strip(xa, ag.centre + off, xb, ag.centre + off + 0.10, "paint_marking")
+            x = xa
+            while x < xb:
+                end = min(xb, x + paint_rng.uniform(1.4, 5.5))
+                strip(x, ag.centre + off, end, ag.centre + off + 0.10, "paint_marking")
+                x = end + paint_rng.uniform(0.10, 0.86)
     y = plan.ASHGROVE.road[1] - 3.0
     while y > plan.BUILD[1]:
         strip(plan.MILL.centre - 0.05, y - 3.0, plan.MILL.centre + 0.05, y, "paint_marking", along_x=False)
         y -= 9.0
     x0, x1, ys = plan.STOP_LINE
     strip(x0, ys - 0.2, x1, ys + 0.2, "paint_white")
+    # Road lettering stretched along the direction of travel. Small stencil
+    # bridges in O and P keep their centres attached to the mask.
+    stencil = (
+        [((0.96, 0.81), (0.70, 0.81), (0.68, 0.85), (0.32, 0.85), (0.25, 0.81),
+          (0.25, 0.62), (0.31, 0.58), (0.77, 0.55), (0.96, 0.46), (0.96, 0.12),
+          (0.75, 0), (0.23, 0), (0.03, 0.10), (0.03, 0.22), (0.28, 0.22), (0.31, 0.15),
+          (0.68, 0.15), (0.72, 0.19), (0.72, 0.39), (0.65, 0.42), (0.21, 0.45),
+          (0.03, 0.54), (0.03, 0.88), (0.24, 1), (0.76, 1), (0.96, 0.90))],
+        [((0.02, 1), (0.98, 1), (0.98, 0.85), (0.63, 0.85), (0.63, 0), (0.37, 0),
+          (0.37, 0.85), (0.02, 0.85))],
+        [((0.47, 1), (0.47, 0.85), (0.32, 0.85), (0.25, 0.81), (0.25, 0.18), (0.32, 0.15),
+          (0.47, 0.15), (0.47, 0), (0.20, 0), (0.02, 0.12), (0.02, 0.88), (0.20, 1))],
+        [((0.02, 1), (0.70, 1), (0.93, 0.89), (0.93, 0.75), (0.69, 0.75), (0.69, 0.82),
+          (0.61, 0.85), (0.27, 0.85), (0.27, 0.59), (0.61, 0.59), (0.69, 0.63), (0.69, 0.72),
+          (0.93, 0.72), (0.93, 0.54), (0.72, 0.44), (0.27, 0.44), (0.27, 0), (0.02, 0))],
+    )
+    stencil[2].append([(1-u, v) for u, v in reversed(stencil[2][0])])
+    pitch = (x1 - x0) / 4.7
+    left = (x0 + x1 - pitch * 3.84) / 2
+    for letter, pieces in enumerate(stencil):
+        for outline in pieces:
+            pts = [Vector((left + pitch * (letter + 0.84 * u), ys - 2.25 + 1.55 * v, z))
+                   for u, v in reversed(outline)]
+            mk.face(pts, "paint_white", color=(0.82, 0.81, 0.74),
+                    uvs=[(p.x * 0.9, p.y * 0.65) for p in pts])
     mk.build("road_markings", coll)
 
     dc = Sectors("decals")
@@ -472,8 +579,12 @@ def road_damage(coll="ground_detail"):
         cracks.append((x, y))
         dc.at(x, y).card((x, y, SW + 0.005), rng.uniform(0.8, 1.6), rng.uniform(0.6, 1.4), rng.uniform(0, math.pi),
                          "decal_crack", flat=True)
-    for _ in range(14):
-        x, y = rng.uniform(-25, 33), rng.uniform(-17.5, -10.8)
+    # Pairs of old sump stains in former parking spaces near the kerbs.
+    bays = [(-22.3, -16.8), (-12.2, -11.6), (11.2, -16.9), (19.7, -16.8),
+            (27.5, -11.6), (1.2, -36.2), (5.85, -46.8)]
+    for i in range(2 * len(bays)):
+        cx, cy = bays[i // 2]
+        x, y = cx + rng.uniform(-0.70, 0.70), cy + rng.uniform(-0.18, 0.18)
         dc.at(x, y).card((x, y, RD + 0.007), rng.uniform(0.8, 1.8), rng.uniform(0.6, 1.2), rng.uniform(0, math.pi),
                          "decal_oil", flat=True)
     hot = [(plan.HOUSE_DOOR_X, -9.5, 7.0), (3.5, -16.0, 9.0), (3.5, -24.0, 6.0)]
@@ -532,6 +643,35 @@ def road_damage(coll="ground_detail"):
         # rooted in whatever is under it: a spot meant for the sidewalk can land just over the kerb
         instance(weeds[i % 3], f"weed_{i}", "grass", (x, y, _surface_z(x, y)), rng.uniform(0, 6.28),
                  scale=rng.uniform(0.6, 1.25))
+    # Safety glass below the missing side window, on the actual surface at
+    # each fragment: the west wreck straddles the kerb.
+    glass_rng = random.Random(503)
+    for key, cx, cy, heading, _ in plan.BLOCKERS:
+        if key != "car_west":
+            continue
+        angle = math.radians(heading)
+        for _ in range(37):
+            u, v = glass_rng.uniform(-0.39, 0.54), glass_rng.uniform(-1.58, -0.93)
+            x = cx + u * math.cos(angle) - v * math.sin(angle)
+            y = cy + u * math.sin(angle) + v * math.cos(angle)
+            z = _surface_z(x, y) + 0.011
+            r = glass_rng.uniform(0.009, 0.032)
+            dc.at(x, y).face([(x-r, y-r, z), (x+r, y, z+0.003), (x, y+r, z)], "chrome_dull",
+                             color=jitter_color(glass_rng, (0.61, 0.80, 0.76), 0.22))
+    grit_rng = random.Random(715)
+    for (ax, ay), (bx, by), side in curb_lines():
+        along_x = ay == by
+        roadward = -1 if side in ("n", "e") else 1
+        for _ in range(round(math.dist((ax, ay), (bx, by)) / 1.3)):
+            t = grit_rng.uniform(0.4, math.dist((ax, ay), (bx, by)) - 0.4)
+            for _ in range(grit_rng.randint(3, 9)):
+                u = t + grit_rng.uniform(-0.32, 0.32)
+                v = roadward * grit_rng.uniform(0.03, 0.19)
+                x, y = (ax + u, ay + v) if along_x else (ax + v, ay + u)
+                z = RD + grit_rng.uniform(0.008, 0.014)
+                r = grit_rng.uniform(0.009, 0.026)
+                dc.at(x, y).face([(x-r, y-r/2, z), (x+r, y-r, z), (x+r/3, y+r, z+0.003)],
+                                 "concrete", color=jitter_color(grit_rng, (0.53, 0.44, 0.34), 0.25))
     dc.build(coll)
 
     mh = shared("manhole", _manhole)
@@ -1494,23 +1634,22 @@ def tree_variants():
 
 CAR_PAINTS = {"car_sedan": (0.14, 0.19, 0.17), "car_wagon": (0.30, 0.21, 0.13), "car_crashed": (0.13, 0.17, 0.24),
               "car_west": (0.26, 0.10, 0.09)}
-# plan key: (body, state). Bodies are built in tk/cars.py.
-CAR_KINDS = {"car_sedan": ("sedan", "abandoned"), "car_wagon": ("wagon", "on_blocks"),
-             "car_crashed": ("pickup", "crashed"), "car_west": ("sedan", "crashed")}
+# plan key to body style; plan.CARS supplies the condition.
+CAR_KINDS = {"car_sedan": "sedan", "car_wagon": "wagon", "car_crashed": "pickup", "car_west": "sedan"}
 
 
 def cars(coll="cars"):
     from . import cars as car_kit
     out = []
-    for key, x, y, heading, _state in plan.CARS:
-        kind, state = CAR_KINDS[key]
+    for key, x, y, heading, state in plan.CARS:
+        kind = CAR_KINDS[key]
         o = car_kit.build(kind, CAR_PAINTS[key], sum(map(ord, key)), state, key, coll)
         o.location = (x, y, RD if _on_road(x, y) else G)
         o.rotation_euler.z = math.radians(heading)
         out.append(o)
     for kind, x, y, heading, _ in plan.BLOCKERS:
         if kind == "car_west":
-            body, state = CAR_KINDS["car_west"]
+            body, state = CAR_KINDS["car_west"], "crashed"
             o = car_kit.build(body, CAR_PAINTS["car_west"], 77, state, "car_west", coll)
             o.location = (x, y, SW)
             o.rotation_euler = (0.04, -0.03, math.radians(heading))
