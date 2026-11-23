@@ -16,6 +16,7 @@ extends SceneTree
 ## player cannot get in.) L4 is the cottage, L5 the hospital, L9 the shop and
 ## L10 the villa.
 const HOUSES := [
+	[-7.8, -127.0, -3.6, -122.8], [-44.0, -184.0, 38.0, -137.0],
 	[-0.6, -0.6, 7.9, 8.6], [-16.9, -0.9, -8.7, 8.7], [14.7, -0.1, 24.5, 8.3], [-12.5, -31.9, -4.9, -24.7],
 	[10.7, -36.8, 33.3, -23.2], [-14.1, -53.7, -5.9, -44.3], [-29.5, -1.1, -21.9, 7.9], [28.7, 0.1, 37.7, 10.7],
 	[-29.7, -34.5, -16.7, -22.9], [8.0, 14.4, 11.4, 17.7],
@@ -44,16 +45,19 @@ func _run() -> void:
 	var air := 0
 	var x := -30.0
 	while x <= 38.0:
-		var y := -57.0
+		var y := -137.0
 		while y <= 18.0:
-			if not _inside_house(x, y):
-				player.global_position = Vector3(x, 1.2, -y)
+			var in_yard := y < -121.0 and x >= -9 and x <= 19
+			var in_road := y >= -121.0 and x >= -1.6 and x <= 9
+			if (y >= -57 or in_yard or in_road) and not _inside_house(x, y):
+				var grade := -0.045 * clampf(-62.0-y, 0.0, 59.0)
+				player.global_position = Vector3(x, 1.2 + grade, -y)
 				player.velocity = Vector3.ZERO
 				for i in 60:
 					await physics_frame
 				var p := player.global_position
 				spots += 1
-				if p.y < -0.8:
+				if p.y < grade - (1.05 if y < -62 else 0.8):
 					fell += 1
 					print("SWEEP FELL   %6.1f %6.1f  ended at y %.2f" % [x, y, p.y])
 				elif p.y > 0.25:

@@ -33,13 +33,14 @@ const TRIMESH_PREFIXES := ["ground_", "house_", "fence_", "car_", "barrier_", "j
 ## Flat or thin things that should not cast shadows.
 const NO_SHADOW_PREFIXES := ["puddles", "decals_", "detail_", "road_markings", "road_patches", "grass", "weed", "wires", "manhole", "leaf_pile", "leaves_", "ground_", "backdrop"]
 ## Repeated props drawn as MultiMesh instances.
-const INSTANCED_PREFIXES := ["grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "edgetree_", "pole_P", "streetlamp_P", "shrub_", "yard_drum_"]
+const INSTANCED_PREFIXES := ["milltree_", "millpole_", "grass_", "weed_", "leaf_pile_", "manhole_", "mailbox_", "trash_can_", "tree_", "edgetree_", "pole_P", "streetlamp_P", "shrub_", "yard_drum_"]
 ## Simple cylinder colliders: name prefix -> [radius, height].
 const CYLINDERS := {"tree_": [0.26, 4.0], "pole_P": [0.17, 8.0], "trash_can_": [0.31, 0.9], "hydrant_": [0.14, 0.75]}
 ## Small props that fade out with distance (metres). Fog hides them sooner.
 ## Decals and street detail come from Blender in 24 m sectors ("decals_3_7"), so
 ## each sector is culled and faded on its own.
-const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
+const FADE_PREFIXES := {"ground_mill_road": 88.0, "ground_mill_yard": 46.0, "backdrop_valley": 77.0,
+	"barrier_mill_": 47.0, "car_mill_": 42.0, "hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jersey_": 60.0, "car_": 80.0, "wires": 70.0,
 	"decals_": 46.0, "detail_": 48.0, "mprop_": 60.0, "prop_": 60.0, "leaves_": 30.0}
 ## Instanced yard and verge clutter. A MultiMesh is one node, so one range
 ## would show or hide every copy in the town at once: these are split into
@@ -47,7 +48,7 @@ const FADE_PREFIXES := {"hydrant_": 45.0, "sign_": 55.0, "barrier_": 60.0, "jers
 ## High; Low multiplies it by LOW_CHUNK_FADE), past which it is culled. Before
 ## this the yards' shrubs and grass were one MultiMesh each, drawn at any
 ## distance: the shrub_ entry in FADE_PREFIXES never reached them.
-const CHUNKED_FADE := {"grass_": 25.0, "weed_": 30.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
+const CHUNKED_FADE := {"milltree_": 69.0, "millpole_": 83.0, "grass_": 25.0, "weed_": 30.0, "shrub_": 55.0, "leaf_pile_": 45.0, "yard_drum_": 50.0}
 const CHUNK := 16.0
 ## Smaller squares for the grass: a range is measured from a chunk's middle, so
 ## in a 16 m square a tuft near the camera could be culled with its far corner.
@@ -60,6 +61,8 @@ const WINDOW_WARM := Color(1.0, 0.62, 0.34)
 
 ## Fixed views for screenshots and performance checks: position, target (Godot axes).
 const VIEWS := {
+	"mill_road_mid": [Vector3(5.0, 0.63, 79.0), Vector3(3.6, -0.4, 102.0)],
+	"mill_gate": [Vector3(4.2, -0.96, 114.0), Vector3(3.0, 0.55, 123.0)],
 	"front_door": [Vector3(1.70, 1.62, -0.45), Vector3(2.8, 0.9, 18.0)],
 	"junction": [Vector3(9.5, 1.65, 9.4), Vector3(2.0, 1.4, 24.0)],
 	"side_street": [Vector3(5.6, 1.65, 27.0), Vector3(1.2, 1.6, 50.0)],
@@ -354,7 +357,8 @@ func _update_mill(main: Node) -> void:
 	if not mill:
 		return
 	var env: Environment = main.world_env.environment
-	if _quality == "low" and env.fog_density > 0.02:
+	var camera := get_viewport().get_camera_3d()
+	if _quality == "low" and env.fog_density > 0.02 and camera and camera.global_position.z < 103.0:
 		if not _mill_shape:
 			_mill_shape = StandardMaterial3D.new()
 			_mill_shape.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

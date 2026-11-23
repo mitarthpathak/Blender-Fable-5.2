@@ -7,6 +7,12 @@ extends SceneTree
 ## Writes res://screenshots/town_<name>.png.
 
 const VIEWS := {
+	"mill_breach": [Vector3(5.2, 1.24, 51.0), Vector3(7.2, 0.65, 60.0), 69.0],
+	"mill_road_mid": [Vector3(5.0, 0.63, 79.0), Vector3(3.6, -0.4, 102.0), 68.0],
+	"mill_checkpoint": [Vector3(4.9, 0.96, 67.0), Vector3(0, 0.8, 74.0), 63.0],
+	"mill_gate": [Vector3(4.2, -0.96, 114.0), Vector3(3.0, 0.55, 123.0), 68.0],
+	"mill_yard": [Vector3(8.2, -1.35, 125.5), Vector3(-1.5, -0.2, 136.0), 72.0],
+	"mill_road_back": [Vector3(2.2, -0.18, 97.0), Vector3(4.0, 1.5, 60.0), 65.0],
 	# name: [camera position, look at, fov]
 	"map_top": [Vector3(4.0, 120.0, 22.0), Vector3(4.0, 0.0, 22.0), 50.0],
 	"map_north": [Vector3(4.0, 55.0, -45.0), Vector3(4.0, 0.0, 22.0), 60.0],
