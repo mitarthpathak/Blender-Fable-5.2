@@ -205,7 +205,19 @@ def build_town():
     mill_road.road()
     mill_road.roadside_stories()
     mill_road.receiving_yard()
-    yards.build(houses)                  # shrubs, long grass and back-yard clutter on every house lot
+    # Grass follows the old fence line even where boards were recently torn out.
+    # Preserve its continuous run so the seeded scatter elsewhere in town stays stable.
+    fence_runs = street_kit.FENCE_SEGMENTS[:]
+    for index, (start, end, kind) in enumerate(fence_runs[:-1]):
+        next_start, next_end, next_kind = fence_runs[index + 1]
+        if (kind == next_kind == "edge" and abs(end[1] + 57.4) < 0.1
+                and end[0] == plan.MILL_BREACH[0] and next_start[0] == plan.MILL_BREACH[1]):
+            street_kit.FENCE_SEGMENTS[index:index + 2] = [(start, next_end, kind)]
+            break
+    try:
+        yards.build(houses)
+    finally:
+        street_kit.FENCE_SEGMENTS[:] = fence_runs
     # the yards are not flat (street_kit.lawn_offset): lift what stands in them onto the ground
     street_kit.settle_on_lawn(("grass_", "weed_", "shrub_", "tree_", "leaf_pile_", "trash_can_y", "yard_drum_", "mailbox_"))
     street_kit.collision(curbs, houses, "collision")
