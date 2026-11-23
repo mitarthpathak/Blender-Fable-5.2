@@ -325,6 +325,11 @@ PUDDLES = ((1.2, -11.0, 1.1), (5.9, -17.3, 1.4), (11.0, -11.3, 0.9), (2.2, -24.0
            (1.9, -7.4, 0.6), (-21.0, -11.0, 1.1))
 LEAF_PILES = ((-6.5, -8.0), (0.3, -9.0), (8.8, -10.5), (-2.2, -18.6), (8.0, -19.0), (14.0, -9.0),
               (-12.0, -20.4), (-0.9, -26.0), (7.8, -29.5), (19.0, -43.0), (-8.0, -3.0), (10.0, -7.0))
+# Chainage in world coordinates along each walk. The missing flags mark slabs
+# taken up and backfilled. The other two have a small lip beside a tree.
+SIDEWALK_REPAIRS = (("ashgrove_n", -11.0, "lifted"), ("ashgrove_n", -9.0, "missing"),
+                    ("ashgrove_se", 24.0, "lifted"), ("mill_w", -37.0, "missing"))
+
 # Faded road markings: centre lines of each street, and a stop line on Mill Road.
 STOP_LINE = (MILL.centre, MILL.road[2] - 0.2, ASHGROVE.road[1] - 1.2)    # x0, x1, y
 
