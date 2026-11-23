@@ -202,7 +202,7 @@ def station_decals(dec: Sectors, rng):
 
 # --- the mill ---------------------------------------------------------------------------------
 
-MILL_Y = -128.0                                   # its north face, about 70 m past the end of Mill Road
+MILL_Y = -157.0                                   # its north face, about 70 m past the end of Mill Road
 
 
 def mill(coll="ground"):
@@ -210,7 +210,7 @@ def mill(coll="ground"):
     rng = random.Random(1887)
     mb = MeshBuilder()
     brick = (0.55, 0.50, 0.47)
-    z0 = G - 0.5
+    z0 = plan.mill_grade(-121)
 
     def block(x0, y0, x1, y1, h, floors, bays, colour=brick):
         mb.grime = _grime(z0, 6.0, 0.25)
@@ -279,7 +279,7 @@ def mill(coll="ground"):
     obj["what"] = "The Halden mill, closed"
     # bare ground and a broken fence line between the town and the mill
     gm = MeshBuilder()
-    gm.face([Vector((-60.0, MILL_Y - 40.0, z0 + 0.45)), Vector((60.0, MILL_Y - 40.0, z0 + 0.45)), Vector((60.0, plan.BUILD[1], z0 + 0.45)),
-             Vector((-60.0, plan.BUILD[1], z0 + 0.45))], "lawn_dead", color=(0.42, 0.40, 0.33))
+    gm.face([Vector((-60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, -137.1, z0 - 0.05)),
+             Vector((-60.0, -137.1, z0 - 0.05))], "lawn_dead", color=(0.42, 0.40, 0.33))
     gm.build("backdrop_mill_ground", coll)
     return obj

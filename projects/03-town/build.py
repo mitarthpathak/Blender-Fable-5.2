@@ -200,7 +200,9 @@ def build_town():
     street_kit.trees("trees")
     street_kit.cars("cars")
     street_kit.blockers("blockers")
+    from tk import mill_road
     detail.build(houses)                 # street detail, lot stories, the fog ends
+    mill_road.road()
     yards.build(houses)                  # shrubs, long grass and back-yard clutter on every house lot
     # the yards are not flat (street_kit.lawn_offset): lift what stands in them onto the ground
     street_kit.settle_on_lawn(("grass_", "weed_", "shrub_", "tree_", "leaf_pile_", "trash_can_y", "yard_drum_", "mailbox_"))
