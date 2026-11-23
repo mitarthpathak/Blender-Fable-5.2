@@ -16,7 +16,7 @@ extends SceneTree
 ## player cannot get in.) L4 is the cottage, L5 the hospital, L9 the shop and
 ## L10 the villa.
 const HOUSES := [
-	[-7.8, -127.0, -3.6, -122.8], [-44.0, -184.0, 38.0, -137.0],
+	[-7.8, -127.0, -3.6, -122.8],
 	[-0.6, -0.6, 7.9, 8.6], [-16.9, -0.9, -8.7, 8.7], [14.7, -0.1, 24.5, 8.3], [-12.5, -31.9, -4.9, -24.7],
 	[10.7, -36.8, 33.3, -23.2], [-14.1, -53.7, -5.9, -44.3], [-29.5, -1.1, -21.9, 7.9], [28.7, 0.1, 37.7, 10.7],
 	[-29.7, -34.5, -16.7, -22.9], [8.0, 14.4, 11.4, 17.7],
@@ -28,6 +28,9 @@ func _initialize() -> void:
 
 
 func _inside_house(x: float, y: float) -> bool:
+	# The closed receiving facade and its edge collider include the wall at y=-137.
+	if x >= -44.0 and x <= 38.0 and y >= -184.0 and y <= -137.0:
+		return true
 	for r in HOUSES:
 		if x > r[0] and x < r[2] and y > r[1] and y < r[3]:
 			return true
