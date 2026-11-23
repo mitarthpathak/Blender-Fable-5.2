@@ -95,7 +95,7 @@ def road():
                 wires.tube(points,0.016,"wire",segments=3)
         last=top
         if i==2:
-            instance(sk.shared("mill_lamp",lambda: sk._lamp_mesh("on")),"streetlamp_M8","poles",(x+0.23,y,z+6.6))
+            instance(sk.shared("mill_lamp",lambda: sk._lamp_mesh("on")),"streetlamp_M8","poles",(x+0.23,y,z))
             light("street_sodium_M8_flicker",(x+2,y,z+6.6),"point",200,(1,0.56,0.23))
     wires.build("wires_mill","poles",origin=(0,-92,4))
     horizon=MeshBuilder()
@@ -106,3 +106,74 @@ def road():
     tree=bpy.data.objects.get("edgetree_11")
     if tree:
         tree.location.x=-5.4
+def notice(mb,x,y,z,w,h,index):
+    u=(index%2)*0.5
+    v=0.75-(index//2)*0.25
+    mb.quad((x+w/2,y,z),(x-w/2,y,z),(x-w/2,y,z+h),(x+w/2,y,z+h),
+            "mill_notices",uvs=((u,v),(u+0.5,v),(u+0.5,v+0.25),(u,v+0.25)))
+
+
+def sign(mb,x,y,width,index):
+    z=surface(x,y)
+    for dx in (-0.37*width,0.37*width):
+        mb.box((x+dx-0.035,y-0.06,z-0.1),(x+dx+0.035,y+0.04,z+1.9),"metal_rust")
+    mb.box((x-width/2,y,z+1.12),(x+width/2,y+0.07,z+1.12+width*0.5),"metal_painted")
+    notice(mb,x,y+0.073,z+1.12,width,width*0.5,index)
+
+
+def roadside_stories():
+    from . import cars
+    mb=MeshBuilder()
+    y=-73
+    z=GROUND(y)
+    # A faded blue timekeeper's cabin, with a clock stopped at twelve past five.
+    mb.box((-1.52,y-1,z-0.34),(0.33,y+1,z+2.49),"metal_painted",color=(0.23,0.34,0.35))
+    mb.box((-1.65,y-1.17,z+2.49),(0.47,y+1.18,z+2.63),"roof_tin")
+    mb.box((-1.38,y+1,z+1.09),(0.17,y+1.04,z+2.17),"interior_dark")
+    for xx in (-1.28,-0.58,0.09):
+        mb.box((xx,y+1.04,z+1.09),(xx+0.033,y+1.07,z+2.17),"metal_rust")
+    notice(mb,-0.59,y+1.015,z+0.49,1.16,0.53,5)
+    mb.cylinder((-0.57,y+1.05,z+1.77),(0,0.07,0),0.24,"trim",segments=20)
+    for dx,dz in ((0.136,0.046),(-0.065,-0.10)):
+        mb.tube([(-0.57,y+1.13,z+1.77),(-0.57+dx,y+1.13,z+1.77+dz)],0.009,"plastic_dark")
+    for k in range(10):
+        mb.tube([(0.66+0.13*k,y,z+0.68+0.34*k),(0.79+0.13*k,y,z+1.02+0.34*k)],
+                0.058,"trim",segments=4,color=(0.68,0.16,0.08) if k%2 else GREY)
+    mb.box((0.50,y-0.14,z),(0.80,y+0.14,z+0.84),"metal_painted")
+    sign(mb,6.5,-67,2.05,0)
+    sign(mb,6.1,-111,1.75,4)
+    for i,py in enumerate((-79,-94)):
+        notice(mb,-0.62,py+0.16,surface(-0.67,py)+1.36,0.40,0.43,1+i)
+    # Roofed bus stop with the timetable still in its case.
+    by=-87
+    bz=surface(0,by)
+    for x in (-1.48,0):
+        for dy in (-1.65,1.65):
+            mb.box((x-0.05,by+dy-0.05,bz-0.4),(x+0.05,by+dy+0.05,bz+2.29),"metal_rust")
+    mb.box((-1.65,by-1.85,bz+2.27),(0.18,by+1.85,bz+2.38),"roof_tin")
+    mb.box((-1.45,by-1.62,bz+0.68),(-1.39,by+1.62,bz+2.17),"glass_dirty")
+    mb.box((-1.35,by-1.3,bz+0.40),(-0.83,by+1.3,bz+0.49),"wood_weathered")
+    mb.box((-1.4,by+1.62,bz+0.91),(-0.09,by+1.68,bz+1.59),"metal_painted")
+    notice(mb,-0.745,by+1.69,bz+0.93,1.25,0.63,3)
+    for dy in (-1,1):
+        mb.box((-1.2,by+dy-0.08,bz-0.2),(-0.99,by+dy+0.08,bz+0.41),"metal_rust")
+    mb.build("barrier_mill_checkpoint","props",origin=(1,-81,-1))
+    car=cars.build("wagon",(0.20,0.24,0.21),371,"on_blocks","car_mill_dispatch","cars")
+    car.location=(2.3,-100,GROUND(-100))
+    car.rotation_euler.z=1.34
+    traces=MeshBuilder()
+    for k in range(13):
+        x=3.8+k*0.43
+        yy=-98+k*0.19+0.08*((-1)**k)
+        traces.card((x,yy,surface(x,yy)+0.014),0.13,0.26,-1.0,"decal_oil",flat=True)
+    traces.obox((3.9,-98.5,GROUND(-98.5)+0.062),(0.19,0.09,0.09),0.7,"fabric",color=(0.47,0.17,0.12))
+    for k in range(7):
+        yy=-92+k*0.30
+        traces.obox((7.43,yy,GROUND(yy)+0.14),(0.16,0.25,0.004),0.29*k,"trim",tilt=(0.25,0.46))
+    # Rusted two-horn siren looking in opposite directions.
+    x,y=7.6,-116
+    z=GROUND(y)
+    traces.cylinder((x,y,z),(0,0,4.1),0.085,"metal_rust")
+    for side in (-1,1):
+        traces.cylinder((x,y,z+3.95),(0,side*0.53,0.07),0.065,"metal_painted",radius_top=0.28,caps="none")
+    traces.build("detail_mill_traces","props",origin=(3,-102,-2))

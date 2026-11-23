@@ -46,6 +46,7 @@ MATS: dict[str, dict] = {
     "window_lit": dict(color=(0.55, 0.42, 0.26), rough=0.8, emit=(1.0, 0.62, 0.32), emit_strength=1.2),
     "screen_mesh": dict(color=(0.05, 0.05, 0.05), rough=0.6, alpha=0.5),
     # street
+    "mill_notices": dict(diff_png="mill_notices", rough=0.88),
     "road": dict(set="asphalt_02", tile=3.0),
     "road_patch": dict(set="worn_asphalt", tile=2.5),
     "sidewalk": dict(set="concrete_pavement", tile=2.0),
