@@ -182,3 +182,17 @@ Detail goes where the player looks: the junction, the street in front of
 the house, and the porches. Far ends of the streets get fewer props, and
 anything small fades out with distance (Godot visibility ranges); the fog
 closes the view well before the edges.
+
+## The road to the mill
+
+Follow Mill Road past Ridge Gas & Grocery. The pickup still blocks the centre
+of the barricade. At its east end the boards have parted and there is room
+to pass on foot. Beyond the town pavement the road drops into the valley.
+The checkpoint clock has stopped, the bus timetable ends in October 1995,
+and the county has put up two notices for Elian Vale with different dates.
+A failing lamp stands before the bend in the guardrail.
+
+The north gate opens into the receiving yard. One leaf is still chained.
+A fleet truck stands at the loading dock, and one upper pane catches light
+at night. The gatehouse and mill are closed shells. The nearby dock facade
+is separate from the distant mass used for the Low fog silhouette.
