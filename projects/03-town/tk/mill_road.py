@@ -177,3 +177,109 @@ def roadside_stories():
     for side in (-1,1):
         traces.cylinder((x,y,z+3.95),(0,side*0.53,0.07),0.065,"metal_painted",radius_top=0.28,caps="none")
     traces.build("detail_mill_traces","props",origin=(3,-102,-2))
+
+def iron_letters(mb, caption, x, y, z, size):
+    # Convert Blender's built-in lettering once, into the same batched iron mesh.
+    font=bpy.data.curves.new("foundry lettering","FONT")
+    font.body=caption
+    font.size=size
+    font.align_x="CENTER"
+    font.extrude=0.015
+    obj=bpy.data.objects.new("letter pattern",font)
+    bpy.context.scene.collection.objects.link(obj)
+    evaluated=obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh=evaluated.to_mesh()
+    mesh.calc_loop_triangles()
+    for tri in mesh.loop_triangles:
+        pts=[mesh.vertices[i].co for i in tri.vertices]
+        mb.face([(x-v.x,y+v.z,z+v.y) for v in pts],"metal_painted",color=(0.65,0.63,0.51))
+    evaluated.to_mesh_clear()
+    bpy.data.objects.remove(obj,do_unlink=True)
+    bpy.data.curves.remove(font)
+
+
+def receiving_yard():
+    from . import cars
+    rng=random.Random(781)
+    z=GROUND(-121)
+    floor=MeshBuilder()
+    for x in range(-69,69,3):
+        for y in range(-139,-121,3):
+            mat="concrete" if -9 <= x < 19 else "lawn_dead"
+            c=rng.uniform(0.51,0.68)
+            floor.quad((x,y,z),(x+3,y,z),(x+3,y+3,z),(x,y+3,z),mat,color=(c,c*0.94,c*0.87))
+    floor.build("ground_mill_yard","ground",origin=(4,-130,z))
+    gate=MeshBuilder()
+    for x in (-9,-5,-1,1.1,6.7,10.8,15,19):
+        gate.box((x-0.24,-121.43,z),(x+0.24,-120.95,z+3.25),"brick")
+        gate.box((x-0.30,-121.49,z+3.25),(x+0.30,-120.89,z+3.40),"concrete")
+    for a,b in ((-9,1.1),(6.7,19)):
+        gate.box((a,-121.4,z),(b,-121.0,z+0.60),"brick")
+        for h in (0.74,2.25):
+            gate.box((a,-121.26,z+h),(b,-121.19,z+h+0.07),"metal_painted")
+        for k in range(math.ceil((b-a)/0.22)):
+            x=a+k*0.22
+            gate.cylinder((x,-121.22,z+0.6),(0,0,1.86),0.023,"metal_rust",segments=4)
+    for x,dx,dy in ((1.1,2.70,0.0),(6.7,-0.65,-2.76)):
+        for h in (0.19,1.90):
+            gate.tube([(x,-121.19,z+h),(x+dx,-121.19+dy,z+h-0.07)],0.045,"metal_painted",segments=4)
+        for k in range(13):
+            t=k/12
+            gate.cylinder((x+t*dx,-121.19+t*dy,z+0.17-0.07*t),(0,0,1.98),0.025,"metal_rust",segments=4)
+    for k in range(9):
+        a=k*0.072
+        gate.tube([(3.76,-121.17,z+1.38-a),(3.80+0.03*(k%2),-121.12,z+1.33-a),
+                   (3.76,-121.17,z+1.28-a)],0.013,"metal_rust",segments=4)
+    gate.box((0.78,-121.36,z+3.24),(7,-121.12,z+3.93),"metal_painted",color=(0.16,0.20,0.17))
+    iron_letters(gate,"H LDEN  MIL S",3.9,-121.08,z+3.36,0.58)
+    # Returning wing fences enclose the yard behind the gate.
+    for x in (-8.97,18.97):
+        gate.box((x-0.10,-137,z),(x+0.10,-121,z+2.24),"brick")
+    gate.build("barrier_mill_gate","props",origin=(4,-122,z))
+    shed=MeshBuilder()
+    shed.box((-7.8,-127,z),(-3.6,-122.8,z+3.15),"brick")
+    shed.box((-8,-127.2,z+3.15),(-3.4,-122.6,z+3.42),"roof_tin")
+    shed.box((-6.88,-122.79,z+1.02),(-4.35,-122.75,z+2.44),"interior_dark")
+    for x in (-6.82,-5.63,-4.4):
+        shed.box((x,-122.74,z+1.02),(x+0.048,-122.70,z+2.44),"metal_painted")
+    notice(shed,-5.61,-122.74,z+0.44,1.05,0.50,5)
+    # Close facade in front of the cheap far mass. Blind openings are deep black.
+    shed.box((-12,-138.3,z-0.2),(22,-136.95,z+7.9),"brick",color=(0.68,0.57,0.49))
+    shed.box((-12,-137.12,z+7.75),(22,-136.74,z+8.04),"concrete")
+    for x in (-5,3,11):
+        shed.box((x-2,-136.95,z+0.68),(x+2,-136.88,z+4.2),"interior_dark")
+        for k in range(17):
+            shed.box((x-1.85,-136.85,z+0.77+k*0.19),(x+1.85,-136.80,z+0.93+k*0.19),"metal_painted",color=GREY)
+        shed.box((x-2.5,-136.94,z),(x+2.5,-135.35,z+0.73),"barrier_concrete")
+        for dx in (-1.9,1.9):
+            shed.box((x+dx-0.12,-135.44,z+0.27),(x+dx+0.12,-135.28,z+0.68),"tyre")
+    for i in range(15):
+        x=-10+2.15*i
+        shed.box((x,-136.94,z+5.0),(x+1.36,-136.84,z+6.78),"interior_dark")
+        for dx in (0.03,0.66,1.29):
+            shed.box((x+dx,-136.84,z+5.03),(x+dx+0.035,-136.80,z+6.75),"metal_rust")
+        shed.box((x,-136.84,z+5.85),(x+1.35,-136.78,z+5.90),"metal_rust")
+        shed.quad((x+0.04,-136.82,z+6.73),(x+0.47,-136.82,z+6.73),
+                  (x+0.42,-136.82,z+6.34),(x+0.09,-136.82,z+6.12),"glass_dirty")
+        if i==8:
+            shed.box((x+0.70,-136.84,z+5.03),(x+1.28,-136.80,z+5.82),"window_lit")
+    notice(shed,2.9,-136.78,z+4.27,1.57,0.61,7)
+    for k in range(7):
+        x=14.8+(k%3)*0.67
+        y=-133.4+(k//3)*0.69
+        shed.cylinder((x,y,z),(0,0,0.88),0.29,"metal_rust",segments=12)
+        for h in (0.24,0.62):
+            shed.cylinder((x,y,z+h),(0,0,0.03),0.304,"metal_painted",segments=12)
+    for k in range(4):
+        for dx in (-0.45,0,0.45):
+            shed.box((-5+dx,-132,z+k*0.16),(-4.88+dx,-130.8,z+k*0.16+0.09),"wood_weathered")
+        for j in range(5):
+            shed.box((-5.5,-131.98+j*0.24,z+k*0.16+0.09),(-4.32,-131.78+j*0.24,z+k*0.16+0.15),"wood_weathered")
+    shed.build("barrier_mill_receiving","props",origin=(4,-133,z))
+    truck=cars.build("pickup",(0.27,0.24,0.17),613,"abandoned","car_mill_delivery","cars")
+    truck.location=(10.9,-132.56,z)
+    truck.rotation_euler.z=math.pi/2
+    cargo=MeshBuilder()
+    cargo.box((9.84,-135.17,z+0.7),(11.96,-133.08,z+2.69),"roof_tin",color=(0.62,0.59,0.52))
+    notice(cargo,10.89,-133.07,z+1.71,1.25,0.55,6)
+    cargo.build("barrier_mill_cargo","props",origin=(10.9,-134,z))
