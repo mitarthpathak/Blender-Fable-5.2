@@ -46,6 +46,15 @@ HOUSE_HIDE = (
 # Everything the player can reach lies inside WALK; the invisible collision
 # walls stand on its edge. BUILD is a little bigger so the edges are dressed.
 WALK = (-31.0, -57.0, 39.0, 18.5)               # x0, y0, x1, y1
+MILL_BREACH = (6.1, 8.65)
+MILL_CORRIDOR = (-1.6, -121.0, 9.0, -57.0)
+MILL_YARD = (-9.0, -137.0, 19.0, -121.0)
+
+def mill_grade(y):
+    """Drop 4.5 centimetres per metre after the old pavement ends."""
+    return ROAD_Z - 0.045 * min(59.0, max(0.0, -62.0 - y))
+
+
 BUILD = (-36.0, -62.0, 44.0, 22.0)
 
 

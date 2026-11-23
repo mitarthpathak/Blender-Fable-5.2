@@ -1239,6 +1239,10 @@ def fence_layout():
                     merged[-1][1] = max(merged[-1][1], s1)
                 else:
                     merged.append([s0, s1])
+            if axis == "x" and abs(c + 57.4) < 0.1:
+                left, right = plan.MILL_BREACH
+                merged = [(lo, hi) for a, b in merged for lo, hi in
+                          ((a, min(b, left)), (max(a, right), b)) if hi > lo]
             for s0, s1 in merged:
                 a, b = ((s0, c), (s1, c)) if axis == "x" else ((c, s0), (c, s1))
                 for p0, p1 in _clip_run(a, b):
@@ -1863,9 +1867,20 @@ def collision(curbs, houses, coll="collision"):
     # invisible walls on the edge of the walkable area
     wx0, wy0, wx1, wy1 = plan.WALK
     for name, lo, hi in (("w", (wx0 - 0.5, wy0, -1.0), (wx0, wy1, 4.0)), ("e", (wx1, wy0, -1.0), (wx1 + 0.5, wy1, 4.0)),
-                         ("s", (wx0, wy0 - 0.5, -1.0), (wx1, wy0, 4.0)), ("n", (wx0, wy1, -1.0), (wx1, wy1 + 0.5, 4.0))):
+                         ("s", (wx0, wy0 - 0.5, -1.0), (plan.MILL_BREACH[0], wy0, 4.0)),
+                         ("s_east", (plan.MILL_BREACH[1], wy0 - 0.5, -1.0), (wx1, wy0, 4.0)), ("n", (wx0, wy1, -1.0), (wx1, wy1 + 0.5, 4.0))):
         mb = MeshBuilder()
         mb.box(lo, hi, "concrete")
+        mb.build(f"edge_wall_{name}-convcolonly", coll)
+    cx, gate, ex, start = plan.MILL_CORRIDOR
+    west, end, east, _ = plan.MILL_YARD
+    for name, x0, y0, x1, y1 in (
+        ("road_w", cx-0.3, gate, cx, start), ("road_e", ex, gate, ex+0.3, start),
+        ("yard_w", west-0.3, end, west, gate), ("yard_e", east, end, east+0.3, gate),
+        ("yard_nw", west, gate, cx, gate+0.3), ("yard_ne", ex, gate, east, gate+0.3),
+        ("yard_s", west, end-0.3, east, end)):
+        mb = MeshBuilder()
+        mb.box((x0, y0, -8), (x1, y1, 4), "concrete")
         mb.build(f"edge_wall_{name}-convcolonly", coll)
     # the fallen tree's trunk: a beam along it as it lies, from the snapped foot
     # up its first 9.5 m (it rises 6 degrees towards the crown), so a player who
