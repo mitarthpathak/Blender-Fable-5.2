@@ -132,7 +132,12 @@ def road():
     wires.build("wires_mill","poles",origin=(0,-92,4))
     horizon=MeshBuilder()
     for x,angle in ((-29,-math.pi/2),(31,math.pi/2)):
-        horizon.card((x,-99,surface(x,-99)-1),89,17,angle,"backdrop",uvs=((0,0),(2,0),(2,1),(0,1)))
+        # The treeline's solid band is the bottom quarter of the card, so each card
+        # stands on the ground it is seen against: one along the corridor's banks,
+        # one beside the yard (5 m lower than the west bank; standing at the bank's
+        # height there it hung in the air with sky under it).
+        horizon.card((x,-87.75,surface(x,-99)-1),66.5,17,angle,"backdrop",uvs=((0,0),(1.5,0),(1.5,1),(0,1)))
+        horizon.card((x,-142.5,GROUND(-121)-1),43,17,angle,"backdrop",uvs=((0,0),(1,0),(1,1),(0,1)))
     horizon.build("backdrop_valley","ground",origin=(3,-98,-2))
     # Move the old road-end tree from the carriageway onto the bank.
     tree=bpy.data.objects.get("edgetree_11")

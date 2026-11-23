@@ -279,7 +279,9 @@ def mill(coll="ground"):
     obj["what"] = "The Halden mill, closed"
     # bare ground and a broken fence line between the town and the mill
     gm = MeshBuilder()
-    gm.face([Vector((-60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, -137.1, z0 - 0.05)),
-             Vector((-60.0, -137.1, z0 - 0.05))], "lawn_dead", color=(0.42, 0.40, 0.33))
+    gm.face([Vector((-60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, MILL_Y - 40.0, z0 - 0.05)), Vector((60.0, -121.0, z0 - 0.05)),
+             Vector((-60.0, -121.0, z0 - 0.05))], "lawn_dead", color=(0.42, 0.40, 0.33))
+    # (it runs on to the yard's north edge, y -121: stopping at -137 left a strip
+    # with no ground either side of the yard, and the sky showed under the treeline)
     gm.build("backdrop_mill_ground", coll)
     return obj
