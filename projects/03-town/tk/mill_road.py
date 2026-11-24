@@ -379,9 +379,10 @@ def receiving_yard():
         shed.quad((x+0.04,-136.82,z+6.73),(x+0.47,-136.82,z+6.73),
                   (x+0.42,-136.82,z+6.34),(x+0.09,-136.82,z+6.12),"glass_dirty")
         if i==8:
-            # a lamp somewhere inside: a warm glow behind grimy glass, half a curtain across it
+            # a lamp somewhere inside: a warm glow in the gap between two drawn curtains
             shed.box((x+0.70,-136.86,z+5.03),(x+1.28,-136.82,z+5.82),"window_lit_mill")
-            shed.box((x+0.70,-136.81,z+5.40),(x+0.98,-136.79,z+5.82),"fabric",color=(0.55,0.47,0.38))
+            for cx0,cx1 in ((x+0.70,x+0.92),(x+1.07,x+1.28)):
+                shed.box((cx0,-136.81,z+5.03),(cx1,-136.79,z+5.82),"fabric",color=(0.42,0.33,0.26))
     notice(shed,2.9,-136.78,z+4.27,1.57,0.61,7)
     facade_detail(shed, z)
     for k in range(7):

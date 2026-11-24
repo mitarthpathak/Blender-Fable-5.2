@@ -42,7 +42,7 @@ MATS: dict[str, dict] = {
     "concrete_yard": dict(set="damaged_concrete_floor", tile=2.5),
     # a mill window with a lamp somewhere behind it: dark by day, a warm glow at night
     # (named window_lit*, so lighting_presets.gd scales its glow with the neighbours' windows)
-    "window_lit_mill": dict(color=(0.07, 0.055, 0.04), rough=0.6, emit=(1.0, 0.6, 0.3), emit_strength=0.9),
+    "window_lit_mill": dict(color=(0.07, 0.055, 0.04), rough=0.6, emit=(1.0, 0.5, 0.2), emit_strength=0.5),
     "ghost_sign": dict(diff_png="mill_ghost_sign", blend=True, rough=0.92),
     "concrete": dict(set="concrete_floor_worn_02", tile=2.0),
     "metal_painted": dict(set="rusty_painted_metal", diff="metal_neutral", tile=1.5),
