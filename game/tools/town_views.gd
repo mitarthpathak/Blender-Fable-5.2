@@ -13,6 +13,9 @@ const VIEWS := {
 	"mill_gate": [Vector3(4.2, -0.96, 114.0), Vector3(3.0, 0.55, 123.0), 68.0],
 	"mill_yard": [Vector3(8.2, -1.35, 125.5), Vector3(-1.5, -0.2, 136.0), 72.0],
 	"mill_road_back": [Vector3(2.2, -0.18, 97.0), Vector3(4.0, 1.5, 60.0), 65.0],
+	# the mill close up: its yard front and fire escape, and the painted name on the spinning block
+	"mill_facade": [Vector3(13.0, -1.55, 127.5), Vector3(15.5, 0.9, 137.0), 68.0],
+	"mill_sign": [Vector3(5.5, -0.9, 112.0), Vector3(6.0, 12.0, 143.0), 55.0],
 	# name: [camera position, look at, fov]
 	"map_top": [Vector3(4.0, 120.0, 22.0), Vector3(4.0, 0.0, 22.0), 50.0],
 	"map_north": [Vector3(4.0, 55.0, -45.0), Vector3(4.0, 0.0, 22.0), 60.0],

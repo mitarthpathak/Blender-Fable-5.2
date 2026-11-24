@@ -51,6 +51,8 @@ SETS: dict[str, tuple[str, float, str]] = {
     "dirty_concrete": ("1k", 2.0, "jersey barriers"),
     "rubber_tiles": ("1k", 0.6, "tyres"),
     "red_brick": ("2k", 1.4, "chimneys (same set as the player's house)"),
+    "factory_brick": ("1k", 2.0, "the Halden mill: weathered industrial brick"),
+    "damaged_concrete_floor": ("1k", 2.5, "the mill's receiving yard"),
 }
 
 ALIASES = {"diff": ("Diffuse", "diff", "Color"), "nor_gl": ("nor_gl",), "arm": ("arm",)}

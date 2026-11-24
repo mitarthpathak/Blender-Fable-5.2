@@ -209,35 +209,78 @@ def mill(coll="ground"):
     """The Halden mill as distant geometry: enough for a true silhouette and for clear weather."""
     rng = random.Random(1887)
     mb = MeshBuilder()
-    brick = (0.55, 0.50, 0.47)
+    brick = (0.92, 0.86, 0.80)          # a light tint over factory_brick
     z0 = plan.mill_grade(-121)
 
-    def block(x0, y0, x1, y1, h, floors, bays, colour=brick):
+    def fbox(face, fixed, a0, a1, zb, zt, d0, d1, mat, colour=None):
+        """A box on a wall: along it from a0 to a1, from zb to zt, standing d0..d1
+        out from the wall face (face n looks north, w west, e east)."""
+        if face == "n":
+            mb.box((a0, fixed + d0, zb), (a1, fixed + d1, zt), mat, color=colour, skip="-y")
+        elif face == "w":
+            mb.box((fixed - d1, a0, zb), (fixed - d0, a1, zt), mat, color=colour, skip="+x")
+        else:
+            mb.box((fixed + d0, a0, zb), (fixed + d1, a1, zt), mat, color=colour, skip="-x")
+
+    def pane(face, fixed, a0, a1, zb, zt, d, mat):
+        if face == "n":
+            q = [Vector((a1, fixed + d, zb)), Vector((a0, fixed + d, zb)), Vector((a0, fixed + d, zt)), Vector((a1, fixed + d, zt))]
+        elif face == "w":
+            q = [Vector((fixed - d, a1, zb)), Vector((fixed - d, a0, zb)), Vector((fixed - d, a0, zt)), Vector((fixed - d, a1, zt))]
+        else:
+            q = [Vector((fixed + d, a0, zb)), Vector((fixed + d, a1, zb)), Vector((fixed + d, a1, zt)), Vector((fixed + d, a0, zt))]
+        mb.face(q, mat)
+
+    def block(x0, y0, x1, y1, h, floors, bays, colour=brick, blank=None):
+        """A mill block in brick: pilasters between the bays, a stone band at each
+        floor and a cornice; in every bay a tall steel-framed window with a stone
+        sill and a brick head, most panes grimy, some broken, some boarded.
+        `blank`: (face, a0, a1, z0, z1) of wall left without windows (a painted sign)."""
         mb.grime = _grime(z0, 6.0, 0.25)
-        mb.box((x0, y0, z0), (x1, y1, z0 + h), "brick", color=colour, skip="-z")
+        mb.box((x0, y0, z0), (x1, y1, z0 + h), "brick_mill", color=colour, skip="-z")
         mb.grime = None
-        # tall arched-head mill windows on the faces we can see: dark, a few still glazed
         fh = (h - 1.5) / floors
+        band = (0.62, 0.6, 0.56)
         for face, a0, a1, fixed in (("n", x0, x1, y1), ("w", y0, y1, x0), ("e", y0, y1, x1)):
             n = max(1, int((a1 - a0) / bays))
             step = (a1 - a0) / n
+            # cornice, and a stone band at every floor line
+            fbox(face, fixed, a0 - 0.25, a1 + 0.25, z0 + h - 0.45, z0 + h, 0.0, 0.26, "concrete", band)
+            for f in range(1, floors):
+                zf = z0 + 1.6 + f * fh - 0.35
+                fbox(face, fixed, a0, a1, zf, zf + 0.2, 0.0, 0.07, "concrete", band)
+            # pilasters between the bays
+            for i in range(n + 1):
+                c = a0 + step * i
+                fbox(face, fixed, max(a0, c - 0.28), min(a1, c + 0.28), z0, z0 + h - 0.45, 0.0, 0.16, "brick_mill",
+                     mul(colour, 0.92))
             for i in range(n):
                 for f in range(floors):
                     c = a0 + step * (i + 0.5)
                     zb = z0 + 1.6 + f * fh
                     zt = zb + fh * 0.62
                     w = step * 0.42
-                    mat = "glass_dirty" if rng.random() < 0.25 else "interior_dark"
-                    if face == "n":
-                        q = [Vector((c + w, fixed + 0.05, zb)), Vector((c - w, fixed + 0.05, zb)), Vector((c - w, fixed + 0.05, zt)),
-                             Vector((c + w, fixed + 0.05, zt))]
-                    elif face == "w":
-                        q = [Vector((fixed - 0.05, c + w, zb)), Vector((fixed - 0.05, c - w, zb)), Vector((fixed - 0.05, c - w, zt)),
-                             Vector((fixed - 0.05, c + w, zt))]
-                    else:
-                        q = [Vector((fixed + 0.05, c - w, zb)), Vector((fixed + 0.05, c + w, zb)), Vector((fixed + 0.05, c + w, zt)),
-                             Vector((fixed + 0.05, c - w, zt))]
-                    mb.face(q, mat)
+                    if blank and face == blank[0] and blank[1] < c < blank[2] and zt > blank[3] and zb < blank[4]:
+                        continue
+                    roll = rng.random()
+                    mat = "interior_dark" if roll < 0.3 else "glass_dirty"
+                    pane(face, fixed, c - w, c + w, zb, zt, 0.03, mat)
+                    # sill and brick head
+                    fbox(face, fixed, c - w - 0.12, c + w + 0.12, zb - 0.14, zb, 0.0, 0.13, "concrete", band)
+                    fbox(face, fixed, c - w - 0.08, c + w + 0.08, zt, zt + 0.32, 0.0, 0.06, "brick_mill", mul(colour, 0.8))
+                    if roll > 0.88:          # boarded over
+                        fbox(face, fixed, c - w + 0.05, c + w - 0.05, zb + 0.08, zt - 0.08, 0.05, 0.08, "plywood",
+                             (0.75, 0.7, 0.62))
+                        continue
+                    # the steel sash: two mullions and three transoms
+                    for k in (1, 2):
+                        u = c - w + 2 * w * k / 3
+                        fbox(face, fixed, u - 0.03, u + 0.03, zb, zt, 0.03, 0.07, "metal_painted", (0.25, 0.28, 0.26))
+                    for k in (1, 2, 3):
+                        v = zb + (zt - zb) * k / 4
+                        fbox(face, fixed, c - w, c + w, v - 0.03, v + 0.03, 0.03, 0.07, "metal_painted", (0.25, 0.28, 0.26))
+                    fbox(face, fixed, c - w, c + w, zb, zb + 0.05, 0.03, 0.08, "metal_painted", (0.25, 0.28, 0.26))
+                    fbox(face, fixed, c - w, c + w, zt - 0.05, zt, 0.03, 0.08, "metal_painted", (0.25, 0.28, 0.26))
 
     # the weaving shed: long and low, under a sawtooth roof whose glass faces north
     sx0, sx1 = -44.0, 38.0
@@ -255,11 +298,17 @@ def mill(coll="ground"):
                 "glass_dirty")
         for x in (sx0, sx1):
             tri = [Vector((x, ya, z0 + sh)), Vector((x, yb, z0 + sh)), Vector((x, yb, top))]
-            mb.face(tri if x == sx1 else list(reversed(tri)), "brick", color=brick)
+            mb.face(tri if x == sx1 else list(reversed(tri)), "brick_mill", color=brick)
     # the four-storey spinning block and its stair tower
-    block(-12.0, MILL_Y - 2.0, 20.0, MILL_Y + 14.0, 19.0, 4, 4.0, mul(brick, 0.95))
+    block(-12.0, MILL_Y - 2.0, 20.0, MILL_Y + 14.0, 19.0, 4, 4.0, mul(brick, 0.95),
+          blank=("n", -2.5, 14.5, z0 + 14.2, z0 + 18.5))
+    # the mill's name painted on the spinning block's top floor, facing the town: faded, flaked
+    # (mill_sign.py paints it)
+    sy = MILL_Y + 14.0 + 0.04
+    mb.face([Vector((14.0, sy, z0 + 14.3)), Vector((-2.0, sy, z0 + 14.3)), Vector((-2.0, sy, z0 + 18.3)),
+             Vector((14.0, sy, z0 + 18.3))], "ghost_sign", uvs=((0, 0), (1, 0), (1, 1), (0, 1)))
     block(20.0, MILL_Y + 3.0, 27.0, MILL_Y + 10.0, 26.0, 5, 3.4, mul(brick, 0.9))
-    mb.box((19.6, MILL_Y + 2.6, z0 + 26.0), (27.4, MILL_Y + 10.4, z0 + 27.0), "brick", color=mul(brick, 0.8))
+    mb.box((19.6, MILL_Y + 2.6, z0 + 26.0), (27.4, MILL_Y + 10.4, z0 + 27.0), "brick_mill", color=mul(brick, 0.8))
     # water tank on the roof
     tx, ty, tz = 2.0, MILL_Y + 6.0, z0 + 19.0
     for dx, dy in ((-1.6, -1.6), (1.6, -1.6), (1.6, 1.6), (-1.6, 1.6)):
@@ -268,9 +317,9 @@ def mill(coll="ground"):
     mb.cylinder((tx, ty, tz + 8.2), (0, 0, 1.6), 2.4, "metal_rust", segments=14, radius_top=0.2, color=(0.5, 0.48, 0.46))
     # the stack
     cx, cy = -30.0, MILL_Y + 8.0
-    mb.box((cx - 3.0, cy - 3.0, z0), (cx + 3.0, cy + 3.0, z0 + 6.0), "brick", color=mul(brick, 0.9), skip="-z")
-    mb.cylinder((cx, cy, z0 + 6.0), (0, 0, 40.0), 2.3, "brick", segments=16, radius_top=1.5, color=mul(brick, 0.85))
-    mb.cylinder((cx, cy, z0 + 46.0), (0, 0, 1.2), 1.75, "brick", segments=16, color=mul(brick, 0.7))
+    mb.box((cx - 3.0, cy - 3.0, z0), (cx + 3.0, cy + 3.0, z0 + 6.0), "brick_mill", color=mul(brick, 0.9), skip="-z")
+    mb.cylinder((cx, cy, z0 + 6.0), (0, 0, 40.0), 2.3, "brick_mill", segments=16, radius_top=1.5, color=mul(brick, 0.85))
+    mb.cylinder((cx, cy, z0 + 46.0), (0, 0, 1.2), 1.75, "brick_mill", segments=16, color=mul(brick, 0.7))
     # a boiler house against it and a long loading shed towards the town
     block(-40.0, MILL_Y + 2.0, -34.0, MILL_Y + 14.0, 9.0, 1, 4.0, mul(brick, 0.9))
     mb.box((-10.0, MILL_Y + 14.0, z0), (16.0, MILL_Y + 20.0, z0 + 5.0), "roof_tin", color=(0.7, 0.68, 0.64), skip="-z",

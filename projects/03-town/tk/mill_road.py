@@ -235,6 +235,86 @@ def iron_letters(mb, caption, x, y, z, size):
     bpy.data.curves.remove(font)
 
 
+def facade_detail(mb, z):
+    """The close facade's brickwork and weathering, and what hangs on it: a stone
+    plinth and band, sills and brick heads at the upper windows, pilasters,
+    downpipes with hopper heads, rust and grime run down from the sills, moss at
+    the foot, gooseneck lamps over the docks, a fire escape at the east end."""
+    rng = random.Random(9031)
+    wy = -136.95                     # the facade's face (it looks north, +y)
+    band = (0.66, 0.63, 0.58)
+    mb.box((-12.1, wy, z), (22.1, wy + 0.12, z + 0.62), "barrier_concrete", color=band)          # plinth
+    mb.box((-12.1, wy, z + 4.43), (22.1, wy + 0.09, z + 4.66), "concrete", color=band)          # band
+    for i in range(15):
+        x = -10 + 2.15 * i
+        mb.box((x - 0.1, wy, z + 4.86), (x + 1.46, wy + 0.16, z + 5.0), "concrete", color=band)   # sill
+        mb.box((x - 0.08, wy, z + 6.8), (x + 1.44, wy + 0.07, z + 7.12), "brick_mill", color=(0.66, 0.56, 0.5))  # head
+        if i < 14:
+            # a pilaster between this window and the next, above the band
+            px = x + 1.36 + 0.395
+            mb.box((px - 0.24, wy, z + 4.66), (px + 0.24, wy + 0.14, z + 7.75), "brick_mill", color=(0.84, 0.77, 0.71))
+        # rust and grime run down from the sill
+        if rng.random() < 0.7:
+            w = rng.uniform(0.5, 1.2)
+            cx = x + 0.68 + rng.uniform(-0.3, 0.3)
+            top = z + 4.86
+            mb.quad((cx + w / 2, wy + 0.01, top - rng.uniform(1.0, 2.0)), (cx - w / 2, wy + 0.01, top - rng.uniform(1.0, 2.0)),
+                    (cx - w / 2, wy + 0.01, top), (cx + w / 2, wy + 0.01, top), "decal_streaks",
+                    uvs=((0, 0), (1, 0), (1, 1), (0, 1)))
+    # moss and damp along the foot of the wall
+    for k in range(17):
+        x0 = -12 + 2 * k
+        mb.quad((x0 + 2, wy + 0.13, z + 0.6), (x0, wy + 0.13, z + 0.6), (x0, wy + 0.13, z + 1.1), (x0 + 2, wy + 0.13, z + 1.1),
+                "decal_moss_strip", uvs=((0, 0), (1, 0), (1, 1), (0, 1)))
+    # downpipes with hopper heads; the middle one has lost its foot
+    for x, broken in ((-11.6, False), (7.15, True), (21.6, False)):
+        mb.box((x - 0.2, wy, z + 7.3), (x + 0.2, wy + 0.32, z + 7.7), "metal_rust")
+        foot = z + 1.6 if broken else z + 0.15
+        mb.cylinder((x, wy + 0.16, foot), (0, 0, z + 7.3 - foot), 0.065, "metal_painted", segments=8, color=(0.36, 0.38, 0.35))
+        for zz in (z + 2.5, z + 5.0, z + 6.9):
+            mb.box((x - 0.09, wy, zz), (x + 0.09, wy + 0.18, zz + 0.05), "metal_rust")
+    # gooseneck lamps over the dock doors, long dead
+    for x in (-5, 3, 11):
+        # (between the door heads at 4.2 and the band at 4.43: clear of the windows above)
+        base = Vector((x, wy, z + 4.28))
+        mb.tube([base, base + Vector((0, 0.35, 0.2)), base + Vector((0, 0.7, 0.08))], 0.03, "metal_painted",
+                segments=6, color=(0.22, 0.27, 0.24))
+        mb.cylinder((x, wy + 0.72, z + 4.36), (0, 0, -0.16), 0.05, "metal_painted", segments=10, radius_top=0.24,
+                    caps="none", color=(0.22, 0.27, 0.24))
+        mb.cylinder((x, wy + 0.72, z + 4.22), (0, 0, -0.03), 0.08, "glass_dirty", segments=8)
+    # the fire escape at the east end: a landing at the upper windows, a stair to
+    # the roof, and its drop ladder still hooked up out of reach
+    fe = MeshBuilder()
+    lx0, lx1, ly0, ly1, lz = 15.5, 21.8, wy, wy + 1.25, z + 4.78
+    steel = (0.24, 0.24, 0.22)
+    fe.box((lx0, ly0, lz - 0.06), (lx1, ly1, lz), "metal_rust", color=steel)
+    for k in range(int((lx1 - lx0) / 0.6) + 1):                            # brackets under the landing
+        bx = lx0 + 0.1 + k * 0.6
+        fe.tube([(bx, wy, lz - 0.7), (bx, ly1 - 0.05, lz - 0.06)], 0.025, "metal_rust", segments=4)
+    for yy in (ly1 - 0.03,):                                                # railings
+        for zz in (lz + 0.5, lz + 1.0):
+            fe.tube([(lx0, yy, zz), (lx1, yy, zz)], 0.022, "metal_rust", segments=4)
+        for k in range(int((lx1 - lx0) / 0.5) + 1):
+            fe.tube([(lx0 + k * 0.5, yy, lz), (lx0 + k * 0.5, yy, lz + 1.0)], 0.015, "metal_rust", segments=3)
+    for xx in (lx0, lx1):
+        fe.tube([(xx, wy, lz + 1.0), (xx, ly1 - 0.03, lz + 1.0)], 0.022, "metal_rust", segments=4)
+        fe.tube([(xx, ly1 - 0.03, lz), (xx, ly1 - 0.03, lz + 1.0)], 0.022, "metal_rust", segments=4)
+    # stair up to the parapet along the wall
+    s0, s1 = Vector((16.0, wy + 0.4, lz)), Vector((19.4, wy + 0.4, z + 7.9))
+    for off in (-0.35, 0.35):
+        fe.tube([s0 + Vector((0, off, 0)), s1 + Vector((0, off, 0))], 0.03, "metal_rust", segments=4)
+    for k in range(1, 12):
+        p = s0.lerp(s1, k / 12)
+        fe.box((p.x - 0.12, p.y - 0.33, p.z - 0.02), (p.x + 0.12, p.y + 0.33, p.z + 0.02), "metal_rust", color=steel)
+    # the drop ladder, hooked up, its foot 2.7 m off the ground
+    for off in (-0.22, 0.22):
+        fe.tube([(20.6 + off, ly1 - 0.15, z + 2.7), (20.6 + off, ly1 - 0.15, lz + 0.9)], 0.02, "metal_rust", segments=4)
+    for k in range(9):
+        zz = z + 2.9 + k * 0.32
+        fe.tube([(20.38, ly1 - 0.15, zz), (20.82, ly1 - 0.15, zz)], 0.012, "metal_rust", segments=3)
+    fe.build("detail_mill_fire_escape", "props")
+
+
 def receiving_yard():
     from . import cars
     rng=random.Random(781)
@@ -242,7 +322,7 @@ def receiving_yard():
     floor=MeshBuilder()
     for x in range(-69,69,3):
         for y in range(-139,-121,3):
-            mat="concrete" if -9 <= x < 19 else "lawn_dead"
+            mat="concrete_yard" if -9 <= x < 19 else "lawn_dead"
             c=rng.uniform(0.51,0.68)
             floor.quad((x,y,z),(x+3,y,z),(x+3,y+3,z),(x,y+3,z),mat,color=(c,c*0.94,c*0.87))
     floor.build("ground_mill_yard","ground",origin=(4,-130,z))
@@ -281,7 +361,7 @@ def receiving_yard():
         shed.box((x,-122.74,z+1.02),(x+0.048,-122.70,z+2.44),"metal_painted")
     notice(shed,-5.61,-122.74,z+0.44,1.05,0.50,5)
     # Close facade in front of the cheap far mass. Blind openings are deep black.
-    shed.box((-12,-138.3,z-0.2),(22,-136.95,z+7.9),"brick",color=(0.68,0.57,0.49))
+    shed.box((-12,-138.3,z-0.2),(22,-136.95,z+7.9),"brick_mill",color=(0.9,0.84,0.78))
     shed.box((-12,-137.12,z+7.75),(22,-136.74,z+8.04),"concrete")
     for x in (-5,3,11):
         shed.box((x-2,-136.95,z+0.68),(x+2,-136.88,z+4.2),"interior_dark")
@@ -299,8 +379,11 @@ def receiving_yard():
         shed.quad((x+0.04,-136.82,z+6.73),(x+0.47,-136.82,z+6.73),
                   (x+0.42,-136.82,z+6.34),(x+0.09,-136.82,z+6.12),"glass_dirty")
         if i==8:
-            shed.box((x+0.70,-136.84,z+5.03),(x+1.28,-136.80,z+5.82),"window_lit")
+            # a lamp somewhere inside: a warm glow behind grimy glass, half a curtain across it
+            shed.box((x+0.70,-136.86,z+5.03),(x+1.28,-136.82,z+5.82),"window_lit_mill")
+            shed.box((x+0.70,-136.81,z+5.40),(x+0.98,-136.79,z+5.82),"fabric",color=(0.55,0.47,0.38))
     notice(shed,2.9,-136.78,z+4.27,1.57,0.61,7)
+    facade_detail(shed, z)
     for k in range(7):
         x=14.8+(k%3)*0.67
         y=-133.4+(k//3)*0.69
