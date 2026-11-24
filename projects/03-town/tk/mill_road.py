@@ -320,3 +320,197 @@ def receiving_yard():
     cargo.box((9.84,-135.17,z+0.7),(11.96,-133.08,z+2.69),"roof_tin",color=(0.62,0.59,0.52))
     notice(cargo,10.89,-133.07,z+1.71,1.25,0.55,6)
     cargo.build("barrier_mill_cargo","props",origin=(10.9,-134,z))
+
+
+# --- Dressing: the banks and the yard ------------------------------------------------------
+# Their own random streams, so the road, the stories and the yard come out as before.
+
+# Where nothing grows: the checkpoint, the bus stop, the poles, signs and siren on
+# the road; the shed, the docks, the truck, the drums and the pallets in the yard.
+BANK_CLEAR = ((-1.8, -74.3, 1.0, -71.7), (-1.8, -89.0, 0.4, -85.0))
+BANK_POSTS = ((-0.67, -64), (-0.67, -79), (-0.67, -94), (-0.67, -109), (-0.67, -121), (6.5, -67), (6.1, -111),
+              (7.6, -116))
+YARD_CLEAR = ((-8.1, -127.3, -3.3, -122.5), (-7.6, -137.0, -2.4, -135.2), (0.4, -137.0, 5.6, -135.2),
+              (8.4, -137.0, 13.6, -135.2), (9.6, -135.4, 12.2, -129.9), (14.4, -133.8, 16.9, -131.6),
+              (-5.7, -132.2, -4.1, -130.6), (-9.5, -122.3, 19.5, -120.0))
+
+
+def _clear(x, y, rects, posts=()):
+    if any(r[0] <= x <= r[2] and r[1] <= y <= r[3] for r in rects):
+        return False
+    return all(math.hypot(x - px, y - py) > 0.45 for px, py in posts)
+
+
+_BVH = None
+
+
+def _ground_z(x, y):
+    """The height of the built road mesh (ground_mill_road) at x, y: what things
+    stand on. surface() is the shape it was built from, but the mesh is a 1 m
+    grid, so between its rows and columns the two differ by a few centimetres."""
+    global _BVH
+    if _BVH is None:
+        from mathutils.bvhtree import BVHTree
+        o = bpy.data.objects["ground_mill_road"]
+        verts = [o.matrix_world @ v.co for v in o.data.vertices]
+        _BVH = BVHTree.FromPolygons(verts, [list(p.vertices) for p in o.data.polygons])
+    hit = _BVH.ray_cast(Vector((x, y, 40.0)), Vector((0, 0, -1)))
+    return hit[0].z if hit[0] is not None else surface(x, y)
+
+
+def _seat_z(x, y, r=0.3):
+    """Where something about r across sits on a slope: the lowest ground under its
+    edge, so its downhill side touches (the uphill side sinks in a little)."""
+    return min(_ground_z(x + dx, y + dy) for dx, dy in ((0, 0), (r, 0), (-r, 0), (0, r), (0, -r)))
+
+
+def _tufts():
+    return [sk.shared(f"grass_tuft_{k}", lambda k=k: sk._tuft(k)) for k in range(sk.TUFT_VARIANTS)]
+
+
+def bank_dressing():
+    """Dry grass, weeds and drifted leaves on the shoulders, the ditches and the
+    banks; stones and fallen branches among them. Instanced (grass_, weed_,
+    leaf_pile_: faded and culled in chunks by town.gd) or in 24 m sectors."""
+    rng = random.Random(5521)
+    tufts = _tufts()
+    weeds = [sk.shared(f"weed_{k}", lambda k=k: sk._weed(k)) for k in range(3)]
+    piles = [sk.shared(f"leaf_pile_{k}", lambda k=k: sk._leaf_pile(k)) for k in range(3)]
+    det = sk.Sectors("detail_millbank")
+    dec = sk.Sectors("decals_millbank")
+    n = 0
+    y = -62.5          # (north of -62 the ground is the town's)
+    while y > -120.5:
+        # west: the gravel shoulder and the ditch, then up the bank under the trees
+        for x0, x1, k in ((-1.5, -0.5, 1), (-2.4, -1.0, 2), (-9.0, -2.6, 2)):
+            for _ in range(k):
+                x = rng.uniform(x0, x1)
+                yy = y + rng.uniform(-0.6, 0.6)
+                for _ in range(rng.randint(2, 4)):
+                    tx, ty = x + rng.uniform(-0.25, 0.25), yy + rng.uniform(-0.25, 0.25)
+                    if not _clear(tx, ty, BANK_CLEAR, BANK_POSTS):
+                        continue
+                    n += 1
+                    instance(tufts[rng.randrange(len(tufts))], f"grass_tm{n}", "grass", (tx, ty, _seat_z(tx, ty)),
+                             rng.uniform(0, 6.28), scale=rng.uniform(0.8, 1.5),
+                             tilt=(rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15)))
+        # east: the shoulder between the road and the guardrail, and the ditch
+        for _ in range(2):
+            x = rng.uniform(7.2, 8.6)
+            yy = y + rng.uniform(-0.6, 0.6)
+            for _ in range(rng.randint(2, 3)):
+                tx, ty = x + rng.uniform(-0.2, 0.2), yy + rng.uniform(-0.2, 0.2)
+                if not _clear(tx, ty, BANK_CLEAR, BANK_POSTS):
+                    continue
+                n += 1
+                instance(tufts[rng.randrange(len(tufts))], f"grass_tm{n}", "grass", (tx, ty, _seat_z(tx, ty)),
+                         rng.uniform(0, 6.28), scale=rng.uniform(0.7, 1.3))
+        # weeds and leaves gathered in both ditches
+        if rng.random() < 0.55:
+            for x in (-1.6 + rng.uniform(-0.3, 0.3), 8.9 + rng.uniform(-0.3, 0.2)):
+                if not _clear(x, y, BANK_CLEAR, BANK_POSTS):
+                    continue
+                n += 1
+                instance(weeds[n % 3], f"weed_m{n}", "grass", (x, y, _seat_z(x, y, 0.35)), rng.uniform(0, 6.28),
+                         scale=rng.uniform(0.8, 1.3))
+        if rng.random() < 0.3:
+            # the west ditch only: a pile is up to 1.5 m across, and east of 8.9 the bank falls away
+            x = -1.6 + rng.uniform(-0.15, 0.15)
+            if not _clear(x, y, BANK_CLEAR, BANK_POSTS):
+                y -= 1.0
+            n += 1
+            instance(piles[n % 3], f"leaf_pile_m{n}", "props", (x, y, _seat_z(x, y, 0.5) - 0.03), rng.uniform(0, 6.28),
+                     scale=rng.uniform(0.5, 0.8))
+        # leaf litter flat on the bank and the shoulders
+        for x in (rng.uniform(-7.0, -2.5), rng.uniform(7.3, 8.8)):
+            dec.at(x, y).card((x, y, _ground_z(x, y) + 0.02), rng.uniform(1.0, 2.0), rng.uniform(0.8, 1.6),
+                              rng.uniform(0, 3.1), "decal_leaves", flat=True)
+        # stones on the bank, a fallen branch now and then
+        for _ in range(2):
+            x, yy = rng.uniform(-8.0, -2.4), y + rng.uniform(-0.7, 0.7)
+            s = rng.uniform(0.08, 0.22)
+            det.at(x, yy).obox((x, yy, _seat_z(x, yy, s) + s * 0.2), (s * 1.5, s * 1.1, s * 0.8), rng.uniform(0, 3.1),
+                               "concrete", color=(0.55, 0.53, 0.5), tilt=(rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3)))
+        if rng.random() < 0.18:
+            x, yy = rng.uniform(-7.5, -2.8), y
+            a = rng.uniform(0, 6.28)
+            L = rng.uniform(1.2, 2.6)
+            p0 = Vector((x, yy, _seat_z(x, yy, 0.1) + 0.03))
+            p1 = Vector((x + math.cos(a) * L, yy + math.sin(a) * L, 0.0))
+            p1.z = _seat_z(p1.x, p1.y, 0.1) + 0.02
+            mid = (p0 + p1) / 2
+            mid.z = _seat_z(mid.x, mid.y, 0.1) + 0.04
+            det.at(x, yy).tube([p0, mid, p1], 0.04, "bark", segments=4, radii=(0.045, 0.03, 0.012))
+            tip = p1.lerp(p0, 0.35)
+            det.at(x, yy).tube([tip, tip + Vector((math.cos(a + 0.8) * 0.5, math.sin(a + 0.8) * 0.5, 0.12))], 0.015,
+                               "bark", segments=3, radii=(0.02, 0.006))
+        y -= rng.uniform(1.0, 1.6)
+    det.build("props")
+    dec.build("ground_detail")
+    return n
+
+
+def yard_dressing():
+    """The receiving yard left to weather: grass in the slab joints and along the
+    walls, puddles where the concrete has settled, oil where trucks stood, and
+    windblown litter in the corners."""
+    rng = random.Random(6617)
+    z = GROUND(-121)
+    tufts = _tufts()
+    weeds = [sk.shared(f"weed_{k}", lambda k=k: sk._weed(k)) for k in range(3)]
+    dec = sk.Sectors("decals_millyard")
+    n = 0
+    # grass up the joints of the 3 m slabs
+    for x in range(-9, 20, 3):
+        for y in range(-136, -121, 1):
+            if rng.random() < 0.28:
+                tx, ty = x + rng.uniform(-0.06, 0.06), y + rng.uniform(0, 1)
+                if not _clear(tx, ty, YARD_CLEAR):
+                    continue
+                n += 1
+                instance(tufts[rng.randrange(len(tufts))], f"grass_ty{n}", "grass", (tx, ty, z), rng.uniform(0, 6.28),
+                         scale=rng.uniform(0.5, 0.9))
+    for y in range(-136, -121, 3):
+        for x in range(-9, 19, 1):
+            if rng.random() < 0.2:
+                tx, ty = x + rng.uniform(0, 1), y + rng.uniform(-0.06, 0.06)
+                if not _clear(tx, ty, YARD_CLEAR):
+                    continue
+                n += 1
+                instance(tufts[rng.randrange(len(tufts))], f"grass_ty{n}", "grass", (tx, ty, z), rng.uniform(0, 6.28),
+                         scale=rng.uniform(0.5, 0.9))
+    # thicker growth along the foot of the side walls and the mill front
+    for _ in range(26):
+        side = rng.random()
+        if side < 0.35:
+            x, y = rng.uniform(-8.8, -8.3), rng.uniform(-136.5, -121.5)
+        elif side < 0.7:
+            x, y = rng.uniform(18.3, 18.8), rng.uniform(-136.5, -121.5)
+        else:
+            x, y = rng.uniform(-8.5, 18.5), rng.uniform(-135.1, -134.8)
+        if not _clear(x, y, YARD_CLEAR):
+            continue
+        n += 1
+        if rng.random() < 0.4:
+            instance(weeds[n % 3], f"weed_y{n}", "grass", (x, y, z), rng.uniform(0, 6.28), scale=rng.uniform(0.7, 1.1))
+        else:
+            for _ in range(3):
+                n += 1
+                instance(tufts[rng.randrange(len(tufts))], f"grass_ty{n}", "grass",
+                         (x + rng.uniform(-0.2, 0.2), y + rng.uniform(-0.2, 0.2), z), rng.uniform(0, 6.28),
+                         scale=rng.uniform(0.8, 1.3))
+    # puddles in the low slabs, oil where the trucks backed up, litter blown into the corners
+    for x, y, r in ((2.5, -128.5, 1.6), (-4.0, -131.0, 1.1), (13.5, -126.0, 1.3), (6.0, -133.5, 0.9)):
+        dec.at(x, y).card((x, y, z + 0.006), r * 2.0, r * 1.5, rng.uniform(0, 3.1), "puddle", flat=True)
+    for x in (-5.0, 3.0, 11.0):
+        for _ in range(2):
+            px, py = x + rng.uniform(-1.6, 1.6), -133.6 + rng.uniform(-0.9, 0.9)
+            dec.at(px, py).card((px, py, z + 0.008), rng.uniform(0.8, 1.6), rng.uniform(0.6, 1.2),
+                                rng.uniform(0, 3.1), "decal_oil", flat=True)
+    for x, y in ((-8.2, -122.0), (17.8, -122.2), (-8.0, -135.0), (17.6, -134.6), (1.0, -134.8)):
+        dec.at(x, y).card((x + 0.5 * (1 if x < 0 else -1), y, z + 0.01), 1.6, 1.2, rng.uniform(0, 3.1),
+                          "decal_litter", flat=True)
+        dec.at(x, y).card((x + 0.4 * (1 if x < 0 else -1), y + 0.3, z + 0.012), 1.4, 1.1, rng.uniform(0, 3.1),
+                          "decal_leaves", flat=True)
+    dec.build("ground_detail")
+    return n

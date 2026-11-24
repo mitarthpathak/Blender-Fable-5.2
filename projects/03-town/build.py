@@ -205,6 +205,7 @@ def build_town():
     mill_road.road()
     mill_road.roadside_stories()
     mill_road.receiving_yard()
+    print("MILL_DRESSING banks %d, yard %d" % (mill_road.bank_dressing(), mill_road.yard_dressing()))
     # Grass follows the old fence line even where boards were recently torn out.
     # Preserve its continuous run so the seeded scatter elsewhere in town stays stable.
     fence_runs = street_kit.FENCE_SEGMENTS[:]
