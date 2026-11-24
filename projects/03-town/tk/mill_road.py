@@ -376,6 +376,7 @@ def bank_dressing():
     tufts = _tufts()
     weeds = [sk.shared(f"weed_{k}", lambda k=k: sk._weed(k)) for k in range(3)]
     piles = [sk.shared(f"leaf_pile_{k}", lambda k=k: sk._leaf_pile(k)) for k in range(3)]
+    clumps = [sk.shared(f"grass_clump_{k}", lambda k=k: sk._grass_clump(k)) for k in range(3)]
     det = sk.Sectors("detail_millbank")
     dec = sk.Sectors("decals_millbank")
     n = 0
@@ -405,6 +406,19 @@ def bank_dressing():
                 n += 1
                 instance(tufts[rng.randrange(len(tufts))], f"grass_tm{n}", "grass", (tx, ty, _seat_z(tx, ty)),
                          rng.uniform(0, 6.28), scale=rng.uniform(0.7, 1.3))
+        # tall dry grass in clumps, thick enough that the banks read as overgrown from the road
+        for x0, x1, k, big in ((-9.0, -2.4, 3, 1.9), (7.3, 8.2, 1, 1.3)):
+            for _ in range(k):
+                x, yy = rng.uniform(x0, x1), y + rng.uniform(-0.7, 0.7)
+                if not _clear(x, yy, BANK_CLEAR, BANK_POSTS):
+                    continue
+                n += 1
+                sc = rng.uniform(1.1, big)
+                # a clump's cards reach about 0.55 m times its scale from its foot: seat it under all of them
+                r = 0.55 * sc
+                z = min(_seat_z(x, yy, r), _ground_z(x + r * 0.7, yy + r * 0.7), _ground_z(x - r * 0.7, yy - r * 0.7),
+                        _ground_z(x + r * 0.7, yy - r * 0.7), _ground_z(x - r * 0.7, yy + r * 0.7))
+                instance(clumps[n % 3], f"grass_cm{n}", "grass", (x, yy, z), rng.uniform(0, 6.28), scale=sc)
         # weeds and leaves gathered in both ditches
         if rng.random() < 0.55:
             for x in (-1.6 + rng.uniform(-0.3, 0.3), 8.9 + rng.uniform(-0.3, 0.2)):
@@ -500,8 +514,11 @@ def yard_dressing():
                          (x + rng.uniform(-0.2, 0.2), y + rng.uniform(-0.2, 0.2), z), rng.uniform(0, 6.28),
                          scale=rng.uniform(0.8, 1.3))
     # puddles in the low slabs, oil where the trucks backed up, litter blown into the corners
-    for x, y, r in ((2.5, -128.5, 1.6), (-4.0, -131.0, 1.1), (13.5, -126.0, 1.3), (6.0, -133.5, 0.9)):
-        dec.at(x, y).card((x, y, z + 0.006), r * 2.0, r * 1.5, rng.uniform(0, 3.1), "puddle", flat=True)
+    # damp patches where the slabs settled (a dark puddle read as a black hole on the pale concrete),
+    # and one small puddle still standing
+    for x, y, r in ((2.5, -128.5, 1.6), (-4.0, -131.0, 1.1), (13.5, -126.0, 1.3)):
+        dec.at(x, y).card((x, y, z + 0.006), r * 2.0, r * 1.5, rng.uniform(0, 3.1), "decal_grime", flat=True)
+    dec.at(6.0, -133.0).card((6.0, -133.0, z + 0.007), 1.0, 0.7, 0.4, "puddle", flat=True)
     for x in (-5.0, 3.0, 11.0):
         for _ in range(2):
             px, py = x + rng.uniform(-1.6, 1.6), -133.6 + rng.uniform(-0.9, 0.9)
